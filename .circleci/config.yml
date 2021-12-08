@@ -1,13 +1,13 @@
 version: 2
 
 jobs:
-  build:
+  build-and-test:
     docker:
       - image: cimg/python:3.9
+        environment:
+          PIPENV_VENV_IN_PROJECT: true
     steps:
       - checkout
-      - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.9/site-packages
       - restore_cache: # ensure this step occurs *before* installing dependencies
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
@@ -20,15 +20,6 @@ jobs:
           key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
           paths:
             - ".venv"
-            - "/usr/local/bin"
-            - "/usr/local/lib/python3.9/site-packages"
-  test:
-    docker:
-      - image: cimg/python:3.9
-    steps:
-      - checkout
-      - restore_cache: # ensure this step occurs *before* installing dependencies
-          key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
       - run:
           name: Test
           command: |
