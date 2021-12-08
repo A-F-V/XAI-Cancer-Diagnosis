@@ -5,3 +5,4 @@ sphinx
 mlflow
 torch
 pytest
+google-cloud-storage

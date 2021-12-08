@@ -69,3 +69,5 @@ target/
 venv/*
 
 Pipfile*
+
+secrets/*
