@@ -3,4 +3,5 @@ scipy
 scikit-learn
 sphinx
 mlflow
-pytorch
+torch
+pytest
