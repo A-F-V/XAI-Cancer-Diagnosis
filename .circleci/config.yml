@@ -13,8 +13,9 @@ jobs:
       - run:
           name: Install Dependencies
           command: |
-            sudo pip install pipenv
-            pipenv install
+            python -m virtualenv venv
+            . venv/bin/activate
+            pip install -r -requirements.txt
             echo "All Done Building"
       #- save_cache:
       #    key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
@@ -23,7 +24,8 @@ jobs:
       - run:
           name: Test
           command: |
-            pipenv run pytest
+            . venv/bin/activate
+            pytest
             echo "All Done Testing"
 
 workflows:
