@@ -1,13 +1,9 @@
 version: 2
 
-executors:
-  my-executor:
-    docker:
-      - image: cimg/python:3.9
-
 jobs:
   build:
-    executor: my-executor
+    docker:
+      - image: cimg/python:3.9
     steps:
       - checkout
       - run:
@@ -16,7 +12,8 @@ jobs:
             pip install -r requirements.txt
             echo "All Done Building"
   test:
-    executor: my-executor
+    docker:
+      - image: cimg/python:3.9
     steps:
       - checkout
       - run:
@@ -31,5 +28,5 @@ workflows:
     jobs:
       - build
       - test:
-          - requires:
-              - build
+          requires:
+            - build
