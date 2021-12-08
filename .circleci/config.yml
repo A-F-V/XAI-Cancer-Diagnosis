@@ -15,7 +15,7 @@ jobs:
           command: |
             python -m virtualenv venv
             . venv/bin/activate
-            pip install -r -requirements.txt
+            pip install -r requirements.txt
             echo "All Done Building"
       #- save_cache:
       #    key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
