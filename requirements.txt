@@ -12,3 +12,5 @@ ipykernel
 pandas
 Pillow
 matplotlib
+bs4
+lxml
