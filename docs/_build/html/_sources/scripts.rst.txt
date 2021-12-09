@@ -1,5 +1,5 @@
-src.scripts package
-===================
+scripts package
+===============
 
 Subpackages
 -----------
@@ -7,15 +7,15 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   src.scripts.data_scripts
+   scripts.data_scripts
 
 Submodules
 ----------
 
-src.scripts.setup module
-------------------------
+scripts.setup module
+--------------------
 
-.. automodule:: src.scripts.setup
+.. automodule:: scripts.setup
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ src.scripts.setup module
 Module contents
 ---------------
 
-.. automodule:: src.scripts
+.. automodule:: scripts
    :members:
    :undoc-members:
    :show-inheritance:

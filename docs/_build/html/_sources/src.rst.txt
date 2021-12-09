@@ -1,14 +1,6 @@
 src package
 ===========
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   src.scripts
-
 Module contents
 ---------------
 

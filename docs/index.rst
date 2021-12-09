@@ -10,7 +10,7 @@ Welcome to XAI for Cancer Diagnosis's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   src
 
 Indices and tables
 ==================

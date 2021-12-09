@@ -7,3 +7,5 @@ torch
 pytest
 google-cloud-storage
 tqdm
+sphinx_rtd_theme
+ipykernal

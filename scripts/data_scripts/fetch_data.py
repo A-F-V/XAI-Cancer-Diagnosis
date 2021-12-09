@@ -1,16 +1,15 @@
 import os
 from google.cloud import storage
 from tqdm import tqdm
+from .dataset_manager import data_path_folder
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "secrets/google_credentials.json"
 storage_client = storage.Client()
 my_bucket = storage_client.get_bucket("medical-dataset-xai-cancer-diagnosis")
 
-data_path_folder = os.path.join(os.getcwd(), "data", "datasets", "raw")
-
 
 def download_dataset(blob, filepath):
-    """Downloads a dataset from a given blob to a certain path
+    """Downloads a dataset from a given blob to a certain path.
 
     Args:
         blob
@@ -28,9 +27,9 @@ def download_undownloaded_dataset(data_set):
     """
     print("Downloading dataset: " + data_set)
     blob = my_bucket.get_blob(data_set+".zip")
-    filepath = os.path.join("data", "datasets", "raw", data_set+".zip")
+    filepath = os.path.join(data_path_folder, "zipped", data_set+".zip")
     if os.path.exists(filepath) and os.path.getsize(filepath) == blob.size:
-        print(data_set + " already donwloaded")
+        print(data_set + " already downloaded")
     else:
         download_dataset(blob, filepath)
         print(data_set + " downloaded")
