@@ -8,4 +8,7 @@ pytest
 google-cloud-storage
 tqdm
 sphinx_rtd_theme
-ipykernal
+ipykernel
+pandas
+Pillow
+matplotlib
