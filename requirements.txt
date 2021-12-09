@@ -6,3 +6,4 @@ mlflow
 torch
 pytest
 google-cloud-storage
+tqdm

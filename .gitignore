@@ -71,3 +71,5 @@ venv/*
 Pipfile*
 
 secrets/*
+
+data/*
