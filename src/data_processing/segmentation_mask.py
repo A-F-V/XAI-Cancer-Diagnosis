@@ -14,7 +14,7 @@ class SegmentationMask:  # for MoNuSeg
         """
         self.annotation_path = annotation_path
 
-    def create_mask(self):  # todo memoise
+    def create_mask(self, size=None, filled=False):  # todo memoise
         """Creates a mask for the segmentation of the H&E image
 
         Returns:
@@ -26,7 +26,7 @@ class SegmentationMask:  # for MoNuSeg
         soup = bs(content, "xml")
         annotations = soup.Annotations.find_all("Annotation")
 
-        sx, sy = 0, 0  # size of mask bounding box
+        bb = (0, 0) if size == None else size  # size of mask bounding box
         paths = []
         for annotation in annotations:
             for region in annotation.Regions.find_all("Region"):
@@ -34,15 +34,20 @@ class SegmentationMask:  # for MoNuSeg
                 points = list(map(lambda v: (float(v['X']), float(v['Y'])), vertices))
 
                 ipath = ImagePath.Path(points)
-                paths.append(ipath)
+                paths.append(points)
 
                 bounding_box = list(map(int, map(np.ceil, ipath.getbbox())))  # bound
-                sx, sy = max(sx, bounding_box[2]), max(sy, bounding_box[3])
+                if size == None:
+                    bb = max(size[0], bounding_box[2]), max(size[1], bounding_box[3])
 
-        img = Image.new("RGB", (sx, sy), color="#000000")
+        img = Image.new("L", bb, color=0)
         drawing = ImageDraw.Draw(img)
         for path in paths:
-            drawing.line(path, fill="white")
+            if filled:
+                drawing.polygon(path, fill=255)
+            else:
+                ipath = ImagePath.Path(path)
+                drawing.line(ipath, fill=255)
         return img
 
-# todo: fill in shapes, make size of mask equal to original image
+# todo: fill in shapes, make size of mask equal to original image, test
