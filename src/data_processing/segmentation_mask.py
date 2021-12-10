@@ -50,4 +50,4 @@ class SegmentationMask:  # for MoNuSeg
                 drawing.line(ipath, fill=255)
         return img
 
-# todo: fill in shapes, make size of mask equal to original image, test
+# todo: test
