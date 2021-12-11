@@ -2,7 +2,7 @@ import os
 from shutil import copyfile
 from PIL import Image
 
-from ...data_processing.segmentation_mask import SemanticSegmentationMask
+from src.data_processing.semantic_segmentation_mask import SemanticSegmentationMask
 
 
 def move_and_rename(src, folders: dict, dst: str):

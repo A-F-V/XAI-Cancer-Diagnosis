@@ -1,5 +1,6 @@
 import click
 from src.scripts.setup import setup
+import os
 
 
 @click.command()
@@ -12,4 +13,6 @@ def cli(action):
 
 
 if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(os.getcwd())
     cli()
