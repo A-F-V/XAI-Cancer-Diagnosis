@@ -3,4 +3,20 @@
 
 # Towards Explainable AI for Cancer Diagnosis
 
-A work by A.F.V
+## Introduction
+
+**This project explores modern deep learning methods for diagnosis cancer**. In particular, the goal is to detect the presence of cancer from a H&E staining. This may be accomplished by **1)** taking an H&E image and producing a [cell graph](https://cacm.acm.org/magazines/2017/1/211111-cell-graphs/fulltext), then **2)** using a **graph neural network** to perform the detection.
+
+In addition, it is essential for clinical models to be explainable, otherwise they will not be used. Therefore, I add a third step: **3)** Use a post-hoc GNN explanation model (like **GCExplainer**) in order to deliver more meaningful findings to clinicians.
+
+## Usage
+
+This repository includes a CLI tool. Documentation for using it can be found below:
+
+```sh
+python xcd.py [OPTIONS] ACTION
+```
+
+| Action  | Description                                                      |
+| ------- | ---------------------------------------------------------------- |
+| `setup` | Downloads, extracts and processes required datasets for training |
