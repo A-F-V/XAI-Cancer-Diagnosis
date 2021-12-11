@@ -5,9 +5,9 @@ import numpy as np
 """
 
 
-class SegmentationMask:  # for MoNuSeg
+class SemanticSegmentationMask:  # for MoNuSeg
     def __init__(self, annotation_path):
-        """Constructs a mask for the segmentation of the H&E image
+        """Constructs a mask for the segmentation of the H&E image. Binary mask (either cell or not cell)
 
         Args:
             annotation_path (str): path to the annotation file
