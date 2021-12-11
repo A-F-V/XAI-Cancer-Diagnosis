@@ -2,7 +2,7 @@ from torch.nn import Conv2d
 from torch import optim, nn
 from torchvision.models.segmentation.fcn import FCNHead
 from src.transforms.MoNuSeg import Normalize, ToTensor
-
+from src.vizualizations.tensor_viz import plot_tensor_histogram
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image, ImageOps
@@ -26,7 +26,7 @@ def train():
 
     def create_model():
         m = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=False)
-        m.classifier = FCNHead(2048, channels=1)
+        m.classifier = nn.Sequential(FCNHead(2048, channels=1), nn.Sigmoid())
         return m
 
     model = create_model()
@@ -37,7 +37,7 @@ def train():
 
     model.to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     epochs = 2
@@ -47,19 +47,17 @@ def train():
     torch.cuda.empty_cache()
 
     for epoch in range(epochs):
-        for i, batch in tqdm(enumerate(dl_trans), desc=f"Trainining Loss: {train_loss}. Epoch {epoch} out of {epochs}"):
+        loop = tqdm(dl_trans, desc=f"Epoch {epoch} out of {epochs}")
+        for i, batch in enumerate(loop):
             i, m = batch['image'], batch['semantic_mask']
-            x = i.to(device).float()
-            y = m.to(device).float()
+            x = i.to(device)
+            y = m.to(device)
             y_hat = model(x)['out']
-            print(y.shape)
-            print(y_hat.shape)
             loss = criterion(y, y_hat)
-            del x
-            del y
-            del y_hat
+
+            y = y.cpu()
+            loop.set_postfix(loss=loss.item())
             torch.cuda.empty_cache()
-            break
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

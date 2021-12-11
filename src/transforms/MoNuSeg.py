@@ -2,6 +2,10 @@ import torch
 from torchvision.transforms import Normalize as N
 from torchvision.transforms import ToTensor as T
 
+# Todo this this the way to do it? Is it bad to use dictionaries
+
+# from torchvision import transforms, datasets
+
 
 class Normalize(torch.nn.Module):
     def __init__(self, mean, std):
