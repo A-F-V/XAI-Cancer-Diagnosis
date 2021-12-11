@@ -11,8 +11,7 @@ class Normalize(torch.nn.Module):
 
     def forward(self, sample):
         img = sample['image']
-        print(sample['image'].shape)
-        return {'image': N(self.mean, self.std)(img), 'semantic_mask': sample['semantic_mask']}
+        return {'image': N(self.mean, self.std, inplace=True)(img), 'semantic_mask': sample['semantic_mask']}
 
 
 class ToTensor(torch.nn.Module):
