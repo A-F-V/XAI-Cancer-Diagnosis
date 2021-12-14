@@ -8,7 +8,7 @@ from scipy import ndimage
 
 # todo look into dilation and erosion
 # todo understand better the parameters of each of these functions
-def instance_segment(image: np.ndarray):
+def instance_segment(image: np.ndarray, peak_seperation: int):
     """Takes a binary mask representing the segmented H&E image, and identifies the individual nuclei.
 
     Args:
@@ -17,9 +17,8 @@ def instance_segment(image: np.ndarray):
     distance = ndimage.distance_transform_edt(image)
     terrain = -distance          # creates terrain. Want to turn hills to valleys so that we can fill with water and find watersheds
 
-    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=image)
-    mask = np.zeros(distance.shape, dtype=bool)
-    mask[tuple(coords.T)] = True
+    mask = peak_local_max(distance, footprint=np.ones((5, 5)), labels=image,
+                          indices=False, min_distance=peak_seperation)
     markers, _ = ndimage.label(mask)
     labels = watershed(-distance, markers, mask=image)
     #instance_mask = watershed(terrain, mask=image)
