@@ -1,0 +1,26 @@
+from pickletools import markobject
+import numpy as np
+from skimage.segmentation import watershed
+from skimage.feature.peak import peak_local_max
+import matplotlib.pyplot as plt
+from scipy import ndimage
+
+
+# todo look into dilation and erosion
+# todo understand better the parameters of each of these functions
+def instance_segment(image: np.ndarray):
+    """Takes a binary mask representing the segmented H&E image, and identifies the individual nuclei.
+
+    Args:
+        image (np.ndarray): The binary mask
+    """
+    distance = ndimage.distance_transform_edt(image)
+    terrain = -distance          # creates terrain. Want to turn hills to valleys so that we can fill with water and find watersheds
+
+    coords = peak_local_max(distance, footprint=np.ones((3, 3)), labels=image)
+    mask = np.zeros(distance.shape, dtype=bool)
+    mask[tuple(coords.T)] = True
+    markers, _ = ndimage.label(mask)
+    labels = watershed(-distance, markers, mask=image)
+    #instance_mask = watershed(terrain, mask=image)
+    return labels

@@ -1,7 +1,9 @@
+from src.transforms.MoNuSeg import Normalize, ToTensor, RandomCrop
+from random import random
 from torch.nn import Conv2d
 from torch import optim, nn
 from torchvision.models.segmentation.fcn import FCNHead
-from src.transforms.MoNuSeg import Normalize, ToTensor
+from src.transforms.MoNuSeg import Normalize, ToTensor, RandomCrop
 from src.vizualizations.tensor_viz import plot_tensor_histogram
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,46 +21,62 @@ from src.datasets.MoNuSeg import MoNuSeg
 from torch.utils.data import DataLoader
 
 
-def train():
-    top_folder = os.getcwd()
+class CellSegmentation_FCN(nn.Module):
+    def __init__(self):
+        super(CellSegmentation_FCN, self).__init__()
 
-    transforms = Compose([ToTensor(), Normalize([0.6441, 0.4474, 0.6039], [0.1892, 0.1922, 0.1535])])
+        def create_model():
+            m = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=True)
+            m.classifier = nn.Sequential(FCNHead(2048, channels=1), nn.Sigmoid())
+            return m
 
-    def create_model():
-        m = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=False)
-        m.classifier = nn.Sequential(FCNHead(2048, channels=1), nn.Sigmoid())
-        return m
+        self.model = create_model()
 
-    model = create_model()
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    def forward(self, image):
+        return self.model(image)['out']
 
-    dl_trans = DataLoader(MoNuSeg(os.path.join(top_folder, "data", "processed", "MoNuSeg"),
-                                  transform=transforms), batch_size=1, shuffle=True, num_workers=1)
+    def predict(self, image):
+        with torch.no_grad():
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.model.to(device)
+            self.model.eval()
+            image = image.to(device)
+            output = self.model(image)['out']
+            output = output.detach().cpu()
+            output[output > 0.5] = 1
+            output[output <= 0.5] = 0
+            return output
 
-    model.to(device)
 
-    criterion = nn.BCELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+def train_fn(model, dataloader, optimizer, criterion, args):
+    """Performs one epoch's training.
 
-    epochs = 2
-    alpha = 0.95
-    train_loss = 0.0
-
+    Args:
+        model (nn.Module): The model being trained.
+        dataloader (DataLoader): The DataLoader used for training.
+        optimizer: The pytorch optimizer used
+        criterion: The loss function
+        args (dict): Additional arguments for training.
+    """
     torch.cuda.empty_cache()
+    torch.autograd.set_detect_anomaly(True)
+    train_loss = 0
+    count = 0
+    for i, batch in enumerate(dataloader):
+        i, m = batch['image'], batch['semantic_mask']
 
-    for epoch in range(epochs):
-        loop = tqdm(dl_trans, desc=f"Epoch {epoch} out of {epochs}")
-        for i, batch in enumerate(loop):
-            i, m = batch['image'], batch['semantic_mask']
-            x = i.to(device)
-            y = m.to(device)
-            y_hat = model(x)['out']
-            loss = criterion(y, y_hat)
+        x = i.to(args["DEVICE"])
+        y = m.to(args["DEVICE"])  # possibly use of epsilon to avoid log of zero
 
-            y = y.cpu()
-            loop.set_postfix(loss=loss.item())
-            torch.cuda.empty_cache()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            train_loss = alpha*train_loss + (1-alpha)*loss.item()
+        y_hat = model(x)
+        loss = criterion(y_hat, y)
+
+        torch.cuda.empty_cache()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+        count += 1
+
+    return train_loss/count
