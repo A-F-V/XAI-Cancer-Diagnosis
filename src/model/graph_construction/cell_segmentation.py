@@ -45,7 +45,7 @@ class CellSegmentation_FCN(nn.Module):
             output = output.detach().cpu()
             output[output > 0.5] = 1
             output[output <= 0.5] = 0
-            return output
+            return output.int()
 
 
 def train_fn(model, dataloader, optimizer, criterion, args):
