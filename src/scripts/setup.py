@@ -17,7 +17,7 @@ def setup():
     # Process MoNuSeg                                                             #
     ###############################################################################
 
-# todo incorporate test as well
+# todo incorporate test as well. Have both in same folder (N)
 
     MoNuSeg_unzipped = os.path.join(data_path_raw_folder, "unzipped", "MoNuSeg_TRAIN", "MoNuSeg 2018 Training Data")
     move_and_rename(MoNuSeg_unzipped,
