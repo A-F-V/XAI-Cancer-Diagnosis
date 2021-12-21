@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 def setup():
-    data_sets = ["MoNuSeg", "BACH"]
+    data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST"]
 
     for data_set in data_sets:
         download_undownloaded_dataset(data_set, folder=data_path_raw_folder)
@@ -17,13 +17,15 @@ def setup():
     # Process MoNuSeg                                                             #
     ###############################################################################
 
-    MoNuSeg_unzipped = os.path.join(data_path_raw_folder, "unzipped", "MoNuSeg", "MoNuSeg 2018 Training Data")
+# todo incorporate test as well
+
+    MoNuSeg_unzipped = os.path.join(data_path_raw_folder, "unzipped", "MoNuSeg_TRAIN", "MoNuSeg 2018 Training Data")
     move_and_rename(MoNuSeg_unzipped,
                     {"Annotations": "annotations", "Tissue Images": "images"},
-                    os.path.join(data_path_folder, "MoNuSeg"))
+                    os.path.join(data_path_folder, "MoNuSeg_TRAIN"))
 
-    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg", "images")), desc="Extracting Annotated Masks"):
-        img_path = os.path.join(data_path_folder, "MoNuSeg", "images", image_name)
-        anno_path = os.path.join(data_path_folder, "MoNuSeg", "annotations", image_name.split(".")[0] + ".xml")
-        dst_folder = os.path.join(data_path_folder, "MoNuSeg", "semantic_masks")
+    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Extracting Annotated Masks"):
+        img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
+        anno_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "annotations", image_name.split(".")[0] + ".xml")
+        dst_folder = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "semantic_masks")
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder)

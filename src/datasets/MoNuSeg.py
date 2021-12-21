@@ -6,7 +6,7 @@ from src.transforms.MoNuSeg import ToTensor
 
 
 class MoNuSeg(Dataset):
-    def __init__(self, src_folder=None, transform=None, mode="binary_mask"):
+    def __init__(self, src_folder=os.path.join("data", "processed", "MoNuSeg"), transform=None, mode="binary_mask"):
         """Creates a Dataset object for the MoNuSeg dataset.
 
         Args:

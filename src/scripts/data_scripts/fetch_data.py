@@ -15,6 +15,9 @@ def download_dataset(blob, filepath):
         blob
         filepath
     """
+    folder = os.path.dirname(filepath)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
     with open(filepath, "wb") as f:
         with tqdm.wrapattr(f, "write", total=blob.size) as file_obj:
             storage_client.download_blob_to_file(blob, file_obj)
@@ -25,8 +28,6 @@ def download_undownloaded_dataset(data_set, folder):
     Args:
         data_set (str): Name of the data_set
     """
-    if not os.path.exists(folder):
-        os.makedirs(folder)
     print("Downloading dataset: " + data_set)
     blob = my_bucket.get_blob(data_set+".zip")
     filepath = os.path.join(folder, "zipped", data_set+".zip")

@@ -8,8 +8,8 @@ jobs:
           PIPENV_VENV_IN_PROJECT: true
     steps:
       - checkout
-      #- restore_cache: # ensure this step occurs *before* installing dependencies
-      #    key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
+       - restore_cache: # ensure this step occurs *before* installing dependencies
+          key: data_set-{{ .Branch }}-{{ checksum "scripts/setup.py" }}
       - run:
           name: Install Dependencies
           command: |
@@ -17,16 +17,25 @@ jobs:
             . venv/bin/activate
             pip install -r requirements.txt
             echo "All Done Building"
-      #- save_cache:
-      #    key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-      #    paths:
-      #      - ".venv"
+
+      - run:
+          name: Setup Data Set
+          command: |
+            python xcd.py setup
+            echo "All Done Fetching Data"
+
       - run:
           name: Test
           command: |
             . venv/bin/activate
             pytest
             echo "All Done Testing"
+
+      - save_cache:
+          key: data_set-{{ .Branch }}-{{ checksum "scripts/setup.py" }}
+          paths:
+            - data
+
 
 workflows:
   version: 2
