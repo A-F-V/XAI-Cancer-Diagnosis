@@ -8,7 +8,7 @@ jobs:
           PIPENV_VENV_IN_PROJECT: true
     steps:
       - checkout
-       - restore_cache: # ensure this step occurs *before* installing dependencies
+      - restore_cache: # ensure this step occurs *before* installing dependencies
           key: data_set-{{ .Branch }}-{{ checksum "scripts/setup.py" }}
       - run:
           name: Install Dependencies
@@ -35,7 +35,6 @@ jobs:
           key: data_set-{{ .Branch }}-{{ checksum "scripts/setup.py" }}
           paths:
             - data
-
 
 workflows:
   version: 2
