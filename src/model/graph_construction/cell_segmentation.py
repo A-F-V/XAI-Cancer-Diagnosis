@@ -1,9 +1,9 @@
-from src.transforms.MoNuSeg import Normalize, ToTensor, RandomCrop
+from src.transforms.pytorch.MoNuSeg import Normalize, ToTensor, RandomCrop
 from random import random
 from torch.nn import Conv2d
 from torch import optim, nn
 from torchvision.models.segmentation.fcn import FCNHead
-from src.transforms.MoNuSeg import Normalize, ToTensor, RandomCrop
+from src.transforms.pytorch.MoNuSeg import Normalize, ToTensor, RandomCrop
 from src.vizualizations.tensor_viz import plot_tensor_histogram
 import matplotlib.pyplot as plt
 import numpy as np

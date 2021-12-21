@@ -18,18 +18,18 @@ jobs:
             pip install -r requirements.txt
             echo "All Done Building"
 
-      - run:
-          name: Setup Data Set
-          command: |
-            . venv/bin/activate
-            python xcd.py setup
-            echo "All Done Fetching Data"
-
+      #  - run:
+      #      name: Setup Data Set
+      #      command: |
+      #        . venv/bin/activate
+      #        python xcd.py setup
+      #        echo "All Done Fetching Data"
+      #
       - run:
           name: Test
           command: |
             . venv/bin/activate
-            pytest
+            pytest -W ignore::DeprecationWarning
             echo "All Done Testing"
 
       - save_cache:

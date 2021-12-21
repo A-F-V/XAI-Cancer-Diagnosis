@@ -79,3 +79,5 @@ data/*
 mlruns/*
 
 trained_models/*
+
+.idea/*

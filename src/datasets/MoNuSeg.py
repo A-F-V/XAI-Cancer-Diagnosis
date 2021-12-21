@@ -2,7 +2,7 @@ from torch.utils.data import Dataset
 import os
 from PIL import Image
 import numpy as np
-from src.transforms.MoNuSeg import ToTensor
+from src.transforms.pytorch.MoNuSeg import ToTensor
 
 
 class MoNuSeg(Dataset):
