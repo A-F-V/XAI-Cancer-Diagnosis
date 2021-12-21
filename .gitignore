@@ -73,3 +73,9 @@ Pipfile*
 secrets/*
 
 data/*
+
+.vscode/*
+
+mlruns/*
+
+trained_models/*
