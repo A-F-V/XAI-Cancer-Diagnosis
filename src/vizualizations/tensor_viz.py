@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from src.utilties.vector_utilities import normalize_vec
+from src.utilities.vector_utilities import normalize_vec
 
 
 def plot_tensor_histogram(tensor, bins=30):  # todo get line going through

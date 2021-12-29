@@ -1,4 +1,4 @@
-from src.utilties.vector_utilities import *
+from src.utilities.vector_utilities import *
 
 
 def test_normalize_vec():

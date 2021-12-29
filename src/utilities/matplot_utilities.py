@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 import numpy as np
 
 
-from src.utilties.vector_utilities import normalize_vec
+from src.utilities.vector_utilities import normalize_vec
 
 
 def draw_plane(ax, v1, v2, color='r', alpha=0.2):

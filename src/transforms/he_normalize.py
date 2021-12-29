@@ -3,7 +3,7 @@ from re import M
 from torch import Tensor
 import torch
 import numpy as np
-from src.utilties.vector_utilities import normalize_vec, rotate_in_plane, not_neg
+from src.utilities.vector_utilities import normalize_vec, rotate_in_plane, not_neg
 
 
 def normalize_vec(vec: Tensor):
@@ -11,7 +11,7 @@ def normalize_vec(vec: Tensor):
 
 
 def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
-    """Gets the stain vectors for an image in RGB
+    """Gets the stain vectors for an image in OD Space
         Implemets the Macenko et al. (2016) method for stain normalization.
     Args:
         img (tensor): The RGB H&E image
@@ -74,8 +74,8 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
     assert abs(stain_v2.norm(p=2).item()-1) < 1e-5
 
     # Back to RGB
-    stain_v1, stain_v2 = torch.pow(10, -stain_v1), torch.pow(10, -stain_v2)
-    stain_v1, stain_v2 = normalize_vec(stain_v1), normalize_vec(stain_v2)
+    #stain_v1, stain_v2 = torch.pow(10, -stain_v1), torch.pow(10, -stain_v2)
+    #stain_v1, stain_v2 = normalize_vec(stain_v1), normalize_vec(stain_v2)
 
     if(stain_v1[0] < stain_v2[0]):
         stain_v1, stain_v2 = stain_v2, stain_v1
@@ -83,30 +83,21 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
     return torch.stack([stain_v1, stain_v2])
 
 
-def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):
+def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
     """Normalizes an H&E image in RGB so that H and E are same as in other experiments
     Args:
         img (tensor): The RGB H&E image
     """
-    h_rgb, e_rgb = get_stain_vectors(img, alpha, beta)
-    h, e = normalize_vec(-torch.log10(h_rgb)), normalize_vec(-torch.log10(e_rgb))
-    inv = torch.linalg.pinv(torch.stack([h, e], dim=1)).float()
+    v1, v2 = get_stain_vectors(img, alpha=0.01)
+    standard_v1, standard_v2 = Tensor([0.7247, 0.6274, 0.2849]), Tensor([0.0624, 0.8357, 0.5456])
 
-    # INCORRECT - he_new = torch.tensor([[0, 1, 0], [1, 0, 0]]).T.float()
-    # We instead want Green and Red vectors in the OD space
-    s2 = 2**-0.5
-    he_new = torch.tensor([[s2, 0, s2], [0, s2, s2]]).T
-
-    print(he_new)
+    old_basis = torch.stack([v1, v2], dim=0).T
+    new_basis = torch.stack([standard_v1, standard_v2], dim=0).T
 
     flat_img = img.flatten(1, 2)
-    # 1 ) Translate to OD Space
-
     od = -torch.log10(flat_img)
 
-    # 2) Map to new H&E vectors
-    print((inv@od))
-    od_new = he_new @ (inv @ od)
-    img_new = torch.pow(-od_new, 10)
-    img_new = img_new.unflatten(1, (img.shape[1], img.shape[2]))
-    return img_new
+    new_od = new_basis @ torch.linalg.pinv(old_basis) @ od
+    new_od = new_od.unflatten(1, (img.shape[1], img.shape[2]))
+    rgb = torch.pow(10, -new_od)
+    return rgb
