@@ -26,11 +26,14 @@ def rotate_in_plane(v: Tensor, u: Tensor, theta: float):  # todo make more preci
     Returns:
         v_new (Tensor): The rotated vector
     """
-    u = normalize_vec(u)
+    u = normalize_vec(u.double())
     v_orig = v.clone()
-    v = normalize_vec(v.float())
-    alpha = torch.asin(u[0]).item()                 # the azimuth
-    beta = torch.asin(clip(u[1]/cos(alpha), -1, 1)).item()   # 90-elevation
+    v = normalize_vec(v.double())
+
+    alpha = torch.asin(u[0]).item()                 # the azimuth (between 0 and 360)
+    if u[1].item() < 0:
+        alpha = torch.pi-alpha
+    beta = torch.acos(clip(u[2]/cos(alpha), -1, 1)).item()   # 90-elevation (between 0 and 180)
     #print("New Test")
     #print(u[1], cos(alpha), alpha)
     #print(alpha, beta)
