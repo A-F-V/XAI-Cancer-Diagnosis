@@ -2,6 +2,9 @@ from src.scripts.data_scripts.fetch_data import download_undownloaded_dataset
 from src.scripts.data_scripts.dataset_manager import data_path_raw_folder, data_path_folder
 from src.scripts.data_scripts.extract_data import unzip_dataset
 from src.scripts.data_scripts.preprocess_data import move_and_rename, create_semantic_segmentation_mask
+from src.transforms.he_normalize import normalize_he_image
+from PIL import Image
+from torchvision.transforms import ToTensor, ToPILImage
 import os
 from tqdm import tqdm
 
@@ -29,3 +32,10 @@ def setup():
         anno_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "annotations", image_name.split(".")[0] + ".xml")
         dst_folder = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "semantic_masks")
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder)
+
+    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images"):
+        img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
+        img = Image.open(img_path)
+        img = normalize_he_image(ToTensor()(img))
+        img = ToPILImage()(img)
+        img.save(img_path)
