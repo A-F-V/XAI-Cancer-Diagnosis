@@ -4,18 +4,37 @@ from torch import Tensor
 import torch
 import numpy as np
 from src.utilities.vector_utilities import normalize_vec, rotate_in_plane, not_neg
+from src.utilities.matplot_utilities import *
+import matplotlib.pyplot as plt
 
 
 def normalize_vec(vec: Tensor):
     return vec / vec.norm(p=2, dim=0)
 
 
-def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
+def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4, debug=False):
     """Gets the stain vectors for an image in OD Space
         Implemets the Macenko et al. (2016) method for stain normalization.
     Args:
         img (tensor): The RGB H&E image
     """
+    ##########
+    # FUNCTION FOR DEBUGGING
+    #######
+    datapoints = img.shape[0]*img.shape[1]
+
+    def random_sample(tensor, amt=datapoints):
+        return tensor[:, np.random.choice(tensor.shape[1], amt, replace=False)]
+
+    def to_hex(rgb):
+        return "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+
+    def rgb_color(x, y, z):
+        points = torch.stack([x, y, z], dim=0)
+        points = (points*256).int().clip(max=255).T
+        return [to_hex(points) for points in points]
+
+    ##############
     flat_img = img.flatten(1, 2)
 
     # 1) get optical density
@@ -38,6 +57,25 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
     assert abs(v2.norm(p=2).item() - 1) < 1e-5
 
     assert abs(torch.dot(v1, v2).item()) < 1e-5
+
+    if debug:
+        od_sample = random_sample(od, min(datapoints, 10000))
+        xod, yod, zod = od_sample[0], od_sample[1], od_sample[2]
+        x, y, z = torch.pow(10, -xod), torch.pow(10, -yod), torch.pow(10, -zod)
+        f = plt.figure(figsize=(5, 5))
+        ax = f.add_subplot(1, 1, 1, projection='3d')
+        ax.scatter3D(xod.numpy(), yod.numpy(), zod.numpy(), c=rgb_color(x, y, z))
+        draw_vectors_3d(ax, torch.stack([v1, v2], dim=0), length=0.4, color='b')
+        draw_plane(ax, v1, v2, color='b')
+        #draw_annotated_vector_3d(ax,v1,(0,0,0),"Eigenvector 1")
+        #draw_annotated_vector_3d(ax,v2,(0,0,0),"Eigenvector 2")
+        ax.set_xlim(0)
+        ax.set_ylim(0)
+        ax.set_zlim(0)
+        ax.set_xlabel('OD RED')
+        ax.set_ylabel('OD GREEN')
+        ax.set_zlabel('OD BLUE')
+        plt.show()
 
     # 4&5) Project points on the the plane and normalize
     perp = torch.cross(v1, v2).float()
@@ -69,6 +107,56 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4):
     # 7) Get the stain vectors
     stain_v1 = normalize_vec(rotate_in_plane(v1, perp, min_ang))
     stain_v2 = normalize_vec(rotate_in_plane(v1, perp, max_ang))
+
+    # TODO DRAW GRAPH 2
+    if debug:
+        od_sample = random_sample(od, min(datapoints, 10000))
+        dist_sample = perp @ od_sample
+        proj_sample = od_sample - (perp.unsqueeze(1) @ dist_sample.unsqueeze(0))
+        norm_proj_sample = normalize_vec(proj_sample)
+
+        inverse_basis = torch.linalg.pinv(torch.stack([v1, v2]).T)
+
+        components = inverse_basis @ proj_sample
+        norm_components = inverse_basis @ norm_proj_sample
+        x, y, z = torch.pow(10, -od_sample[0]), torch.pow(10, -od_sample[1]
+                                                          ), torch.pow(10, -od_sample[2])  # rgb of the sampled points
+
+        sv1_comp, sv2_comp = inverse_basis@stain_v1, inverse_basis@stain_v2
+
+        f = plt.figure(figsize=(5, 5))
+        ax = f.add_subplot(1, 1, 1)
+        ax.scatter(components[0].numpy(), components[1].numpy(), c=rgb_color(x, y, z))
+        ax.scatter(norm_components[0].numpy(), norm_components[1].numpy(), c="g")
+        draw_vector_2d(ax, sv1_comp*2, color="blue")
+        draw_vector_2d(ax, sv2_comp*2, color="blue")
+        plt.show()
+
+    # TODO DRAW GRAPH 3
+    if debug:
+        od_sample = random_sample(od, min(datapoints, 10000))
+        xod, yod, zod = od_sample[0], od_sample[1], od_sample[2]
+        x, y, z = torch.pow(10, -xod), torch.pow(10, -yod), torch.pow(10, -zod)
+
+        dist_sample = perp @ od_sample
+        proj_sample = od_sample - (perp.unsqueeze(1) @ dist_sample.unsqueeze(0))
+        norm_proj_sample = normalize_vec(proj_sample)
+
+        f = plt.figure(figsize=(5, 5))
+        ax = f.add_subplot(1, 1, 1, projection='3d')
+        ax.scatter3D(xod.numpy(), yod.numpy(), zod.numpy(), c=rgb_color(x, y, z))
+        draw_vectors_3d(ax, torch.stack([v1, v2], dim=0), length=0.4, color='b')
+        draw_plane(ax, v1, v2, color='b')
+
+        ax.scatter3D(norm_proj_sample[0].numpy(), norm_proj_sample[1].numpy(), norm_proj_sample[2].numpy(), c='black')
+        draw_vectors_3d(ax, torch.stack([stain_v1, stain_v2], dim=0), length=2, color='b')
+        ax.set_xlim(0)
+        ax.set_ylim(0)
+        ax.set_zlim(0)
+        ax.set_xlabel('OD RED')
+        ax.set_ylabel('OD GREEN')
+        ax.set_zlabel('OD BLUE')
+        plt.show()
 
     assert abs(stain_v1.norm(p=2).item()-1) < 1e-5
     assert abs(stain_v2.norm(p=2).item()-1) < 1e-5
