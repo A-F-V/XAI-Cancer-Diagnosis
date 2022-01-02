@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 
 def setup():
-    data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST"]
+    data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST", "PanNuke"]
 
     for data_set in data_sets:
         download_undownloaded_dataset(data_set, folder=data_path_raw_folder)
