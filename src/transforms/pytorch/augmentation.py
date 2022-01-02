@@ -1,8 +1,8 @@
 import torch
 from torchvision.transforms import Normalize as N
 from torchvision.transforms import ToTensor as T
-from torchvision.transforms.functional import crop, rotate
-from torchvision.transforms import InterpolationMode
+from torchvision.transforms.functional import crop, rotate, vflip, hflip, resize
+from torchvision.transforms import InterpolationMode, ColorJitter
 from random import random
 # Todo this this the way to do it? Is it bad to use dictionaries
 
@@ -78,12 +78,79 @@ class RandomRotate(torch.nn.Module):
 class RandomFlip(torch.nn.Module):
     def __init__(self, fields=None):
         super().__init__()
-        self.image_field = image_field
         self.fields = fields
 
     def forward(self, sample):
-        img = sample[self.image_field]
-        dim = img.size()
-        output = {prop: img.flip(int(random()*dim[0])) if (self.fields ==
+        hf, vf = random() > 0.5, random() > 0.5
+
+        def flip(img):
+            output = img.clone()
+            if hf:
+                output = hflip(output)
+            if vf:
+                output = vflip(output)
+            return output
+
+        output = {prop: flip(sample[prop]) if (self.fields ==
+                                               None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class AddGaussianNoise(torch.nn.Module):
+    def __init__(self, amt, fields=None):
+        super().__init__()
+        self.fields = fields
+        self.amt = amt
+
+    def forward(self, sample):
+        output = {prop: torch.clip(sample[prop] + torch.normal(0, self.amt), 0, 1) if (self.fields ==
+                                                                                       None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class ColourJitter(torch.nn.Module):
+    def __init__(self, bcsh=(0, 0, 0, 0), fields=None):
+        super().__init__()
+        self.fields = fields
+        self.bcsah = bcsh
+
+    def forward(self, sample):
+        output = {prop: ColorJitter(*self.bcsah)(sample[prop]) if (self.fields ==
+                                                                   None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class Scale(torch.nn.Module):
+    def __init__(self, x_fact, y_fact, img_field="image", fields=None):
+        super().__init__()
+        self.fields = fields
+        self.x_fact = x_fact
+        self.y_fact = y_fact
+
+    def forward(self, sample):
+        dim = sample[self.img_field].size()
+        new_size = (int(dim[0]*self.x_fact), int(dim[0]*self.y_fact))
+        output = {prop: resize(sample[prop], new_size) if (self.fields ==
+                                                           None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class RandomScale(torch.nn.Module):
+    def __init__(self, x_fact_range, y_fact_range, img_field="image", fields=None):
+        super().__init__()
+        self.fields = fields
+        self.x_fact_range = x_fact_range
+        self.y_fact_range = y_fact_range
+
+    def forward(self, sample):
+        dim = sample[self.img_field].size()
+
+        def random_in_range(rng):
+            return (rng[1]-rng[0])*random()+rng[0]
+
+        x_fact = random_in_range(self.x_fact_range)
+        y_fact = random_in_range(self.y_fact_range)
+        new_size = (int(dim[0]*x_fact), int(dim[0]*y_fact))
+        output = {prop: resize(sample[prop], new_size) if (self.fields ==
                                                            None or prop in self.fields) else sample[prop] for prop in sample}
         return output
