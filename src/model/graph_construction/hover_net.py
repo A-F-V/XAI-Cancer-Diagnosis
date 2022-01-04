@@ -1,15 +1,22 @@
 from torch import nn
 import numpy as np
 from src.model.components.residual_unit import ResidualUnit
-
+from src.model.components.dense_decoder_unit import DenseDecoderUnit
 resnet_sizes = [18, 34, 50, 101, 152]
+
+# todo consider using ModuleList instead of Sequential?
 
 
 class HoVerNet(nn.Module):
+    """HoVerNet Architecture (without the Nuclei Classification Branch) as described in:
+        Graham, Simon, et al. "Hover-net: Simultaneous segmentation and classification of nuclei in multi-tissue histology images." Medical Image Analysis 58 (2019): 101563.
+
+    """
+
     def __init__(self, resnet_size):
         super(HoVerNet, self).__init__()
         self.encoder = HoVerNetEncoder(resnet_size)
-        self.np_branch = HoVerNetDecoder()
+        self.np_branch = HoVerNetDecoder()  # todo possibly need to add last layer to these decoders
         self.hover_branch = HoVerNetDecoder()
 
     def forward(self, sample):
@@ -50,7 +57,7 @@ def create_resnet_conv_layer(resnet_size, depth):
     return nn.Sequential(ResidualUnit(in_channel, channels, kernels, stride), *[ResidualUnit(out_channel, channels, kernels, 1) for _ in range(times-1)])
 
 
-class HoVerNetEncoder(nn.Module):
+class HoVerNetEncoder(nn.Module):  # Returns 1024 maps with images down sampled by 8x
     def __init__(self, resnet_size):
         super(HoVerNetEncoder, self).__init__()
         self.resnet_size = resnet_size
@@ -63,7 +70,19 @@ class HoVerNetEncoder(nn.Module):
             nn.Conv2d(2048, 1024, kernel_size=1, stride=1, padding=0, bias=False),
         )
 
+    def forward(self, sample):
+        return self.layers(sample)
+
+
+def create_dense_decoder_blocks(times):  # todo
+    return nn.Sequential
+
 
 class HoVerNetDecoder(nn.Module):
     def __init__(self):
         super(HoVerNetDecoder, self).__init__()
+        self.layers = nn.Sequential(5  # todo)
+
+
+    def forward(self, sample):
+        return self.layers(sample)

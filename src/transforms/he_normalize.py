@@ -81,32 +81,38 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=4, debug=Fals
     perp = torch.cross(v1, v2).float()
     perp = not_neg(normalize_vec(perp))
 
-    dist = perp @ od
-    proj = od - (perp.unsqueeze(1) @ dist.unsqueeze(0))
-    proj = normalize_vec(proj)  # todo normalize projection or normalize OD? I think projection
+    #dist = perp @ od
+    #proj = od - (perp.unsqueeze(1) @ dist.unsqueeze(0))
+    # proj = normalize_vec(proj)  # todo normalize projection or normalize OD? I think projection
+    V = torch.stack([v1, v2], dim=0)
+    proj = (V @ od)
 
+    proj = normalize_vec(proj)
     assert abs(proj.norm(p=2, dim=0).mean().item() - 1) < 1e-5
 
     # 6) Get angles
-
+    angles = torch.atan2(proj[1], proj[0])
     # angles = torch.acos(torch.matmul(v1.T, proj).clip(-1, 1))
 
     # Since some vectors cross v1, cannot use min and max angle of that (as does not distinguish between positive and negative angles)
     # Rotate to fix and then rotate back
 
-    offset_angle = torch.pi/2
-    rot_proj = rotate_in_plane(proj, perp, offset_angle)  # in order to make all vectors in the same area
-    angles = torch.acos(torch.matmul(v1.T, rot_proj).clip(-1, 1))
+    #offset_angle = torch.pi/2
+    # rot_proj = rotate_in_plane(proj, perp, offset_angle)  # in order to make all vectors in the same area
+    #angles = torch.acos(torch.matmul(v1.T, rot_proj).clip(-1, 1))
 
     # print(angles.isnan().sum())
     min_ang, max_ang = np.percentile(angles.numpy(), [alpha, 100-alpha])
-    min_ang -= offset_angle
-    max_ang -= offset_angle
     # print(min_ang,max_ang)
     # print(v1,perp)
+
     # 7) Get the stain vectors
-    stain_v1 = normalize_vec(rotate_in_plane(v1, perp, min_ang))
-    stain_v2 = normalize_vec(rotate_in_plane(v1, perp, max_ang))
+
+    #stain_v1 = normalize_vec(rotate_in_plane(v1, perp, min_ang))
+    #stain_v2 = normalize_vec(rotate_in_plane(v1, perp, max_ang))
+
+    stain_v1 = V.T @ torch.Tensor([np.cos(min_ang), np.sin(min_ang)])
+    stain_v2 = V.T @ torch.Tensor([np.cos(max_ang), np.sin(max_ang)])
 
     # TODO DRAW GRAPH 2
     if debug:
