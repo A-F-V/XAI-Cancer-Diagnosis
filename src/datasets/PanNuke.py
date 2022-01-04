@@ -31,8 +31,7 @@ class PanNuke(Dataset):
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask.astype("int16")).int(),
                 "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int()}
-        item["hover_maps"] = torch.as_tensor(hv_map)
-        print(item)
+        item["hover_map"] = torch.as_tensor(hv_map)
         item = self.transform(item)
         return item
 

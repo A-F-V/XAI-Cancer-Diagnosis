@@ -1,0 +1,7 @@
+{
+  "DEVICE": "default",
+  "DATASET": "PanNuke",
+  "RESNET_SIZE": 18,
+  "RUN_ID": 0,
+  "EPOCHS": 10
+}

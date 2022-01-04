@@ -193,5 +193,5 @@ def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
 
     new_od = new_basis @ torch.linalg.pinv(old_basis) @ od
     new_od = new_od.unflatten(1, (img.shape[1], img.shape[2]))
-    rgb = torch.pow(10, -new_od)
+    rgb = torch.pow(10, -new_od).clip(0, 1)
     return rgb
