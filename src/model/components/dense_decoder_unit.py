@@ -16,4 +16,4 @@ class DenseDecoderUnit(nn.Module):
 
     def forward(self, sample):  # todo check that contribution isn't changing data
         contribution = self.layers(sample)
-        return sample + contribution
+        return torch.cat([sample, contribution])  # todo use interpolation?

@@ -154,3 +154,6 @@ class RandomScale(torch.nn.Module):
         output = {prop: resize(sample[prop], new_size) if (self.fields ==
                                                            None or prop in self.fields) else sample[prop] for prop in sample}
         return output
+
+
+# todo blur
