@@ -1,8 +1,10 @@
 
+import torch
 from src.scripts.data_scripts.fetch_data import download_undownloaded_dataset
 from src.scripts.data_scripts.dataset_manager import data_path_raw_folder, data_path_folder
 from src.scripts.data_scripts.extract_data import unzip_dataset
 from src.scripts.data_scripts.preprocess_data import move_and_rename, create_semantic_segmentation_mask
+from src.transforms.graph_construction.hover_maps import hover_map
 from src.transforms.image_processing.he_normalize import normalize_he_image
 from src.utilities.img_utilities import *
 from PIL import Image
@@ -60,7 +62,7 @@ def setup():
 
     # NORM IMAGES - NO LONGER AS TOO SMALL TO DO WELL.
 
-    #images = np.load(os.path.join(data_path_folder, "PanNuke", "images.npy"))
+    # images = np.load(os.path.join(data_path_folder, "PanNuke", "images.npy"))
     # def safe_norm(img):
     #    try:
     #        return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img)))
@@ -68,8 +70,14 @@ def setup():
     #        return img
     # norm_images = [safe_norm(img)
     #               for img in tqdm(images, desc="Normalizing Images - PanNuke")]
-    #norm_images = np.stack(norm_images, axis=0)
+    # norm_images = np.stack(norm_images, axis=0)
     # if norm_images.max() <= 1:
     #    norm_images *= 255
-    #norm_images = norm_images.astype(np.uint8)
-    #np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), norm_images)
+    # norm_images = norm_images.astype(np.uint8)
+    # np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), norm_images)
+
+    # GENERATE HOVER MAPS
+    masks = np.load(os.path.join(data_path_folder, "PanNuke", "masks.npy"))
+    hv_maps = [hover_map(mask.astype("int16")) for mask in tqdm(masks, desc="Generating HoVer Maps - PanNuke")]
+    hv_maps = torch.stack(hv_maps).numpy()
+    np.save(os.path.join(data_path_folder, "PanNuke", "hover_maps.npy"), hv_maps)

@@ -1,6 +1,7 @@
 from src.utilities.matplot_utilities import BoundingBox
 import torch
 from torch import Tensor
+import numpy as np
 
 
 def _find_bounding_box(mask: Tensor, nucleus_id):
@@ -39,6 +40,8 @@ def _coord_loc(img):
 
 def hover_map(mask):  # todo write docs
     if not isinstance(mask, Tensor):
+        if isinstance(mask, np.ndarray):
+            mask = mask.astype("int16")
         mask = torch.as_tensor(mask)
     nuclei = mask.max().item()
     mask = mask.float()
@@ -58,4 +61,6 @@ def hover_map(mask):  # todo write docs
         x_dist, y_dist = cell_mask * x_dist, cell_mask * y_dist
         h_map += x_dist
         v_map += y_dist
-    return torch.stack([h_map, v_map])
+    output = torch.stack([h_map, v_map])
+    assert output.min() >= -1 and output.max() <= 1
+    return output

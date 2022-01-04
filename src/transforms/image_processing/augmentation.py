@@ -21,7 +21,7 @@ class Normalize(torch.nn.Module):
         self.mean = mean
         self.std = std
         if fields is None:
-            self.keys = mean.keys()
+            self.keys = list(mean.keys())
         else:
             self.keys = fields
         assert set(self.keys) == set(self.mean.keys()) == set(self.std.keys())
