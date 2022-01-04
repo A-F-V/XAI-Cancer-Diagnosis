@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from src.datasets.MoNuSeg import MoNuSeg
 from src.transforms.pytorch.MoNuSeg import *
-from src.model.graph_construction.cell_segmentation import CellSegmentation_FCN, train_fn
+from src.model.architectures.graph_construction.fcn import CellSegmentation_FCN, train_fn
 import mlflow
 import sys
 import os

@@ -1,5 +1,5 @@
 import numpy as np
-from src.transforms.percolation import island_identifier
+from src.transforms.graph_construction.percolation import island_identifier
 import os
 
 

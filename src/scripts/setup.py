@@ -3,7 +3,7 @@ from src.scripts.data_scripts.fetch_data import download_undownloaded_dataset
 from src.scripts.data_scripts.dataset_manager import data_path_raw_folder, data_path_folder
 from src.scripts.data_scripts.extract_data import unzip_dataset
 from src.scripts.data_scripts.preprocess_data import move_and_rename, create_semantic_segmentation_mask
-from src.transforms.he_normalize import normalize_he_image
+from src.transforms.image_processing.he_normalize import normalize_he_image
 from src.utilities.img_utilities import *
 from PIL import Image
 from torchvision.transforms import ToTensor, ToPILImage

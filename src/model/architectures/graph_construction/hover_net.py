@@ -1,8 +1,8 @@
 from turtle import forward
 from torch import nn
 import numpy as np
-from src.model.components.residual_unit import ResidualUnit
-from src.model.components.dense_decoder_unit import DenseDecoderUnit
+from src.model.architectures.components.residual_unit import ResidualUnit
+from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
 resnet_sizes = [18, 34, 50, 101, 152]
 
 # todo consider using ModuleList instead of Sequential?

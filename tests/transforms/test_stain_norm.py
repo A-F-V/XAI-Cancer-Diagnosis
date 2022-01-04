@@ -1,7 +1,7 @@
 import os
 from PIL import Image
 from torchvision.transforms.functional import to_tensor
-from src.transforms.he_normalize import get_stain_vectors, normalize_he_image
+from src.transforms.image_processing.he_normalize import get_stain_vectors, normalize_he_image
 import pytest
 
 
