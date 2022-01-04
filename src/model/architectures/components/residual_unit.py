@@ -1,5 +1,6 @@
 import torch
-from torch import nn
+from torch import nn, Tensor
+from torch.nn.functional import interpolate
 
 
 class ResidualUnit(nn.Module):  # ONLY RESNET 50 for now #todo extend to all resnets (small for quick testing)
@@ -33,6 +34,11 @@ class ResidualUnit(nn.Module):  # ONLY RESNET 50 for now #todo extend to all res
 
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, sample):
+        self.shortcut = nn.Conv2d(in_features, cur_channels, kernel_size=1,
+                                  stride=1) if in_features != cur_channels else None  # SLIGHTLY DIFFERENT TO ORIGINAL
+
+    def forward(self, sample: Tensor):
         contribution = self.layers(sample)
-        return sample + contribution
+        short = sample if self.shortcut == None else self.shortcut(sample)
+        # need special shortcut layer because there may be an imbalance of channels or stride
+        return interpolate(short, contribution.size()[2:]) + contribution  # as size is (batch, channel, height, width)

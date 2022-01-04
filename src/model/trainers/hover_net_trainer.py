@@ -32,13 +32,13 @@ class HoverNetTrainer(Base_Trainer):  # todo add one cycle learning
             0.1892, 0.1922, 0.1535]})])  # todo! correct
 
         device = args["DEVICE"]
-        if device == "default":
+        if device == "default" or "cuda":
             device = "cuda" if torch.cuda.is_available() else "cpu"
         args["DEVICE"] = device
 
         print(f"Running on {device}")
         ds = PanNuke(transform=transforms) if args["DATASET"] == "PanNuke" else None
-        dl = DataLoader(ds, batch_size=1, shuffle=True, num_workers=3)
+        dl = DataLoader(ds, batch_size=args["BATCH_SIZE"], shuffle=True, num_workers=3)
 
         model = HoVerNet(self.args["RESNET_SIZE"])
         model.to(device)
@@ -51,19 +51,18 @@ class HoverNetTrainer(Base_Trainer):  # todo add one cycle learning
         #        optimizer, max_lr=args['MAX_LR'], steps_per_epoch=1, epochs=args["EPOCHS"], #three_phase=False)
 
         print("Starting Training")
-        with mlflow.start_run(args["RUN_ID"]):
+        with mlflow.start_run(run_name=args["RUN_ID"]):
             loop = tqdm(range(args["EPOCHS"]))
             mlflow.log_params(args)
             for epoch in loop:
                 loss = train_step(model, dl, optimizer, criterion=criterion, args=args, loop=loop)
                 loop.set_postfix_str(f"Loss: {loss}")
-                mlflow.log_metric("training loss", loss, step=epoch+1)
 
                 # if args["ONE_CYCLE"]:
                 #    scheduler.step()
                 #    mlflow.log_metric("lr", scheduler.get_last_lr()[0], step=epoch+1)
 
-        #mlflow.pytorch.save_model(model, "trained_models/cell_seg_v1.pth")
+        # mlflow.pytorch.save_model(model, "trained_models/cell_seg_v1.pth")
 
 
 def train_step(model, dataloader, optimizer, criterion, args, loop):
@@ -79,10 +78,11 @@ def train_step(model, dataloader, optimizer, criterion, args, loop):
     torch.cuda.empty_cache()
     torch.autograd.set_detect_anomaly(True)
     train_loss = 0
+    mving_avg = 1.1
     count = 0
-    print("Loop Started")
-    for i, batch in enumerate(dataloader):
-        print(f"Batch {i+1}")
+    loop_for_epoch = tqdm(enumerate(dataloader), total=len(dataloader))
+    for ind, batch in loop_for_epoch:
+        # loop.set_description(f"Batch {i+1}")
         i, sm, hv = batch['image'], batch['semantic_mask'], batch['hover_map']
 
         x = i.to(args["DEVICE"])
@@ -100,6 +100,9 @@ def train_step(model, dataloader, optimizer, criterion, args, loop):
         optimizer.step()
 
         train_loss += loss.item()
+        mving_avg = 0.99 * mving_avg + 0.01 * loss.item()
+        mlflow.log_metric("Moving Average of Training loss", mving_avg, step=loop.n*len(dataloader) + ind+1)
+        loop_for_epoch.set_postfix_str(f"Loss: {loss}")
         count += 1
 
     return train_loss/count

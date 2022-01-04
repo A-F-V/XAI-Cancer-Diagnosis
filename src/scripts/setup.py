@@ -60,21 +60,22 @@ def setup():
 
     copy_dir(os.path.join(unzipped_folder, "PanNuke"), os.path.join(data_path_folder, "PanNuke"))
 
-    # NORM IMAGES - NO LONGER AS TOO SMALL TO DO WELL.
+    # NORM IMAGES - PanNuke
 
-    # images = np.load(os.path.join(data_path_folder, "PanNuke", "images.npy"))
-    # def safe_norm(img):
-    #    try:
-    #        return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img)))
-    #    except:
-    #        return img
-    # norm_images = [safe_norm(img)
-    #               for img in tqdm(images, desc="Normalizing Images - PanNuke")]
-    # norm_images = np.stack(norm_images, axis=0)
-    # if norm_images.max() <= 1:
-    #    norm_images *= 255
-    # norm_images = norm_images.astype(np.uint8)
-    # np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), norm_images)
+    images = np.load(os.path.join(data_path_folder, "PanNuke", "images.npy"))
+
+    def safe_norm(img):
+        try:
+            return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img)))
+        except:
+            return img
+    norm_images = [safe_norm(img)
+                   for img in tqdm(images, desc="Normalizing Images - PanNuke")]
+    norm_images = np.stack(norm_images, axis=0)
+    if norm_images.max() <= 1:
+        norm_images *= 255
+    norm_images = norm_images.astype(np.uint8)
+    np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), norm_images)
 
     # GENERATE HOVER MAPS
     masks = np.load(os.path.join(data_path_folder, "PanNuke", "masks.npy"))

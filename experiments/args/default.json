@@ -1,7 +1,8 @@
 {
-  "DEVICE": "default",
+  "DEVICE": "cuda",
   "DATASET": "PanNuke",
   "RESNET_SIZE": 18,
-  "RUN_ID": 0,
-  "EPOCHS": 10
+  "RUN_ID": "1",
+  "EPOCHS": 1,
+  "BATCH_SIZE": 4
 }

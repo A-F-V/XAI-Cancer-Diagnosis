@@ -42,7 +42,7 @@ def create_resnet_conv_layer(resnet_size, depth):
     assert depth >= 2 and depth <= 5
 
     times_lookup = {18: [2, 2, 2, 2], 34: [3, 4, 6, 3], 50: [3, 4, 6, 3], 101: [3, 4, 23, 3], 152: [3, 8, 36, 3]}
-    input_channel_lookup = [64, 256, 512, 1024, 2048]
+    first_channel_lookup = [64, 128, 256, 512]
 
     kernels, channels = None, None
     stride = 1 if depth == 2 else 2
@@ -53,8 +53,8 @@ def create_resnet_conv_layer(resnet_size, depth):
         kernels = [1, 3, 1]
         channels = (np.array([64, 64, 256])*(2**(depth-2))).tolist()
     times = times_lookup[resnet_size][depth-2]
-    in_channel = input_channel_lookup[depth-2]
-    out_channel = input_channel_lookup[depth-1]
+    in_channel = 64 if depth == 2 else (first_channel_lookup[depth-3]*(4 if resnet_size >= 50 else 1))
+    out_channel = first_channel_lookup[depth-2]*4 if resnet_size >= 50 else first_channel_lookup[depth-2]
 
     return nn.Sequential(ResidualUnit(in_channel, channels, kernels, stride), *[ResidualUnit(out_channel, channels, kernels, 1) for _ in range(times-1)])
 
@@ -69,7 +69,7 @@ class HoVerNetEncoder(nn.Module):  # Returns 1024 maps with images down sampled 
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             *[create_resnet_conv_layer(self.resnet_size, depth) for depth in range(2, 6)],
-            nn.Conv2d(2048, 1024, kernel_size=1, stride=1, padding=0, bias=False),
+            nn.Conv2d(2048 if resnet_size >= 50 else 512, 1024, kernel_size=1, stride=1, padding=0, bias=False),
         )
 
     def forward(self, sample):
