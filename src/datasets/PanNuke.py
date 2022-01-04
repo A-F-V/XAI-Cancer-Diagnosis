@@ -18,7 +18,6 @@ class PanNuke(Dataset):
             transform : A transformation that will be performed on both the image and masks. Defaults to None.
         """
         self.src_folder = src_folder if src_folder else os.path.join(os.getcwd(), 'data', 'processed', 'PanNuke')
-        print(self.src_folder)
         self.transform = transform if transform else ToTensor()
         self.length = 7901
 
@@ -30,7 +29,7 @@ class PanNuke(Dataset):
         img, mask, hv_map = img_data[index].copy(), mask_data[index].copy(), hover_map_data[index].copy()
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask.astype("int16")).int(),
-                "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int()}
+                "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
         item["hover_map"] = torch.as_tensor(hv_map)
         item = self.transform(item)
         return item

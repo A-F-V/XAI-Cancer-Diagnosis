@@ -21,3 +21,4 @@ torchvision==0.11.1+cu102
 torchaudio===0.10.0+cu102
 ipympl
 scikit-image
+pytorch-lightning

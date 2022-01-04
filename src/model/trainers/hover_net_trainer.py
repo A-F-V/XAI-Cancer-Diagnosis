@@ -4,21 +4,21 @@ from src.model.trainers.base_trainer import Base_Trainer
 from tqdm import tqdm
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision.transforms import Compose
+from torchvision.transforms import Compose, RandomApply
 from src.datasets.MoNuSeg import MoNuSeg
 from src.transforms.image_processing.augmentation import *
 import mlflow
-import sys
-import os
-import io
 import matplotlib.pyplot as plt
+import io
 from PIL import Image
 from src.vizualizations.cellseg_viz import generate_mask_diagram
 from src.datasets.PanNuke import PanNuke
 from src.model.architectures.graph_construction.hover_net import HoVerNet
+from src.vizualizations.image_viz import plot_images
+from src.utilities.img_utilities import tensor_to_numpy
 
 
-class HoverNetTrainer(Base_Trainer):  # todo add one cycle learning
+class HoverNetTrainer(Base_Trainer):
     def __init__(self, args):
         super(Base_Trainer, self).__init__()
         self.args = args
@@ -28,8 +28,19 @@ class HoverNetTrainer(Base_Trainer):  # todo add one cycle learning
         args = self.args
         print(f"The Args are: {args}")
 
-        transforms = Compose([Normalize({"image": [0.6441, 0.4474, 0.6039]}, {"image": [
-            0.1892, 0.1922, 0.1535]})])  # todo! correct
+        transforms = Compose([
+            Normalize(
+                {"image": [0.6441, 0.4474, 0.6039]},
+                {"image": [0.1892, 0.1922, 0.1535]}),
+            RandomCrop((200, 200)),  # does not work in random apply as will cause batch to have different sized pictures
+            RandomApply(
+                [
+                    # RandomRotate(), - not working #todo! fix
+                    RandomFlip(),
+                    AddGaussianNoise(0.01, fields=["image"]),
+                    ColourJitter(bcsh=(0.1, 0.1, 0.1, 0.1), fields=["image"])],
+                p=0.5)
+        ])  # consider adding scale
 
         device = args["DEVICE"]
         if device == "default" or "cuda":
@@ -45,27 +56,24 @@ class HoverNetTrainer(Base_Trainer):  # todo add one cycle learning
 
         criterion = HoVerNetLoss()
         optimizer = optim.Adam(model.parameters(), lr=0.0003)
-        # scheduler = None
-        # if args["ONE_CYCLE"]:
-        #    scheduler = optim.lr_scheduler.OneCycleLR(
-        #        optimizer, max_lr=args['MAX_LR'], steps_per_epoch=1, epochs=args["EPOCHS"], #three_phase=False)
+
+        scheduler = None
+        if args["ONE_CYCLE"]:
+            scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer, max_lr=args['MAX_LR'], steps_per_epoch=len(dl), epochs=args["EPOCHS"],  three_phase=False)
 
         print("Starting Training")
         with mlflow.start_run(run_name=args["RUN_ID"]):
             loop = tqdm(range(args["EPOCHS"]))
             mlflow.log_params(args)
             for epoch in loop:
-                loss = train_step(model, dl, optimizer, criterion=criterion, args=args, loop=loop)
+                loss = train_step(model, dl, optimizer, criterion=criterion, args=args, loop=loop, scheduler=scheduler)
                 loop.set_postfix_str(f"Loss: {loss}")
-
-                # if args["ONE_CYCLE"]:
-                #    scheduler.step()
-                #    mlflow.log_metric("lr", scheduler.get_last_lr()[0], step=epoch+1)
 
         # mlflow.pytorch.save_model(model, "trained_models/cell_seg_v1.pth")
 
 
-def train_step(model, dataloader, optimizer, criterion, args, loop):
+def train_step(model, dataloader, optimizer, criterion, args, loop, scheduler=None):
     """Performs one epoch's training.
 
     Args:
@@ -82,8 +90,10 @@ def train_step(model, dataloader, optimizer, criterion, args, loop):
     count = 0
     loop_for_epoch = tqdm(enumerate(dataloader), total=len(dataloader))
     for ind, batch in loop_for_epoch:
-        # loop.set_description(f"Batch {i+1}")
-        i, sm, hv = batch['image'], batch['semantic_mask'], batch['hover_map']
+        step = loop.n*len(dataloader) + ind
+        loop_for_epoch.set_description(f"Step {step}")
+
+        i, sm, hv = batch['image'].float(), batch['semantic_mask'].float(), batch['hover_map'].float()
 
         x = i.to(args["DEVICE"])
         y1 = sm.to(args["DEVICE"])  # possibly use of epsilon to avoid log of zero
@@ -98,11 +108,29 @@ def train_step(model, dataloader, optimizer, criterion, args, loop):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        if scheduler:
+            scheduler.step()
+            mlflow.log_metric("lr", scheduler.get_last_lr()[0], step=step)
 
         train_loss += loss.item()
         mving_avg = 0.99 * mving_avg + 0.01 * loss.item()
-        mlflow.log_metric("Moving Average of Training loss", mving_avg, step=loop.n*len(dataloader) + ind+1)
+        mlflow.log_metric("Moving Average of Training loss", mving_avg, step=step)
         loop_for_epoch.set_postfix_str(f"Loss: {loss}")
         count += 1
+        if step % 300 == 100:
+            print("Creating Image")
+            create_diagnosis(y, y_hat, step//300+1)
 
     return train_loss/count
+
+
+def create_diagnosis(y, y_hat, id):
+    sm, sm_hat = y[0][0], y_hat[0][0]
+    sm_hat_hard = (sm_hat > 0.5).int()
+    plt.figure()
+    plot_images([tensor_to_numpy(sm), tensor_to_numpy(sm_hat_hard),
+                tensor_to_numpy(sm_hat)], dimensions=(1, 3), cmap="gray")
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    im = Image.open(img_buf)
+    mlflow.log_image(im, f"{id}_prediction_comparison.png")

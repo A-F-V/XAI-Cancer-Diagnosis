@@ -18,14 +18,18 @@ class HoVerNet(nn.Module):
         assert resnet_size in resnet_sizes
         decodersize = (resnet_sizes.index(resnet_size)+2)*0.25
         self.encoder = HoVerNetEncoder(resnet_size)
-        self.np_branch = nn.Sequential(HoVerNetDecoder(1), HoVerNetBranchHead("np"))
-        self.hover_branch = nn.Sequential(HoVerNetDecoder(1), HoVerNetBranchHead("hover"))
+        self.np_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("np"))
+        self.hover_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("hover"))
 
     def forward(self, sample):
         latent = self.encoder(sample)
         semantic_mask = self.np_branch(latent)
         hover_maps = self.hover_branch(latent)
         return semantic_mask, hover_maps
+
+    def predict(self, sample):
+        pipeline = nn.Sequential(self.encoder.eval(), self.np_branch.eval())
+        return pipeline(sample) > 0.5
 
 
 def create_resnet_conv_layer(resnet_size, depth):

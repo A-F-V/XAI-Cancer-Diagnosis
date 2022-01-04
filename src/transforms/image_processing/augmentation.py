@@ -49,7 +49,7 @@ class RandomCrop(torch.nn.Module):
     def __init__(self, size, image_field='image', fields=None):
         super().__init__()
         self.size = size
-        self.img_field = image_field
+        self.image_field = image_field
         self.fields = fields
 
     def forward(self, sample):
@@ -70,7 +70,7 @@ class RandomRotate(torch.nn.Module):
 
     def forward(self, sample):
         angle = int(random()*self.max_angle)
-        output = {prop: rotate(sample[prop], angle, Interpolationmode=InterpolationMode.BILINEAR) if (
+        output = {prop: rotate(sample[prop], angle, interpolation=InterpolationMode.BILINEAR) if (
             self.fields == None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
@@ -103,8 +103,8 @@ class AddGaussianNoise(torch.nn.Module):
         self.amt = amt
 
     def forward(self, sample):
-        output = {prop: torch.clip(sample[prop] + torch.normal(0, self.amt), 0, 1) if (self.fields ==
-                                                                                       None or prop in self.fields) else sample[prop] for prop in sample}
+        output = {prop: torch.clip(sample[prop] + torch.normal(torch.zeros(sample[prop].size()[1]), torch.zeros(sample[prop].size()[1])+self.amt), 0, 1) if (self.fields ==
+                                                                                                                                                             None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 
@@ -112,11 +112,11 @@ class ColourJitter(torch.nn.Module):
     def __init__(self, bcsh=(0, 0, 0, 0), fields=None):
         super().__init__()
         self.fields = fields
-        self.bcsah = bcsh
+        self.bcsh = bcsh
 
     def forward(self, sample):
-        output = {prop: ColorJitter(*self.bcsah)(sample[prop]) if (self.fields ==
-                                                                   None or prop in self.fields) else sample[prop] for prop in sample}
+        output = {prop: ColorJitter(*self.bcsh)(sample[prop]) if (self.fields ==
+                                                                  None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 

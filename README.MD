@@ -30,3 +30,12 @@ python xcd.py [OPTIONS] ACTION
 ## To Cite
 
 ## Bibliography
+
+1. [HoVerNet](http://arxiv.org/abs/1812.06499)
+   > Graham, Simon, et al. "Hover-net: Simultaneous segmentation and classification of nuclei in multi-tissue histology images." Medical Image Analysis 58 (2019): 101563.
+2. [Macenko Algorithm](http://ieeexplore.ieee.org/document/5193250/)
+   > Macenko, Marc, et al. "A method for normalizing histology slides for quantitative analysis." 2009 IEEE International Symposium on Biomedical Imaging: From Nano to Macro. IEEE, 2009.
+3. [PanNuke Dataset](http://arxiv.org/abs/2003.10778)
+   > Gamper, Jevgenij, et al. "Pannuke dataset extension, insights and baselines." arXiv preprint arXiv:2003.10778 (2020).
+4. [MoNuSeg Dataset](https://ieeexplore.ieee.org/document/7872382)
+   > Kumar, Neeraj, et al. "A dataset and a technique for generalized nuclear segmentation for computational pathology." IEEE transactions on medical imaging 36.7 (2017): 1550-1560.
