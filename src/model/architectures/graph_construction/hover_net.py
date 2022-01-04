@@ -1,4 +1,3 @@
-from turtle import forward
 from torch import nn
 import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
@@ -16,9 +15,11 @@ class HoVerNet(nn.Module):
 
     def __init__(self, resnet_size):
         super(HoVerNet, self).__init__()
+        assert resnet_size in resnet_sizes
+        decodersize = (resnet_sizes.index(resnet_size)+2)*0.25
         self.encoder = HoVerNetEncoder(resnet_size)
-        self.np_branch = nn.Sequential(HoVerNetDecoder(), HoVerNetBranchHead("np"))
-        self.hover_branch = nn.Sequential(HoVerNetDecoder(), HoVerNetBranchHead("hover"))
+        self.np_branch = nn.Sequential(HoVerNetDecoder(1), HoVerNetBranchHead("np"))
+        self.hover_branch = nn.Sequential(HoVerNetDecoder(1), HoVerNetBranchHead("hover"))
 
     def forward(self, sample):
         latent = self.encoder(sample)

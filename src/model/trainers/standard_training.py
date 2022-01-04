@@ -2,7 +2,7 @@ import torch
 import tqdm
 
 
-def train_fn(model, dataloader, optimizer, criterion, args):
+def train_step_old(model, dataloader, optimizer, criterion, args):
     """Performs one epoch's training.
 
     Args:
