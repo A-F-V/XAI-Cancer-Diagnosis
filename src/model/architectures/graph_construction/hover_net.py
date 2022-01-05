@@ -10,7 +10,7 @@ import io
 import mlflow
 from src.vizualizations.image_viz import plot_images
 from src.utilities.img_utilities import tensor_to_numpy
-
+from torch.nn.functional import binary_cross_entropy
 
 resnet_sizes = [18, 34, 50, 101, 152]
 
@@ -63,6 +63,7 @@ class HoVerNet(pl.LightningModule):
 
         loss = HoVerNetLoss()(y_hat, y)
         self.log("train_loss", loss)
+        self.log("train_ce_loss", binary_cross_entropy(y_hat[0], y[0]))
 
         self.train_sample = {"image": i[0],
                              "semantic_mask_ground": sm[0],
@@ -88,12 +89,13 @@ class HoVerNet(pl.LightningModule):
         return self.val_loader
 
     def on_train_epoch_end(self):
-        sm, hv, sm_hat, hv_hat = (self.train_sample["semantic_mask_ground"],
-                                  self.train_sample["hover_map_ground"],
-                                  self.train_sample["semantic_mask_pred"],
-                                  self.train_sample["hover_map_pred"])
-        create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
-                         (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.current_epoch)
+        pass
+        # sm, hv, sm_hat, hv_hat = (self.train_sample["semantic_mask_ground"],
+        #                          self.train_sample["hover_map_ground"],
+        #                          self.train_sample["semantic_mask_pred"],
+        #                          self.train_sample["hover_map_pred"])
+        # create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
+        #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
 
 
 def create_diagnosis(y, y_hat, id):
@@ -215,11 +217,11 @@ class HoVerNetBranchHead(nn.Module):
         )
         if branch == "np":
             self.head = nn.Sequential(
-                nn.Conv2d(64, 1, kernel_size=1, padding=0, bias=False),
+                nn.Conv2d(64, 1, kernel_size=1, padding=0, bias=True),
                 nn.Sigmoid())
         else:  # todo is there a better activation function?
             self.head = nn.Sequential(
-                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=False),
+                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True),
                 nn.Tanh())
 
     def forward(self, sample):

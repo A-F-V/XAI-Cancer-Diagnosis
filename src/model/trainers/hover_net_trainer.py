@@ -64,7 +64,7 @@ class HoverNetTrainer(Base_Trainer):
 
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
         lr_monitor = LearningRateMonitor(logging_interval='step')
-        trainer = pl.Trainer(gpus=1, max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=[
+        trainer = pl.Trainer(log_every_n_steps=10, gpus=1, max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=[
                              lr_monitor,
                              EarlyStopping(monitor="val_loss")
                              ])

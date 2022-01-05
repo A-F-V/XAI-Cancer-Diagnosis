@@ -50,17 +50,17 @@ def hover_map(mask):  # todo write docs
 
     def norm_dist(dist_mat):
         mn, mx = torch.min(dist_mat), torch.max(dist_mat)
-        return ((dist_mat-mn)/(max((mx-mn).item(), 1))*2-1
+        return ((dist_mat-mn)/(max((mx-mn).item(), 1)))*2-1
 
     for nuc_id in range(1, nuclei+1):
-        cell_mask=mask.int() == nuc_id
-        centre=_find_centroid(mask.int(), nuc_id)
-        x_dist, y_dist=x_coord-centre[0], y_coord-centre[1]
-        x_dist, y_dist=cell_mask * x_dist, cell_mask * y_dist
-        x_dist, y_dist=norm_dist(x_dist), norm_dist(y_dist)
-        x_dist, y_dist=cell_mask * x_dist, cell_mask * y_dist
+        cell_mask = mask.int() == nuc_id
+        centre = _find_centroid(mask.int(), nuc_id)
+        x_dist, y_dist = x_coord-centre[0], y_coord-centre[1]
+        x_dist, y_dist = cell_mask * x_dist, cell_mask * y_dist
+        x_dist, y_dist = norm_dist(x_dist), norm_dist(y_dist)
+        x_dist, y_dist = cell_mask * x_dist, cell_mask * y_dist
         h_map += x_dist
         v_map += y_dist
-    output=torch.stack([h_map, v_map])
+    output = torch.stack([h_map, v_map])
     assert output.min() >= -1 and output.max() <= 1
     return output

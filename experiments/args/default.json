@@ -2,7 +2,7 @@
   "DEVICE": "cuda",
   "DATASET": "PanNuke",
   "RESNET_SIZE": 50,
-  "RUN_NAME": "TEST 3",
+  "RUN_NAME": "TEST 4",
   "EXPERIMENT_ID": 2,
   "EXPERIMENT_NAME": "HoVerNet",
   "EPOCHS": 25,
