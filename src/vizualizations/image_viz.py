@@ -11,8 +11,12 @@ def plot_images(images, dimensions, cmap='nipy_spectral'):
     for i in range(dimensions[0]):
         for j in range(dimensions[1]):
             if min(dimensions) == 1:
+                if max(i, j) >= len(images):
+                    continue
                 ax[max(i, j)].imshow(images[max(i, j)], cmap=cmap)
                 ax[max(i, j)].axis('off')
             else:
+                if i*dimensions[1]+j >= len(images):
+                    continue
                 ax[i, j].imshow(images[i*dimensions[1]+j], cmap=cmap)
                 ax[i, j].axis('off')

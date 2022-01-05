@@ -1,25 +1,37 @@
-from torch import nn
+from torch import nn, optim
 import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
+import pytorch_lightning as pl
+from src.model.metrics.hover_net_loss import HoVerNetLoss
+
 resnet_sizes = [18, 34, 50, 101, 152]
 
 # todo consider using ModuleList instead of Sequential?
 
 
-class HoVerNet(nn.Module):
+class HoVerNet(pl.LightningModule):
     """HoVerNet Architecture (without the Nuclei Classification Branch) as described in:
         Graham, Simon, et al. "Hover-net: Simultaneous segmentation and classification of nuclei in multi-tissue histology images." Medical Image Analysis 58 (2019): 101563.
 
     """
 
-    def __init__(self, resnet_size):
+    def __init__(self, num_batches=0, train_loader=None, val_loader=None, **kwargs):
         super(HoVerNet, self).__init__()
+        resnet_size = kwargs["RESNET_SIZE"]
         assert resnet_size in resnet_sizes
         decodersize = (resnet_sizes.index(resnet_size)+2)*0.25
         self.encoder = HoVerNetEncoder(resnet_size)
         self.np_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("np"))
         self.hover_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("hover"))
+        self.learning_rate = kwargs["START_LR"]
+        self.args = kwargs
+        self.num_batches = num_batches
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+
+   # def setup(self, stage=None):
+   #     self.logger.experiment.log_params(self.args)
 
     def forward(self, sample):
         latent = self.encoder(sample)
@@ -30,6 +42,41 @@ class HoVerNet(nn.Module):
     def predict(self, sample):
         pipeline = nn.Sequential(self.encoder.eval(), self.np_branch.eval())
         return pipeline(sample) > 0.5
+
+    def configure_optimizers(self):
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        if self.args["ONE_CYCLE"]:
+            lr_scheduler = optim.lr_scheduler.OneCycleLR(
+                optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_batches,  three_phase=True)
+            return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
+        else:
+            return optimizer
+
+    def training_step(self, train_batch, batch_idx):
+        i, sm, hv = train_batch['image'].float(), train_batch['semantic_mask'].float(), train_batch['hover_map'].float()
+
+        y = (sm, hv)
+        y_hat = self(i)
+
+        loss = HoVerNetLoss()(y_hat, y)
+        self.log("train_loss", loss)
+        return loss
+
+    def validation_step(self, val_batch, batch_idx):
+        i, sm, hv = val_batch['image'].float(), val_batch['semantic_mask'].float(), val_batch['hover_map'].float()
+
+        y = (sm, hv)
+        y_hat = self(i)
+
+        loss = HoVerNetLoss()(y_hat, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def train_dataloader(self):
+        return self.train_loader
+
+    def val_dataloader(self):
+        return self.val_loader
 
 
 def create_resnet_conv_layer(resnet_size, depth):

@@ -50,7 +50,7 @@ def setup():
     for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg"):
         img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
         img = Image.open(img_path)
-        img = normalize_he_image(ToTensor()(img))
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
         img = ToPILImage()(img)
         img.save(img_path)
 
@@ -66,9 +66,10 @@ def setup():
 
     def safe_norm(img):
         try:
-            return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img)))
+            return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img), alpha=1, beta=0.15))
         except:
             return img
+
     norm_images = [safe_norm(img)
                    for img in tqdm(images, desc="Normalizing Images - PanNuke")]
     norm_images = np.stack(norm_images, axis=0)

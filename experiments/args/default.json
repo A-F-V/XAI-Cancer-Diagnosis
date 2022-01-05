@@ -1,11 +1,12 @@
 {
   "DEVICE": "cuda",
   "DATASET": "PanNuke",
-  "RESNET_SIZE": 18,
-  "RUN_ID": "6",
-  "EPOCHS": 2,
-  "BATCH_SIZE": 4,
-  "MAX_LR": 0.01,
-  "ONE_CYCLE": true,
-  "START_LR": 0.0003
+  "RESNET_SIZE": 50,
+  "RUN_NAME": "10",
+  "EPOCHS": 1,
+  "BATCH_SIZE": 2,
+  "MAX_LR": 0.05,
+  "ONE_CYCLE": false,
+  "START_LR": 0.003,
+  "NUM_WORKERS": 3
 }

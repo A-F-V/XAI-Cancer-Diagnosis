@@ -1,3 +1,4 @@
+
 from src.model.metrics.hover_net_loss import HoVerNetLoss
 from src.model.trainers.base_trainer import Base_Trainer
 
@@ -16,6 +17,11 @@ from src.datasets.PanNuke import PanNuke
 from src.model.architectures.graph_construction.hover_net import HoVerNet
 from src.vizualizations.image_viz import plot_images
 from src.utilities.img_utilities import tensor_to_numpy
+import pytorch_lightning as pl
+from torch.utils.data import random_split
+from pytorch_lightning.loggers.mlflow import MLFlowLogger
+from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 
 class HoverNetTrainer(Base_Trainer):
@@ -27,6 +33,7 @@ class HoverNetTrainer(Base_Trainer):
         print("Initializing Training")
         args = self.args
         print(f"The Args are: {args}")
+        print("Getting the Data")
 
         transforms = Compose([
             Normalize(
@@ -36,101 +43,32 @@ class HoverNetTrainer(Base_Trainer):
             RandomApply(
                 [
                     # RandomRotate(), - not working #todo! fix
-                    RandomFlip(),
-                    AddGaussianNoise(0.01, fields=["image"]),
-                    ColourJitter(bcsh=(0.1, 0.1, 0.1, 0.1), fields=["image"])],
+                    RandomFlip()
+                    #AddGaussianNoise(0.01, fields=["image"]),
+                    #ColourJitter(bcsh=(0.1, 0.1, 0.1, 0.1), fields=["image"])
+                ],
                 p=0.5)
         ])  # consider adding scale
+        dataset = PanNuke(transform=transforms)
+        train_set, val_set = random_split(dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
-        device = args["DEVICE"]
-        if device == "default" or "cuda":
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        args["DEVICE"] = device
+        train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE"],
+                                  shuffle=True, num_workers=args["NUM_WORKERS"])
+        val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE"], shuffle=False, num_workers=args["NUM_WORKERS"])
 
-        print(f"Running on {device}")
-        ds = PanNuke(transform=transforms) if args["DATASET"] == "PanNuke" else None
-        dl = DataLoader(ds, batch_size=args["BATCH_SIZE"], shuffle=True, num_workers=3)
+        num_training_batches = len(train_loader)*args["EPOCHS"]
+        model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
 
-        model = HoVerNet(self.args["RESNET_SIZE"])
-        model.to(device)
+        mlf_logger = MLFlowLogger(experiment_name="HoVerNet", run_name=args["RUN_NAME"])
+        lr_monitor = LearningRateMonitor(logging_interval='step')
+        trainer = pl.Trainer(gpus=1, max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=[
+                             lr_monitor, EarlyStopping(monitor="val_loss")])
 
-        criterion = HoVerNetLoss()
-        optimizer = optim.Adam(model.parameters(), lr=0.0003)
+        print("Training Starting")
 
-        scheduler = None
-        if args["ONE_CYCLE"]:
-            scheduler = optim.lr_scheduler.OneCycleLR(
-                optimizer, max_lr=args['MAX_LR'], steps_per_epoch=len(dl), epochs=args["EPOCHS"],  three_phase=False)
+        with mlflow.start_run(experiment_id=2, run_name=args["RUN_NAME"]) as run:
+            lr_finder = trainer.tuner.lr_find(model, num_training=1000)
+            fig = lr_finder.plot(suggest=True)
+            fig.show()
 
-        print("Starting Training")
-        with mlflow.start_run(run_name=args["RUN_ID"]):
-            loop = tqdm(range(args["EPOCHS"]))
-            mlflow.log_params(args)
-            for epoch in loop:
-                loss = train_step(model, dl, optimizer, criterion=criterion, args=args, loop=loop, scheduler=scheduler)
-                loop.set_postfix_str(f"Loss: {loss}")
-
-        # mlflow.pytorch.save_model(model, "trained_models/cell_seg_v1.pth")
-
-
-def train_step(model, dataloader, optimizer, criterion, args, loop, scheduler=None):
-    """Performs one epoch's training.
-
-    Args:
-        model (nn.Module): The model being trained.
-        dataloader (DataLoader): The DataLoader used for training.
-        optimizer: The pytorch optimizer used
-        criterion: The loss function
-        args (dict): Additional arguments for training.
-    """
-    torch.cuda.empty_cache()
-    torch.autograd.set_detect_anomaly(True)
-    train_loss = 0
-    mving_avg = 1.1
-    count = 0
-    loop_for_epoch = tqdm(enumerate(dataloader), total=len(dataloader))
-    for ind, batch in loop_for_epoch:
-        step = loop.n*len(dataloader) + ind
-        loop_for_epoch.set_description(f"Step {step}")
-
-        i, sm, hv = batch['image'].float(), batch['semantic_mask'].float(), batch['hover_map'].float()
-
-        x = i.to(args["DEVICE"])
-        y1 = sm.to(args["DEVICE"])  # possibly use of epsilon to avoid log of zero
-        y2 = hv.to(args["DEVICE"])
-
-        y = (y1, y2)
-        y_hat = model(x)
-
-        loss = criterion(y_hat, y)
-
-        torch.cuda.empty_cache()
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        if scheduler:
-            scheduler.step()
-            mlflow.log_metric("lr", scheduler.get_last_lr()[0], step=step)
-
-        train_loss += loss.item()
-        mving_avg = 0.99 * mving_avg + 0.01 * loss.item()
-        mlflow.log_metric("Moving Average of Training loss", mving_avg, step=step)
-        loop_for_epoch.set_postfix_str(f"Loss: {loss}")
-        count += 1
-        if step % 300 == 100:
-            print("Creating Image")
-            create_diagnosis(y, y_hat, step//300+1)
-
-    return train_loss/count
-
-
-def create_diagnosis(y, y_hat, id):
-    sm, sm_hat = y[0][0], y_hat[0][0]
-    sm_hat_hard = (sm_hat > 0.5).int()
-    plt.figure()
-    plot_images([tensor_to_numpy(sm), tensor_to_numpy(sm_hat_hard),
-                tensor_to_numpy(sm_hat)], dimensions=(1, 3), cmap="gray")
-    img_buf = io.BytesIO()
-    plt.savefig(img_buf, format='png')
-    im = Image.open(img_buf)
-    mlflow.log_image(im, f"{id}_prediction_comparison.png")
+            trainer.fit(model)

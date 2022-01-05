@@ -24,14 +24,13 @@ class PanNuke(Dataset):
     def __getitem__(self, index):
         img_data = np.load(os.path.join(self.src_folder, 'images.npy'), mmap_mode='r+')
         mask_data = np.load(os.path.join(self.src_folder, 'masks.npy'), mmap_mode='r+')
-        hover_map_data = np.load(os.path.join(self.src_folder, "hover_maps.npy"), mmap_mode='r+')
 
-        img, mask, hv_map = img_data[index].copy(), mask_data[index].copy(), hover_map_data[index].copy()
+        img, mask = img_data[index].copy(), mask_data[index].copy()
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask.astype("int16")).int(),
                 "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
-        item["hover_map"] = torch.as_tensor(hv_map)
         item = self.transform(item)
+        item["hover_map"] = hover_map(item["instance_mask"])
         return item
 
     def __len__(self):
