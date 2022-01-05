@@ -4,6 +4,13 @@ from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
 import pytorch_lightning as pl
 from src.model.metrics.hover_net_loss import HoVerNetLoss
+import matplotlib.pyplot as plt
+from PIL import Image
+import io
+import mlflow
+from src.vizualizations.image_viz import plot_images
+from src.utilities.img_utilities import tensor_to_numpy
+
 
 resnet_sizes = [18, 34, 50, 101, 152]
 
@@ -39,10 +46,6 @@ class HoVerNet(pl.LightningModule):
         hover_maps = self.hover_branch(latent)
         return semantic_mask, hover_maps
 
-    def predict(self, sample):
-        pipeline = nn.Sequential(self.encoder.eval(), self.np_branch.eval())
-        return pipeline(sample) > 0.5
-
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         if self.args["ONE_CYCLE"]:
@@ -60,6 +63,12 @@ class HoVerNet(pl.LightningModule):
 
         loss = HoVerNetLoss()(y_hat, y)
         self.log("train_loss", loss)
+
+        self.train_sample = {"image": i[0],
+                             "semantic_mask_ground": sm[0],
+                             "hover_map_ground": hv[0],
+                             "semantic_mask_pred": y_hat[0][0],
+                             "hover_map_pred": y_hat[1][0]}
         return loss
 
     def validation_step(self, val_batch, batch_idx):
@@ -77,6 +86,38 @@ class HoVerNet(pl.LightningModule):
 
     def val_dataloader(self):
         return self.val_loader
+
+    def on_train_epoch_end(self):
+        sm, hv, sm_hat, hv_hat = (self.train_sample["semantic_mask_ground"],
+                                  self.train_sample["hover_map_ground"],
+                                  self.train_sample["semantic_mask_pred"],
+                                  self.train_sample["hover_map_pred"])
+        create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
+                         (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.current_epoch)
+
+
+def create_diagnosis(y, y_hat, id):
+    sm, sm_hat = y[0], y_hat[0]
+    sm_hat_hard = (sm_hat > 0.5).int()
+    plt.figure()
+    plot_images([tensor_to_numpy(sm), tensor_to_numpy(sm_hat_hard),
+                tensor_to_numpy(sm_hat)], dimensions=(1, 3), cmap="gray")
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    im = Image.open(img_buf)
+    mlflow.log_image(im, f"{id}_semantic_mask.png")
+    plt.close()
+
+    hv_map, hv_map_hat = y[1], y_hat[1]
+    print(hv_map.min(), hv_map.max())
+    plt.figure()
+    plot_images([hv_map[0], hv_map_hat[0], hv_map[1],
+                hv_map_hat[1]], dimensions=(2, 2), cmap="jet")
+    img_buf = io.BytesIO()
+    plt.savefig(img_buf, format='png')
+    im = Image.open(img_buf)
+    mlflow.log_image(im, f"{id}_hover_maps.png")
+    plt.close()
 
 
 def create_resnet_conv_layer(resnet_size, depth):
@@ -178,7 +219,8 @@ class HoVerNetBranchHead(nn.Module):
                 nn.Sigmoid())
         else:  # todo is there a better activation function?
             self.head = nn.Sequential(
-                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=False))
+                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=False),
+                nn.Tanh())
 
     def forward(self, sample):
         return self.head(self.activate(sample))

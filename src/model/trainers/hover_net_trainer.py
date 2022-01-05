@@ -22,6 +22,7 @@ from torch.utils.data import random_split
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from src.utilities.mlflow_utilities import log_plot
 
 
 class HoverNetTrainer(Base_Trainer):
@@ -36,18 +37,20 @@ class HoverNetTrainer(Base_Trainer):
         print("Getting the Data")
 
         transforms = Compose([
-            Normalize(
-                {"image": [0.6441, 0.4474, 0.6039]},
-                {"image": [0.1892, 0.1922, 0.1535]}),
-            RandomCrop((200, 200)),  # does not work in random apply as will cause batch to have different sized pictures
+
+            RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
             RandomApply(
                 [
                     # RandomRotate(), - not working #todo! fix
                     RandomFlip()
-                    #AddGaussianNoise(0.01, fields=["image"]),
-                    #ColourJitter(bcsh=(0.1, 0.1, 0.1, 0.1), fields=["image"])
+                    # AddGaussianNoise(0.01, fields=["image"]),
+                    # ColourJitter(bcsh=(0.1, 0.1, 0.1, 0.1), fields=["image"])
                 ],
-                p=0.5)
+
+                p=0.5),
+            Normalize(
+                {"image": [0.6441, 0.4474, 0.6039]},
+                {"image": [0.1892, 0.1922, 0.1535]})
         ])  # consider adding scale
         dataset = PanNuke(transform=transforms)
         train_set, val_set = random_split(dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
@@ -59,16 +62,18 @@ class HoverNetTrainer(Base_Trainer):
         num_training_batches = len(train_loader)*args["EPOCHS"]
         model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
 
-        mlf_logger = MLFlowLogger(experiment_name="HoVerNet", run_name=args["RUN_NAME"])
+        mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
         lr_monitor = LearningRateMonitor(logging_interval='step')
         trainer = pl.Trainer(gpus=1, max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=[
-                             lr_monitor, EarlyStopping(monitor="val_loss")])
+                             lr_monitor,
+                             EarlyStopping(monitor="val_loss")
+                             ])
 
         print("Training Starting")
 
-        with mlflow.start_run(experiment_id=2, run_name=args["RUN_NAME"]) as run:
-            lr_finder = trainer.tuner.lr_find(model, num_training=1000)
-            fig = lr_finder.plot(suggest=True)
-            fig.show()
-
+        with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
+            #lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
+            #fig = lr_finder.plot(suggest=True)
+            #log_plot(fig, "LR_Finder")
+            # print(lr_finder.suggestion())
             trainer.fit(model)
