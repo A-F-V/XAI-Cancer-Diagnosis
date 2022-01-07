@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 import os
 from PIL import Image
 import numpy as np
-from torchvision.transforms import ToTensor
+from torchvision.transforms import ToTensor, Compose
 from src.transforms.graph_construction.hover_maps import hover_map
 
 
@@ -17,7 +17,7 @@ class MoNuSeg(Dataset):
             mode (str optional): The mode of the dataset. Can be either "binary_mask" or "instance_mask". Defaults to "binary_mask".
         """
         self.src_folder = src_folder if src_folder else os.path.join(os.getcwd(), 'data', 'processed', 'MoNuSeg_TRAIN')
-        self.transform = transform if transform else ToTensor()
+        self.transform = transform if transform else Compose([])
         self.length = len(os.listdir(os.path.join(self.src_folder, 'images')))
 
     def __getitem__(self, index):
@@ -33,7 +33,6 @@ class MoNuSeg(Dataset):
         assert len(item['instance_mask'].shape) == 3
         assert len(item['semantic_mask'].shape) == 3
         assert item['semantic_mask'].max() <= 1
-
         item = self.transform(item)
         item["hover_map"] = hover_map(item["instance_mask"].squeeze())
         return item
