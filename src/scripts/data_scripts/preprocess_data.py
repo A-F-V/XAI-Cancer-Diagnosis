@@ -1,8 +1,9 @@
 import os
 from shutil import copyfile
 from PIL import Image
-
+import numpy as np
 from src.data_processing.semantic_segmentation_mask import SemanticSegmentationMask
+from src.data_processing.instance_segmentation_mask import InstanceSegmentationMask
 
 
 def move_and_rename(src, folders: dict, dst: str):
@@ -33,6 +34,24 @@ def move_and_rename(src, folders: dict, dst: str):
             copyfile(old_file_path, new_file_path)
 
 
+def _semantic_mask(anno_path, size):
+    return SemanticSegmentationMask(anno_path).create_mask(filled=True, size=size)
+
+
+def _instance_mask(anno_path, size):
+    return InstanceSegmentationMask(anno_path).create_mask(filled=True, size=size)
+
+
+def apply_mask_extraction(extraction_function, anno_path, img_path, dst_folder):
+    original_image = Image.open(img_path, 'r')
+    original_image.load()
+    mask = extraction_function(anno_path, size=original_image.size)
+    if not os.path.exists(dst_folder):
+        os.makedirs(dst_folder)
+    s_img_path = os.path.join(dst_folder, os.path.basename(img_path).split(".")[0]+".npy")
+    np.save(s_img_path, mask)
+
+
 def create_semantic_segmentation_mask(anno_path, img_path, dst_folder):
     """Creates and saves a semantic segmentation mask of img_path from the annotations of anno_path
         The name of the file will be the same as the image_path
@@ -41,10 +60,8 @@ def create_semantic_segmentation_mask(anno_path, img_path, dst_folder):
         img_path (str): Path to image
         dst_folder (str): Path to the folder to store mask.
     """
-    original_image = Image.open(img_path, 'r')
-    original_image.load()
-    segmented_image = SemanticSegmentationMask(anno_path).create_mask(filled=True, size=original_image.size)
-    if not os.path.exists(dst_folder):
-        os.makedirs(dst_folder)
-    s_img_path = os.path.join(dst_folder, os.path.basename(img_path))
-    segmented_image.save(s_img_path)
+    apply_mask_extraction(_semantic_mask, anno_path, img_path, dst_folder)
+
+
+def create_instance_segmentation_mask(anno_path, img_path, dst_folder):
+    apply_mask_extraction(_instance_mask, anno_path, img_path, dst_folder)

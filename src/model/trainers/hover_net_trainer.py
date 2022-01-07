@@ -39,9 +39,11 @@ transforms_training = Compose([
             RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
                         modes=scale_modes),
             RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
-                        modes=scale_modes)
+                        modes=scale_modes),
+            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
+                        modes=scale_modes),
 
-        ]),
+        ], p=(0.15, 0.15, 0.2, 0.5)),
         RandomCrop(size=(64, 64))
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
@@ -95,7 +97,7 @@ class HoverNetTrainer(Base_Trainer):
             checkpoint_path = os.path.join("experiments", "checkpoints", args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
                 checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
-            model.encoder.freeze()
+            # model.encoder.freeze()
         else:
             model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
@@ -113,7 +115,8 @@ class HoverNetTrainer(Base_Trainer):
         # log_plot(fig, "LR_Finder")
         # print(lr_finder.suggestion())
         trainer.fit(model)  # ckpt_path
-        trainer.save_checkpoint(checkpoint_path(f"{args['EXPERIMENT_NAME']}_{args['RUN_NAME']}.ckpt"))
+        ckpt_path = checkpoint_path(f"{args['EXPERIMENT_NAME']}_{args['RUN_NAME']}"+".ckpt")
+        trainer.save_checkpoint(ckpt_path)
 
     def run(self, checkpoint):
         args = self.args

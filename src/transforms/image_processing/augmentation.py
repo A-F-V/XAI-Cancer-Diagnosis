@@ -133,7 +133,7 @@ class Scale(torch.nn.Module):
 
     def forward(self, sample):
         dim = sample[self.img_field].size()
-        print(dim)
+
         new_size = (int(dim[0]*self.x_fact), int(dim[0]*self.y_fact)) if self.new_size is None else self.new_size
         output = {prop: resize(sample[prop], new_size, interpolation=(self.modes[prop] if prop in self.modes else InterpolationMode.NEAREST))
                   if (self.fields ==
@@ -152,7 +152,6 @@ class RandomScale(torch.nn.Module):
 
     def forward(self, sample):
         dim = sample[self.img_field].size()
-        print(dim)
 
         def random_in_range(rng):
             return (rng[1]-rng[0])*random()+rng[0]

@@ -5,9 +5,9 @@ import numpy as np
 """
 
 
-class SemanticSegmentationMask:  # for MoNuSeg
+class InstanceSegmentationMask:  # for MoNuSeg #todo COMPARE WITH SEMANTIC SEGMENTATION MASK and REFACTOR
     def __init__(self, annotation_path):
-        """Constructs a mask for the segmentation of the H&E image. Binary mask (either cell or not cell)
+        """Constructs an instance mask for the segmentation of the H&E image. Each cell is labelled with a different number
 
         Args:
             annotation_path (str): path to the annotation file
@@ -40,14 +40,16 @@ class SemanticSegmentationMask:  # for MoNuSeg
                 if size == None:
                     bb = max(size[0], bounding_box[2]), max(size[1], bounding_box[3])
 
-        img = Image.new("L", bb, color=0)
+        img = Image.new("I", bb, color=0)
         drawing = ImageDraw.Draw(img)
+        next_colour = 1
         for path in paths:
             if filled:
-                drawing.polygon(path, fill=255)
+                drawing.polygon(path, fill=next_colour)
             else:
                 ipath = ImagePath.Path(path)
-                drawing.line(ipath, fill=255)
+                drawing.line(ipath, fill=next_colour)
+            next_colour += 1
         return np.array(img)
 
 # todo: test
