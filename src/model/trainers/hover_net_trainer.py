@@ -43,7 +43,7 @@ transforms_training = Compose([
         #                        modes=scale_modes),
         #
         #        ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
+        RandomCrop(size=(64, 64))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -62,7 +62,7 @@ transforms_training = Compose([
 ])
 
 transforms_predicting = Compose([
-    RandomCrop(size=(128, 128)),
+    RandomCrop(size=(64, 64)),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -137,7 +137,8 @@ class HoverNetTrainer(Base_Trainer):
         model = HoVerNet.load_from_checkpoint(checkpoint, **args)
         model.eval()
         model.cpu()
-        dataset = MoNuSeg(transform=transforms_predicting)
+        dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
+                                                  "MoNuSeg_TEST"), transform=transforms_predicting)
         imgs = []
         with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{checkpoint}") as run:
             for i in range(10):

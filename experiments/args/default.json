@@ -6,7 +6,7 @@
   "EXPERIMENT_ID": 2,
   "EXPERIMENT_NAME": "HoVerNet",
   "EPOCHS": 200,
-  "BATCH_SIZE": 5,
+  "BATCH_SIZE": 20,
   "MAX_LR": 0.003,
   "ONE_CYCLE": true,
   "START_LR": 0.0001,
