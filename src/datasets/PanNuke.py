@@ -29,6 +29,8 @@ class PanNuke(Dataset):
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask.astype("int16")).int().unsqueeze(0),
                 "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
+
+        assert item['semantic_mask'].max() <= 1
         item = self.transform(item)
         item["hover_map"] = hover_map(item["instance_mask"].squeeze())
         return item

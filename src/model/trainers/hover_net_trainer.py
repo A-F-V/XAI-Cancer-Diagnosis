@@ -1,4 +1,5 @@
 
+from gc import callbacks
 from src.model.metrics.hover_net_loss import HoVerNetLoss
 from src.model.trainers.base_trainer import Base_Trainer
 import os
@@ -33,18 +34,16 @@ scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_map": InterpolationMode.NEAREST}
 transforms_training = Compose([
     Compose([
-        RandomChoice([
-            RandomScale(x_fact_range=(0.25, 0.35), y_fact_range=(0.25, 0.35),
-                        modes=scale_modes),
-            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
-                        modes=scale_modes),
-            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
-                        modes=scale_modes),
-            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
-                        modes=scale_modes),
-
-        ], p=(0.15, 0.15, 0.2, 0.5)),
-        RandomCrop(size=(64, 64))
+        #        RandomChoice([
+        #            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
+        #                        modes=scale_modes),
+        #            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
+        #                        modes=scale_modes),
+        #            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
+        #                        modes=scale_modes),
+        #
+        #        ], p=(0.05, 0.05, 0.9)),
+        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -63,6 +62,7 @@ transforms_training = Compose([
 ])
 
 transforms_predicting = Compose([
+    RandomCrop(size=(128, 128)),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -81,9 +81,16 @@ class HoverNetTrainer(Base_Trainer):
         print("Getting the Data")
 
         # consider adding scale
+        if args["DATASET"] == "MoNuSeg":
+            train_set = MoNuSeg(src_folder=os.path.join("data", "processed",
+                                "MoNuSeg_TRAIN"), transform=transforms_training)
+            val_set = MoNuSeg(src_folder=os.path.join("data", "processed",
+                              "MoNuSeg_TEST"), transform=transforms_training)
 
-        dataset = PanNuke(transform=transforms_training)
-        train_set, val_set = random_split(dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
+        elif args["DATASET"] == "PanNuke":
+            dataset = PanNuke(transform=transforms_training)
+            train_set, val_set = random_split(
+                dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"])
@@ -94,28 +101,35 @@ class HoverNetTrainer(Base_Trainer):
         model = None
         if args["START_CHECKPOINT"]:
             print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
-            checkpoint_path = os.path.join("experiments", "checkpoints", args["START_CHECKPOINT"])
+            checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
                 checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
             # model.encoder.freeze()
         else:
             model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
+
         lr_monitor = LearningRateMonitor(logging_interval='step')
-        trainer = pl.Trainer(log_every_n_steps=10, gpus=1, max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=[
-            lr_monitor,
-            EarlyStopping(monitor="val_loss")
-        ])
+        trainer_callbacks = [
+            lr_monitor
+        ]
+        if args["EARLY_STOP"]:
+            trainer_callbacks.append(EarlyStopping(monitor="val_loss"))
+
+        trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
+                             max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks)
 
         print("Training Starting")
 
         # with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-        # lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
-        # fig = lr_finder.plot(suggest=True)
-        # log_plot(fig, "LR_Finder")
-        # print(lr_finder.suggestion())
+        #    lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
+        #    fig = lr_finder.plot(suggest=True)
+        #    log_plot(fig, "LR_Finder")
+        #    print(lr_finder.suggestion())
         trainer.fit(model)  # ckpt_path
-        ckpt_path = checkpoint_path(f"{args['EXPERIMENT_NAME']}_{args['RUN_NAME']}"+".ckpt")
+
+        ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
+        ckpt_path = make_checkpoint_path(ckpt_file)
         trainer.save_checkpoint(ckpt_path)
 
     def run(self, checkpoint):
@@ -123,9 +137,9 @@ class HoverNetTrainer(Base_Trainer):
         model = HoVerNet.load_from_checkpoint(checkpoint, **args)
         model.eval()
         model.cpu()
-        dataset = PanNuke(transform=transforms_predicting)
+        dataset = MoNuSeg(transform=transforms_predicting)
         imgs = []
-        with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
+        with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{checkpoint}") as run:
             for i in range(10):
                 sample = dataset[i]
                 img = sample["image"].unsqueeze(0)
@@ -139,5 +153,6 @@ class HoverNetTrainer(Base_Trainer):
         pass
 
 
-def checkpoint_path(file):
+def make_checkpoint_path(file):
+    print(file)
     return os.path.join("experiments", "checkpoints", file)

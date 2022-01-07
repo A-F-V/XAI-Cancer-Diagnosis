@@ -13,7 +13,8 @@ import os
 from tqdm import tqdm
 import numpy as np
 
-from src.utilities.os_utilities import copy_dir
+
+from src.utilities.os_utilities import copy_dir, copy_file
 
 
 def setup():
@@ -30,18 +31,20 @@ def setup():
             unzip_dataset(data_set, data_path_raw_folder)
         except:
             print("Failed to unzip: " + data_set)
+
     ###############################################################################
-    # Process MoNuSeg                                                             #
+    # Process MoNuSeg_TRAIN                                                            #
     ###############################################################################
 
 # todo incorporate test as well. Have both in same folder (N)
 
-    MoNuSeg_unzipped = os.path.join(data_path_raw_folder, "unzipped", "MoNuSeg_TRAIN", "MoNuSeg 2018 Training Data")
-    move_and_rename(MoNuSeg_unzipped,
+    MoNuSeg_train_unzipped = os.path.join(data_path_raw_folder, "unzipped",
+                                          "MoNuSeg_TRAIN", "MoNuSeg 2018 Training Data")
+    move_and_rename(MoNuSeg_train_unzipped,
                     {"Annotations": "annotations", "Tissue Images": "images"},
                     os.path.join(data_path_folder, "MoNuSeg_TRAIN"))
 
-    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Extracting Annotated Masks - MoNuSeg"):
+    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Extracting Annotated Masks - MoNuSeg_TRAIN"):
         img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
         anno_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "annotations", image_name.split(".")[0] + ".xml")
         dst_folder_sm = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "semantic_masks")
@@ -49,8 +52,38 @@ def setup():
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
         create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
 
-    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg"):
+    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
         img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
+        img = Image.open(img_path)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+        img = ToPILImage()(img)
+        img.save(img_path)
+
+        ###############################################################################
+        # Process MoNuSeg_TEST                                                            #
+        ###############################################################################
+# todo incorporate test as well. Have both in same folder (N)
+
+    MoNuSeg_test_unzipped = os.path.join(data_path_raw_folder, "unzipped",
+                                         "MoNuSeg_TEST", "MoNuSegTestData")
+
+    MoNuSeg_test_final = os.path.join(data_path_folder, "MoNuSeg_TEST")
+    for i, name in enumerate(set(map(lambda x: x.split(".")[0], os.listdir(MoNuSeg_test_unzipped)))):
+        copy_file(os.path.join(MoNuSeg_test_unzipped, name + ".tif"),
+                  os.path.join(MoNuSeg_test_final, "images", str(i) + ".tif"))
+        copy_file(os.path.join(MoNuSeg_test_unzipped, name + ".xml"),
+                  os.path.join(MoNuSeg_test_final, "annotations", str(i) + ".xml"))
+
+    for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Extracting Annotated Masks - MoNuSeg_TEST"):
+        img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
+        anno_path = os.path.join(MoNuSeg_test_final, "annotations", image_name.split(".")[0] + ".xml")
+        dst_folder_sm = os.path.join(MoNuSeg_test_final, "semantic_masks")
+        dst_folder_im = os.path.join(MoNuSeg_test_final, "instance_masks")
+        create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
+        create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
+
+    for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
+        img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
         img = Image.open(img_path)
         img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
         img = ToPILImage()(img)

@@ -26,12 +26,13 @@ class MoNuSeg(Dataset):
         instance_mask_path = os.path.join(self.src_folder, 'instance_masks', f'{index}.npy')
         item = {"image": ToTensor()(Image.open(img_path)), "semantic_mask": np.load(
             semantic_mask_path, mmap_mode='r+'), "instance_mask": np.load(instance_mask_path, mmap_mode='r+')}
-        item['instance_mask'] = torch.as_tensor(item['instance_mask'].astype("int16")).int().unsqueeze(0)
-        item['semantic_mask'] = torch.as_tensor(item['semantic_mask'].astype("int16")).int().unsqueeze(0)
+        item['instance_mask'] = torch.as_tensor(item['instance_mask'].astype("int16")).unsqueeze(0)
+        item['semantic_mask'] = torch.as_tensor(item['semantic_mask'].astype("int16") > 0).int().unsqueeze(0)
 
         assert len(item['image'].shape) == 3
         assert len(item['instance_mask'].shape) == 3
         assert len(item['semantic_mask'].shape) == 3
+        assert item['semantic_mask'].max() <= 1
 
         item = self.transform(item)
         item["hover_map"] = hover_map(item["instance_mask"].squeeze())
