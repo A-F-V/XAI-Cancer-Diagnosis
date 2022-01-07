@@ -55,6 +55,9 @@ class HoVerNet(pl.LightningModule):
         else:
             return optimizer
 
+    def on_train_start(self):
+        self.logger.log_hyperparams(self.args)
+
     def training_step(self, train_batch, batch_idx):
         i, sm, hv = train_batch['image'].float(), train_batch['semantic_mask'].float(), train_batch['hover_map'].float()
 
@@ -153,7 +156,7 @@ def create_resnet_conv_layer(resnet_size, depth):
     return nn.Sequential(ResidualUnit(in_channel, channels, kernels, stride), *[ResidualUnit(out_channel, channels, kernels, 1) for _ in range(times-1)])
 
 
-class HoVerNetEncoder(nn.Module):  # Returns 1024 maps with images down sampled by 8x
+class HoVerNetEncoder(pl.LightningModule):  # Returns 1024 maps with images down sampled by 8x
     def __init__(self, resnet_size):
         super(HoVerNetEncoder, self).__init__()
         self.resnet_size = resnet_size
@@ -175,7 +178,7 @@ def create_dense_decoder_blocks(in_channels, times):  # todo
     return nn.Sequential(*[DenseDecoderUnit(in_channels+i*32) for i in range(times)])
 
 
-class HoVerNetDecoder(nn.Module):
+class HoVerNetDecoder(pl.LightningModule):
     def __init__(self, size):
         super(HoVerNetDecoder, self).__init__()
         self.size = size
@@ -206,7 +209,7 @@ class HoVerNetDecoder(nn.Module):
         return self.level3(out)
 
 
-class HoVerNetBranchHead(nn.Module):
+class HoVerNetBranchHead(pl.LightningModule):
     def __init__(self, branch):
         super(HoVerNetBranchHead, self).__init__()
         assert branch in ["np", "hover"]

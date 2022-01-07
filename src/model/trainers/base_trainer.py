@@ -8,3 +8,7 @@ class Base_Trainer(ABC):
 
     def lr_test(self):
         pass
+
+    @abstractmethod
+    def run(self, checkpoint):
+        pass

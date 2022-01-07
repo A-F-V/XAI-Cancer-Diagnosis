@@ -27,10 +27,10 @@ class PanNuke(Dataset):
 
         img, mask = img_data[index].copy(), mask_data[index].copy()
         item = {"image": numpy_to_tensor(img),
-                "instance_mask": torch.as_tensor(mask.astype("int16")).int(),
+                "instance_mask": torch.as_tensor(mask.astype("int16")).int().unsqueeze(0),
                 "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
         item = self.transform(item)
-        item["hover_map"] = hover_map(item["instance_mask"])
+        item["hover_map"] = hover_map(item["instance_mask"].squeeze())
         return item
 
     def __len__(self):

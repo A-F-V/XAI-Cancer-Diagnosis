@@ -82,3 +82,5 @@ trained_models/*
 
 .idea/*
 lightning_logs/*
+
+experiments/checkpoints/*

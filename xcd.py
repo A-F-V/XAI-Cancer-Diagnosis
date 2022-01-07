@@ -10,17 +10,25 @@ models = {"hover_net": HoverNetTrainer}
 @click.command()
 @click.argument('action')
 @click.option('--model', '-m', default=None, help='Model to use')
+@click.option('--checkpoint', '-c', default=None, help='Checkpoint to use')
 @click.option('--args', default=os.path.join("experiments", "args", "default.json"), help="File containing args")
-def cli(action, model, args):
+def cli(action, model, checkpoint, args):
     args = json.load(open(args))
     if action == "setup":
         setup()
         return
-    if action == "train":  # todo reselect API
+    if action == "train":
         if model == None or model not in models.keys():
             print(f"Please specify a model from {models.keys()} to train")
             return
         models[model](args).train()
+        return
+    if action == "run":
+        if model == None or model not in models.keys():
+            print(f"Please specify a model from {models.keys()} to run")
+            return
+        models[model](args).run(checkpoint)
+        return
     # if action == "run_experiment":
     #    if experiment == None or experiment not in experiments:
     #        print("Please specify a valid experiment to run")

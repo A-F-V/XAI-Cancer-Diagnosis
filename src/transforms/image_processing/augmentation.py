@@ -68,7 +68,7 @@ class RandomRotate(torch.nn.Module):
         self.max_angle = max_angle
         self.fields = fields
 
-    def forward(self, sample):
+    def forward(self, sample):  # todo also zoom in!
         angle = int(random()*self.max_angle)
         output = {prop: rotate(sample[prop], angle, interpolation=InterpolationMode.BILINEAR) if (
             self.fields == None or prop in self.fields) else sample[prop] for prop in sample}
@@ -103,8 +103,8 @@ class AddGaussianNoise(torch.nn.Module):
         self.amt = amt
 
     def forward(self, sample):
-        output = {prop: torch.clip(sample[prop] + torch.normal(torch.zeros(sample[prop].size()[1]), torch.zeros(sample[prop].size()[1])+self.amt), 0, 1) if (self.fields ==
-                                                                                                                                                             None or prop in self.fields) else sample[prop] for prop in sample}
+        output = {prop: torch.clip(sample[prop] + torch.normal(torch.zeros_like(sample[prop]), torch.zeros_like(sample[prop])+self.amt), 0, 1) if (self.fields ==
+                                                                                                                                                   None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 
@@ -115,45 +115,55 @@ class ColourJitter(torch.nn.Module):
         self.bcsh = bcsh
 
     def forward(self, sample):
-        output = {prop: ColorJitter(*self.bcsh)(sample[prop]) if (self.fields ==
-                                                                  None or prop in self.fields) else sample[prop] for prop in sample}
+        output = {prop: ColorJitter(*self.bcsh)(sample[prop]).clip(0, 1) if (self.fields ==
+                                                                             None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 
 class Scale(torch.nn.Module):
-    def __init__(self, x_fact, y_fact, img_field="image", fields=None):
+    # todo docs should say either use new size or x&y factors
+    # todo! rescaling should not add antialiasing to semantic and instance masks
+    def __init__(self, new_size=None, x_fact=None, y_fact=None, img_field="image", modes={}, fields=None):
         super().__init__()
         self.fields = fields
         self.x_fact = x_fact
         self.y_fact = y_fact
+        self.new_size = new_size
+        self.modes = modes
 
     def forward(self, sample):
         dim = sample[self.img_field].size()
-        new_size = (int(dim[0]*self.x_fact), int(dim[0]*self.y_fact))
-        output = {prop: resize(sample[prop], new_size) if (self.fields ==
-                                                           None or prop in self.fields) else sample[prop] for prop in sample}
+        print(dim)
+        new_size = (int(dim[0]*self.x_fact), int(dim[0]*self.y_fact)) if self.new_size is None else self.new_size
+        output = {prop: resize(sample[prop], new_size, interpolation=(self.modes[prop] if prop in self.modes else InterpolationMode.NEAREST))
+                  if (self.fields ==
+                      None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 
 class RandomScale(torch.nn.Module):
-    def __init__(self, x_fact_range, y_fact_range, img_field="image", fields=None):
+    def __init__(self, x_fact_range, y_fact_range, img_field="image", modes={}, fields=None):
         super().__init__()
         self.fields = fields
         self.x_fact_range = x_fact_range
         self.y_fact_range = y_fact_range
+        self.img_field = img_field
+        self.modes = modes
 
     def forward(self, sample):
         dim = sample[self.img_field].size()
+        print(dim)
 
         def random_in_range(rng):
             return (rng[1]-rng[0])*random()+rng[0]
 
         x_fact = random_in_range(self.x_fact_range)
         y_fact = random_in_range(self.y_fact_range)
-        new_size = (int(dim[0]*x_fact), int(dim[0]*y_fact))
-        output = {prop: resize(sample[prop], new_size) if (self.fields ==
-                                                           None or prop in self.fields) else sample[prop] for prop in sample}
+        new_size = (int(dim[1]*x_fact), int(dim[2]*y_fact))
+        output = {prop: resize(sample[prop], new_size, interpolation=(self.modes[prop] if prop in self.modes else InterpolationMode.NEAREST))
+                  if (self.fields ==
+                      None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 
-# todo blur
+# todo! blur
