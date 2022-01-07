@@ -1,4 +1,4 @@
-from src.transforms.he_normalize import *
+from src.transforms.image_processing.he_normalize import *
 import pytest
 import os
 from PIL import Image

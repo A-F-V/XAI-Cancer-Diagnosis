@@ -14,7 +14,7 @@ class SemanticSegmentationMask:  # for MoNuSeg
         """
         self.annotation_path = annotation_path
 
-    def create_mask(self, size=None, filled=False):  # todo memoise
+    def create_mask(self, size=None, filled=True):  # todo memoise
         """Creates a mask for the segmentation of the H&E image
 
         Returns:
@@ -48,6 +48,6 @@ class SemanticSegmentationMask:  # for MoNuSeg
             else:
                 ipath = ImagePath.Path(path)
                 drawing.line(ipath, fill=255)
-        return img
+        return np.array(img)
 
 # todo: test

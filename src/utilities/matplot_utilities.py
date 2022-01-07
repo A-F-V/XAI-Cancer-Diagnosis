@@ -40,3 +40,21 @@ def draw_annotated_vector_3d(ax, vector, centre, text, length=1, color='r'):  # 
 
 def draw_vector_2d(ax, vector, centre=(0, 0), color='r'):
     ax.arrow(centre[0], centre[1], vector[0], vector[1], color=color, shape="right")
+
+
+class BoundingBox:
+    def __init__(self, left, top, right, bottom):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+
+    def get_corners(self):
+        return (self.left, self.bottom), (self.left, self.top), (self.right, self.top), (self.right, self.bottom)
+
+
+def draw_bounding_box(ax, bb: BoundingBox, colour="red"):
+    ax.plot([bb.left]*2, [bb.bottom, bb.top], c=colour)
+    ax.plot([bb.right]*2, [bb.bottom, bb.top], c=colour)
+    ax.plot([bb.left, bb.right], [bb.bottom]*2, c=colour)
+    ax.plot([bb.left, bb.right], [bb.top]*2, c=colour)

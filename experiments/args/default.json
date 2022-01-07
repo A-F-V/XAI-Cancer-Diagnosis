@@ -1,0 +1,15 @@
+{
+  "DEVICE": "cuda",
+  "DATASET": "PanNuke",
+  "RESNET_SIZE": 50,
+  "RUN_NAME": "DEBUG",
+  "EXPERIMENT_ID": 2,
+  "EXPERIMENT_NAME": "HoVerNet",
+  "EPOCHS": 1,
+  "BATCH_SIZE": 25,
+  "MAX_LR": 0.003,
+  "ONE_CYCLE": true,
+  "START_LR": 0.0001,
+  "NUM_WORKERS": 3,
+  "START_CHECKPOINT": "HoVerNet_TEST 6.ckpt"
+}
