@@ -32,6 +32,20 @@ def map_values_numpy_array(narr: np.ndarray, orig_values, new_values):
     return copy
 
 
+def reset_ids(img: np.ndarray):
+    """Resets the order of the ids in an image so that they start from 1.
+
+    Args:
+        img (np.ndarray): The image with uint ids.
+
+    Returns:
+        np.ndarray: The same image with the ids reset and reordered.
+    """
+    ids = np.sort(np.unique(img)).tolist()
+    new_ids = list(range(len(ids)))
+    return map_values_numpy_array(img, ids, new_ids)
+
+
 def gradient(tensor: Tensor, dim=0):  # todo test
     """Calculates the gradient of a tensor along a certain dimension.
     Args:
