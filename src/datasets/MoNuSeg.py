@@ -28,12 +28,14 @@ class MoNuSeg(Dataset):
             semantic_mask_path, mmap_mode='r+'), "instance_mask": np.load(instance_mask_path, mmap_mode='r+')}
         item['instance_mask'] = torch.as_tensor(item['instance_mask'].astype("int16")).unsqueeze(0)
         item['semantic_mask'] = torch.as_tensor(item['semantic_mask'].astype("int16") > 0).int().unsqueeze(0)
+        item['image_original'] = item['image'].clone()
 
         assert len(item['image'].shape) == 3
         assert len(item['instance_mask'].shape) == 3
         assert len(item['semantic_mask'].shape) == 3
         assert item['semantic_mask'].max() <= 1
         item = self.transform(item)
+        # TODO! DO BEFORE TRANSFORM RIGHT? - CANNOT BECAUSE THEN WOULD FLIP THE ACTUAL MAPS
         item["hover_map"] = hover_map(item["instance_mask"].squeeze())
         return item
 
