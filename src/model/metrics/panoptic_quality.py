@@ -67,7 +67,7 @@ def panoptic_quality(pred: Tensor, gt: Tensor):
 
     # 4) calculate panoptic quality
 
-    DQ = 0 if (len(TP)+len(FP)/2+len(FN)/2) == 0 else len(TP)/(len(TP)+len(FP)/2+len(FN)/2)  # Detection Quality
-    SQ = 0 if len(TP) == 0 else sum([assig[2] for assig in TP])/len(TP)  # Segmentation Quality
+    DQ = 1 if (len(TP)+len(FP)/2+len(FN)/2) == 0 else len(TP)/(len(TP)+len(FP)/2+len(FN)/2)  # Detection Quality
+    SQ = 1 if len(TP) == 0 else sum([assig[2] for assig in TP])/len(TP)  # Segmentation Quality
 
     return DQ*SQ

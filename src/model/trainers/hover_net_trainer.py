@@ -123,7 +123,8 @@ class HoverNetTrainer(Base_Trainer):
             trainer_callbacks.append(EarlyStopping(monitor="val_loss"))
 
         trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
-                             max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks)
+                             max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
+                             enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"))
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
