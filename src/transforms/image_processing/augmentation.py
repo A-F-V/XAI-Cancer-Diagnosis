@@ -1,7 +1,7 @@
 import torch
 from torchvision.transforms import Normalize as N
 from torchvision.transforms import ToTensor as T
-from torchvision.transforms.functional import crop, rotate, vflip, hflip, resize
+from torchvision.transforms.functional import crop, rotate, vflip, hflip, resize, gaussian_blur
 from torchvision.transforms import InterpolationMode, ColorJitter
 from random import random
 # Todo this this the way to do it? Is it bad to use dictionaries
@@ -165,4 +165,14 @@ class RandomScale(torch.nn.Module):
         return output
 
 
-# todo! blur
+class GaussianBlur(torch.nn.Module):
+    def __init__(self, amt=1, kernel=17, fields=None):
+        super().__init__()
+        self.fields = fields
+        self.amt = amt
+        self.kernel = kernel
+
+    def forward(self, sample):
+        output = {prop: gaussian_blur(sample[prop], self.kernel, self.amt) if (self.fields ==
+                                                                               None or prop in self.fields) else sample[prop] for prop in sample}
+        return output

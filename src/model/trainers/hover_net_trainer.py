@@ -13,7 +13,7 @@ import mlflow
 import matplotlib.pyplot as plt
 import io
 from PIL import Image
-from src.vizualizations.cellseg_viz import generate_mask_diagram
+from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_example, generate_mask_diagram
 from src.datasets.PanNuke import PanNuke
 from src.model.architectures.graph_construction.hover_net import HoVerNet
 from src.vizualizations.image_viz import plot_images
@@ -25,6 +25,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
+from src.datasets.train_val_split import train_val_split
 
 # todo
 """
@@ -53,7 +54,8 @@ transforms_training = Compose([
             # RandomRotate(), - not working #todo! fix
             RandomFlip(),
             AddGaussianNoise(0.01, fields=["image"]),
-            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.01), fields=["image"])
+            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.01), fields=["image"]),
+            GaussianBlur(fields=["image"])
         ],
 
         p=0.5),
@@ -63,7 +65,7 @@ transforms_training = Compose([
 ])
 
 transforms_val = Compose([
-    RandomCrop(size=(256, 256)),
+    RandomCrop(size=(128, 128)),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -85,25 +87,20 @@ class HoverNetTrainer(Base_Trainer):
         if args["DATASET"] == "MoNuSeg":
             src_folder = os.path.join("data", "processed",
                                       "MoNuSeg_TRAIN")
-            dataset = MoNuSeg(src_folder=src_folder, transform=transforms_training)
-            train_set, val_set = random_split(
-                dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
-            #size = len(MoNuSeg(src_folder=src_folder, transform=transforms_training))
-            #random_ids = np.random.shuffle(range(size))
-            #train_ids, val_ids = random_ids[:int(size * 0.8)], random_ids[int(size * 0.8):]
-            #train_set = MoNuSeg(src_folder=src_folder, transform=transforms_training, ids=train_ids)
-            #val_set = MoNuSeg(src_folder=src_folder, transform=transforms_training, ids=val_ids)
-            # val_set = MoNuSeg(src_folder=os.path.join("data", "processed",
-            #                  "MoNuSeg_TEST"), transform=transforms_training)
+            train_set, val_set = train_val_split(MoNuSeg, src_folder, 0.8, transforms_training, transforms_val)
 
         elif args["DATASET"] == "PanNuke":
-            dataset = PanNuke(transform=transforms_training)
-            train_set, val_set = random_split(
-                dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
+            src_folder = os.path.join("data", "processed",
+                                      "PanNuke")
+            train_set, val_set = train_val_split(PanNuke, src_folder, 0.8, transforms_training, transforms_val)
+            #dataset = PanNuke(transform=transforms_training)
+            # train_set, val_set = random_split(
+            #    dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
-        train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE"],
+        train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"])
-        val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE"], shuffle=False, num_workers=args["NUM_WORKERS"])
+        val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
+                                shuffle=False, num_workers=args["NUM_WORKERS"])
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 
@@ -151,7 +148,7 @@ class HoverNetTrainer(Base_Trainer):
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
                                                   "MoNuSeg_TEST"), transform=transforms_val)
         imgs = []
-        with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{checkpoint}") as run:
+        with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{os.path.basename(checkpoint)}") as run:
             for i in range(10):
                 sample = dataset[i]
                 img = sample["image"].unsqueeze(0)
@@ -162,6 +159,11 @@ class HoverNetTrainer(Base_Trainer):
                 imgs.append((sm_hat > 0.5).squeeze().detach())
             plot_images(imgs, (10, 3), cmap="gray")
             log_plot(plt, "Prediction Diagnosis")
+
+            cell_segmentation_sliding_window_gif_example(
+                model, dataset[0], location=os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
+            mlflow.log_artifact(os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
+
         pass
 
 

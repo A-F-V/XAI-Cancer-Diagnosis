@@ -112,13 +112,15 @@ class HoVerNet(pl.LightningModule):
         # create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
         #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
 
-    def on_validation_end(self):
-        print("THE END OF VALIDATION")
-        sample = self.val_dataloader().dataset[0]
-        gif_diag_path = os.path.join("experiments", "artifacts", "cell_seg_img.gif")
-        cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
-        self.logger.experiment.log_artifact(
-            local_path=gif_diag_path, run_id=self.logger.run_id)  # , "sliding_window_gif")
+    def on_validation_epoch_end(self):
+        if self.current_epoch != 0:
+            if self.args["EPOCHS"] < 20 or self.current_epoch % ((self.args["EPOCHS"]+20)//10) == 0:
+
+                sample = self.val_dataloader().dataset[0]
+                gif_diag_path = os.path.join("experiments", "artifacts", "cell_seg_img.gif")
+                cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
+                self.logger.experiment.log_artifact(
+                    local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 
 
 def create_diagnosis(y, y_hat, id):

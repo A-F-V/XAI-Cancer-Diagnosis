@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 import imageio
 import io
 import matplotlib.pyplot as plt
+from sqlalchemy import desc
 from src.utilities.img_utilities import tensor_to_numpy
 from src.transforms.graph_construction.hover_maps import hover_map
 from tqdm import tqdm
+import os
 
 
 def generate_mask_diagram(model, dataloader, mask_name="semantic_mask", args=None):
@@ -49,7 +51,7 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
     x_width = sample['image'].shape[2]
     f, ax = plt.subplots(2, 4, figsize=(20, 10))
     with imageio.get_writer(location, mode='I', fps=fps, format="gif") as writer:
-        for x in tqdm(range(0, x_width-64, 2)):
+        for x in tqdm(range(0, x_width-64, 2), desc="Generating Prediction GIF"):
 
             cropped_image_orig = sample['image_original'][:, :64, x:x+64]
             cropped_image_trans = sample['image'][:, :64, x:x+64]
