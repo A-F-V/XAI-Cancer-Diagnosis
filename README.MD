@@ -22,6 +22,7 @@ python xcd.py [OPTIONS] ACTION
 | ------- | ------------------------------------------------------------------------------------------------- |
 | `setup` | Downloads, extracts and processes required datasets for training. **Requires the GCP bucket key** |
 | `train` | Trains model passed in with `-m`                                                                  |
+| `run`   | Does a series of validation and diagnosis on the model. Specify the model and checkpoint location |
 
 | Models      | Description                                                           |
 | ----------- | --------------------------------------------------------------------- |

@@ -37,3 +37,5 @@ transforms_training = Compose([
 def test_MoNuSeg_load_transform():
     dataset = MoNuSeg(os.path.join("data", "processed", "MoNuSeg_TRAIN"), transform=transforms_training)
     dataset[0]
+    dataset = MoNuSeg(os.path.join("data", "processed", "MoNuSeg_TEST"), transform=transforms_training)
+    dataset[0]

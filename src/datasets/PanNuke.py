@@ -10,7 +10,7 @@ import torch
 
 
 class PanNuke(Dataset):
-    def __init__(self, src_folder=None, transform=None):
+    def __init__(self, src_folder=None, transform=None, ids=None):
         """Creates a Dataset object for the PanNuke dataset.
 
         Args:
@@ -19,9 +19,12 @@ class PanNuke(Dataset):
         """
         self.src_folder = src_folder if src_folder else os.path.join(os.getcwd(), 'data', 'processed', 'PanNuke')
         self.transform = transform if transform else ToTensor()
-        self.length = 7901
+        self.dir_length = 7901
+        self.ids = ids
 
     def __getitem__(self, index):
+        if self.ids is not None:
+            index = self.ids[index]
         img_data = np.load(os.path.join(self.src_folder, 'images.npy'), mmap_mode='r+')
         mask_data = np.load(os.path.join(self.src_folder, 'masks.npy'), mmap_mode='r+')
 
@@ -29,9 +32,11 @@ class PanNuke(Dataset):
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask.astype("int16")).int().unsqueeze(0),
                 "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
+        item['image_original'] = item['image'].clone()
+        assert item['semantic_mask'].max() <= 1
         item = self.transform(item)
         item["hover_map"] = hover_map(item["instance_mask"].squeeze())
         return item
 
     def __len__(self):
-        return self.length
+        return self.dir_length if self.ids is None else len(self.ids)

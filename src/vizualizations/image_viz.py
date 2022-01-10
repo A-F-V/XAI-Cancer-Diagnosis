@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-def plot_images(images, dimensions, cmap='nipy_spectral'):
+def plot_images(images, dimensions, cmap='nipy_spectral', **kwargs):
     """Plots the images passed as argument.
     Args:
         images: images to plot as a numpy array. The first dim should be the number of images. The second and third dims are the image dimensions. The fourth dim is the number of channels.
@@ -13,10 +13,10 @@ def plot_images(images, dimensions, cmap='nipy_spectral'):
             if min(dimensions) == 1:
                 if max(i, j) >= len(images):
                     continue
-                ax[max(i, j)].imshow(images[max(i, j)], cmap=cmap)
+                ax[max(i, j)].imshow(images[max(i, j)], cmap=cmap, **kwargs)
                 ax[max(i, j)].axis('off')
             else:
                 if i*dimensions[1]+j >= len(images):
                     continue
-                ax[i, j].imshow(images[i*dimensions[1]+j], cmap=cmap)
+                ax[i, j].imshow(images[i*dimensions[1]+j], cmap=cmap, **kwargs)
                 ax[i, j].axis('off')

@@ -22,3 +22,4 @@ torchaudio===0.10.0+cu102
 ipympl
 scikit-image
 pytorch-lightning
+imageio
