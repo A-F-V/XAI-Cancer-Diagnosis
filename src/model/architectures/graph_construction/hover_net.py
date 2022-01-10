@@ -9,9 +9,12 @@ from PIL import Image
 import io
 import mlflow
 from src.vizualizations.image_viz import plot_images
+from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_example
 from src.utilities.img_utilities import tensor_to_numpy
 from torch.nn.functional import binary_cross_entropy
-
+import os
+from src.model.metrics.panoptic_quality import panoptic_quality
+from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
 resnet_sizes = [18, 34, 50, 101, 152]
 
 # todo consider using ModuleList instead of Sequential?
@@ -76,11 +79,15 @@ class HoVerNet(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        i, sm, hv = val_batch['image'].float(), val_batch['semantic_mask'].float(), val_batch['hover_map'].float()
+        i, sm, hv, inm = val_batch['image'].float(), val_batch['semantic_mask'].float(
+        ), val_batch['hover_map'].float(), val_batch['instance_mask']
 
         y = (sm, hv)
         y_hat = self(i)
 
+        instance_pred = hovernet_post_process(y_hat[0], y_hat[1])
+        pq = panoptic_quality(instance_pred, inm)
+        self.log("Panoptic Quality", pq)
         loss = HoVerNetLoss()(y_hat, y)
         self.log("val_loss", loss)
         return loss
@@ -101,7 +108,10 @@ class HoVerNet(pl.LightningModule):
         #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
 
     def on_validation_end(self):
-        pass
+        sample = self.val_dataloader()[0]
+        gif_diag_path = os.path.join("experiments", "artefacts", "cell_seg_img.gif")
+        cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
+        self.logger.experiment.log_image(gif_diag_path)  # , "sliding_window_gif")
 
 
 def create_diagnosis(y, y_hat, id):
