@@ -62,8 +62,8 @@ transforms_training = Compose([
         {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
-transforms_predicting = Compose([
-    RandomCrop(size=(64, 64)),
+transforms_val = Compose([
+    RandomCrop(size=(256, 256)),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -137,8 +137,8 @@ class HoverNetTrainer(Base_Trainer):
         else:
             print("Training Started")
             trainer.fit(model)
-            print("Training Over\nEvaluating")
-            trainer.validate(model)
+            #print("Training Over\nEvaluating")
+            # trainer.validate(model)
             ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
             ckpt_path = make_checkpoint_path(ckpt_file)
             trainer.save_checkpoint(ckpt_path)
@@ -149,7 +149,7 @@ class HoverNetTrainer(Base_Trainer):
         model.eval()
         model.cpu()
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
-                                                  "MoNuSeg_TEST"), transform=transforms_predicting)
+                                                  "MoNuSeg_TEST"), transform=transforms_val)
         imgs = []
         with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{checkpoint}") as run:
             for i in range(10):

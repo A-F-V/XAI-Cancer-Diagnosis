@@ -81,13 +81,18 @@ class HoVerNet(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         i, sm, hv, inm = val_batch['image'].float(), val_batch['semantic_mask'].float(
         ), val_batch['hover_map'].float(), val_batch['instance_mask']
+        batch_size = i.shape[0]
 
         y = (sm, hv)
         y_hat = self(i)
 
-        instance_pred = hovernet_post_process(y_hat[0], y_hat[1])
-        pq = panoptic_quality(instance_pred, inm)
-        self.log("Panoptic Quality", pq)
+        pq_sum = 0
+        for i in range(batch_size):
+            sm_pred, hv_pred = y_hat[0][i], y_hat[1][i]
+            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu())
+            pq_sum += panoptic_quality(instance_pred, inm.cpu())
+        self.log("Mean Panoptic Quality", pq_sum/batch_size)
+
         loss = HoVerNetLoss()(y_hat, y)
         self.log("val_loss", loss)
         return loss
@@ -108,10 +113,12 @@ class HoVerNet(pl.LightningModule):
         #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
 
     def on_validation_end(self):
-        sample = self.val_dataloader()[0]
-        gif_diag_path = os.path.join("experiments", "artefacts", "cell_seg_img.gif")
+        print("THE END OF VALIDATION")
+        sample = self.val_dataloader().dataset[0]
+        gif_diag_path = os.path.join("experiments", "artifacts", "cell_seg_img.gif")
         cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
-        self.logger.experiment.log_image(gif_diag_path)  # , "sliding_window_gif")
+        self.logger.experiment.log_artifact(
+            local_path=gif_diag_path, run_id=self.logger.run_id)  # , "sliding_window_gif")
 
 
 def create_diagnosis(y, y_hat, id):

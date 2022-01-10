@@ -18,7 +18,7 @@ def IoU(img_1: np.ndarray, img_2: np.ndarray):
     return p/(s-p)
 
 
-def Panoptic_Quality(pred: Tensor, gt: Tensor):
+def panoptic_quality(pred: Tensor, gt: Tensor):
     """Calculates the panoptic quality of the prediction, as defined in the HoVerNet Paper.
 
     Args:
@@ -67,7 +67,7 @@ def Panoptic_Quality(pred: Tensor, gt: Tensor):
 
     # 4) calculate panoptic quality
 
-    DQ = len(TP)/(len(TP)+len(FP)/2+len(FN)/2)  # Detection Quality
-    SQ = sum([assig[2] for assig in TP])/len(TP)  # Segmentation Quality
+    DQ = 0 if (len(TP)+len(FP)/2+len(FN)/2) == 0 else len(TP)/(len(TP)+len(FP)/2+len(FN)/2)  # Detection Quality
+    SQ = 0 if len(TP) == 0 else sum([assig[2] for assig in TP])/len(TP)  # Segmentation Quality
 
     return DQ*SQ

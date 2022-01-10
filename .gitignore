@@ -84,3 +84,4 @@ trained_models/*
 lightning_logs/*
 
 experiments/checkpoints/*
+experiments/artifacts/*
