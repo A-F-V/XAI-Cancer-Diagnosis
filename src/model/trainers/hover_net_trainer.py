@@ -24,6 +24,7 @@ from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
+import numpy as np
 
 # todo
 """
@@ -82,10 +83,18 @@ class HoverNetTrainer(Base_Trainer):
 
         # consider adding scale
         if args["DATASET"] == "MoNuSeg":
-            train_set = MoNuSeg(src_folder=os.path.join("data", "processed",
-                                "MoNuSeg_TRAIN"), transform=transforms_training)
-            val_set = MoNuSeg(src_folder=os.path.join("data", "processed",
-                              "MoNuSeg_TEST"), transform=transforms_training)
+            src_folder = os.path.join("data", "processed",
+                                      "MoNuSeg_TRAIN")
+            dataset = MoNuSeg(src_folder=src_folder, transform=transforms_training)
+            train_set, val_set = random_split(
+                dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
+            #size = len(MoNuSeg(src_folder=src_folder, transform=transforms_training))
+            #random_ids = np.random.shuffle(range(size))
+            #train_ids, val_ids = random_ids[:int(size * 0.8)], random_ids[int(size * 0.8):]
+            #train_set = MoNuSeg(src_folder=src_folder, transform=transforms_training, ids=train_ids)
+            #val_set = MoNuSeg(src_folder=src_folder, transform=transforms_training, ids=val_ids)
+            # val_set = MoNuSeg(src_folder=os.path.join("data", "processed",
+            #                  "MoNuSeg_TEST"), transform=transforms_training)
 
         elif args["DATASET"] == "PanNuke":
             dataset = PanNuke(transform=transforms_training)
@@ -119,18 +128,20 @@ class HoverNetTrainer(Base_Trainer):
         trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks)
 
-        print("Training Starting")
-
-        # with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-        #    lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
-        #    fig = lr_finder.plot(suggest=True)
-        #    log_plot(fig, "LR_Finder")
-        #    print(lr_finder.suggestion())
-        trainer.fit(model)  # ckpt_path
-
-        ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
-        ckpt_path = make_checkpoint_path(ckpt_file)
-        trainer.save_checkpoint(ckpt_path)
+        if args["LR_TEST"]:
+            with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
+                lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
+                fig = lr_finder.plot(suggest=True)
+                log_plot(fig, "LR_Finder")
+                print(lr_finder.suggestion())
+        else:
+            print("Training Started")
+            trainer.fit(model)
+            print("Training Over\nEvaluating")
+            trainer.validate(model)
+            ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
+            ckpt_path = make_checkpoint_path(ckpt_file)
+            trainer.save_checkpoint(ckpt_path)
 
     def run(self, checkpoint):
         args = self.args

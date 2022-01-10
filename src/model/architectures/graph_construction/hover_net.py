@@ -100,6 +100,9 @@ class HoVerNet(pl.LightningModule):
         # create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
         #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
 
+    def on_validation_end(self):
+        pass
+
 
 def create_diagnosis(y, y_hat, id):
     sm, sm_hat = y[0], y_hat[0]

@@ -8,19 +8,21 @@ from src.transforms.graph_construction.hover_maps import hover_map
 
 
 class MoNuSeg(Dataset):
-    def __init__(self, src_folder=os.path.join("data", "processed", "MoNuSeg_TRAIN"), transform=None):
+    def __init__(self, src_folder=os.path.join("data", "processed", "MoNuSeg_TRAIN"), transform=None, ids=None):
         """Creates a Dataset object for the MoNuSeg dataset.
 
         Args:
             src_folder (str optional): The location of the MoNuSeg data set - already processed via the setup script. Defaults to None.
             transform : A transformation that will be performed on both the image and masks. Defaults to None.
-            mode (str optional): The mode of the dataset. Can be either "binary_mask" or "instance_mask". Defaults to "binary_mask".
         """
         self.src_folder = src_folder if src_folder else os.path.join(os.getcwd(), 'data', 'processed', 'MoNuSeg_TRAIN')
         self.transform = transform if transform else Compose([])
-        self.length = len(os.listdir(os.path.join(self.src_folder, 'images')))
+        self.dir_length = len(os.listdir(os.path.join(self.src_folder, 'images')))
+        self.ids = ids
 
     def __getitem__(self, index):
+        if self.ids is not None:
+            index = self.ids[index]
         img_path = os.path.join(self.src_folder, 'images', f'{index}.tif')
         semantic_mask_path = os.path.join(self.src_folder, 'semantic_masks', f'{index}.npy')
         instance_mask_path = os.path.join(self.src_folder, 'instance_masks', f'{index}.npy')
@@ -40,4 +42,4 @@ class MoNuSeg(Dataset):
         return item
 
     def __len__(self):
-        return self.length
+        return self.dir_length if self.ids is None else len(self.ids)

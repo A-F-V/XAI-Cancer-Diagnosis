@@ -1,8 +1,8 @@
 {
   "DEVICE": "cuda",
-  "DATASET": "MoNuSeg",
+  "DATASET": "PanNuke",
   "RESNET_SIZE": 50,
-  "RUN_NAME": "MoNuSeg Test 4 - No Checkpoint",
+  "RUN_NAME": "MD-1.1",
   "EXPERIMENT_ID": 2,
   "EXPERIMENT_NAME": "HoVerNet",
   "EPOCHS": 200,
@@ -12,5 +12,6 @@
   "START_LR": 0.0001,
   "NUM_WORKERS": 3,
   "START_CHECKPOINT": null,
-  "EARLY_STOP": false
+  "EARLY_STOP": false,
+  "LR_TEST": false
 }
