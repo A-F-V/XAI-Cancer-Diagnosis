@@ -1,4 +1,4 @@
-from torch import nn, optim
+from torch import nn, optim, Tensor
 import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
@@ -121,6 +121,9 @@ class HoVerNet(pl.LightningModule):
                 cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
                 self.logger.experiment.log_artifact(
                     local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
+
+    def predict(self, image: Tensor, tile_size=64):
+        height, width = image.shape[1:]
 
 
 def create_diagnosis(y, y_hat, id):

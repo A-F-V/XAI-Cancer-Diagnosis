@@ -1,4 +1,5 @@
 --find-links https://download.pytorch.org/whl/cu102/torch_stable.html
+--find-links https://data.pyg.org/whl/torch-1.10.0+cu102.html
 
 numpy
 scipy
@@ -23,3 +24,8 @@ ipympl
 scikit-image
 pytorch-lightning
 imageio
+torch-scatter
+torch-sparse
+torch-cluster
+torch-spline-conv
+torch-geometric

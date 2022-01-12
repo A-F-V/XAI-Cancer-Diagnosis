@@ -36,16 +36,16 @@ scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_map": InterpolationMode.NEAREST}
 transforms_training = Compose([
     Compose([
-        #        RandomChoice([
-        #            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
-        #                        modes=scale_modes),
-        #            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
-        #                        modes=scale_modes),
-        #            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
-        #                        modes=scale_modes),
-        #
-        #        ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(64, 64))  # 64 for PanNuke,128 for MoNuSeg
+        RandomChoice([
+            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
+                        modes=scale_modes),
+            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
+                        modes=scale_modes),
+            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
+                        modes=scale_modes),
+
+        ], p=(0.05, 0.05, 0.9)),
+        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -110,6 +110,7 @@ class HoverNetTrainer(Base_Trainer):
             checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
                 checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
+
             # model.encoder.freeze()
         else:
             model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
@@ -126,9 +127,16 @@ class HoverNetTrainer(Base_Trainer):
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                              enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"))
 
+        ###########
+        # EXTRAS  #
+        ###########
+        model.encoder.unfreeze()
+
+        ###########
+
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-                lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
+                lr_finder = trainer.tuner.lr_find(model, num_training=100, max_lr=10)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
