@@ -1,4 +1,5 @@
 from torch import Tensor
+from tqdm import tqdm
 
 
 def island_identifier(img, max_islands=254):  # islands are 0, background is 1
