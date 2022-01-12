@@ -64,7 +64,7 @@ def _watershed(dist: Tensor, mark: Tensor, mask: Tensor = None):
 
 
 # todo do you really want to use the hard mask?
-def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.1):  # todo test
+def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.5):  # todo test
     """Takes a prediction and performs instance segmentation. (Usually pre-tiled)
 
     Args:

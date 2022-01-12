@@ -98,9 +98,9 @@ class HoverNetTrainer(Base_Trainer):
             #    dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"])
+                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"])
+                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 
@@ -125,7 +125,8 @@ class HoverNetTrainer(Base_Trainer):
 
         trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
-                             enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"))
+                             enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"),
+                             profiler="simple",)
 
         ###########
         # EXTRAS  #

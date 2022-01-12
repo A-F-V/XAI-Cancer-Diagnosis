@@ -89,7 +89,7 @@ class HoVerNet(pl.LightningModule):
         pq_sum = 0
         for i in range(batch_size):
             sm_pred, hv_pred = y_hat[0][i], y_hat[1][i]
-            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu())
+            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu(), h=0.5, k=0.5)
             pq_sum += panoptic_quality(instance_pred, inm.cpu())
         self.log("Mean Panoptic Quality", pq_sum/batch_size)
 
