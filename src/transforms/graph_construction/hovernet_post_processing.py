@@ -8,6 +8,7 @@ from skimage.segmentation import watershed
 from skimage.feature.peak import peak_local_max
 from scipy import ndimage
 from tqdm import tqdm
+from src.transforms.image_processing.augmentation import Normalize
 
 
 def _S(hv_maps: Tensor):
@@ -90,7 +91,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
 
     Args:
         model (HoVerNet): The HoVerNet Model to use
-        img (Tensor): The (3,H,W) image to predict
+        img (Tensor): The (3,H,W) image to predict. This has already been normalized
         tile_size (int, optional): The size of the smaller tiles. Defaults to 32.
 
     Returns:
@@ -160,3 +161,13 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
         del batch
         torch.cuda.empty_cache()
     return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0)
+
+
+def instance_mask_prediction_hovernet(model, img, tile_size=32):
+    normalizer = Normalize(
+        {"image": [0.6441, 0.4474, 0.6039]},
+        {"image": [0.1892, 0.1922, 0.1535]})
+    t_img = normalizer({"image": img})["image"]
+    sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
+    ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
+    return ins_pred
