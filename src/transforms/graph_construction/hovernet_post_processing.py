@@ -1,5 +1,5 @@
 from PIL import ImageFilter
-from numpy import tile
+from numpy import dtype, tile
 from torchvision.transforms import ToPILImage
 from torch.nn.functional import conv2d
 from torch import Tensor
@@ -18,7 +18,7 @@ from src.utilities.tensor_utilties import reset_ids
 import cv2
 
 
-def _S(hv_maps: Tensor):
+def _S(hv_map: Tensor):
     """
     Applies the sobel filter to the hover maps, and gets the importance map from the result.
     Args:
@@ -26,9 +26,11 @@ def _S(hv_maps: Tensor):
     Returns:
         Tensor: The importance map (N,H,W)
     """
-    hpx = sobel(hv_maps[:, 0].float())[0].abs()
-    hpy = sobel(hv_maps[:, 1].float())[1].abs()
-    return torch.maximum(hpx, hpy)
+    hv_horiz, hv_vert = hv_map
+    hpx = sobel(hv_horiz.float())[0].abs()
+    # sobel here outputs small numbers for edges and large numbers for cell centres, hence want to invert to get importance (0 for cell centres, 1 for edges)
+    hpy = sobel(hv_vert.float())[1].abs()
+    return torch.maximum(1-hpx, 1-hpy).squeeze()
 
 
 def _markers(q: Tensor, Sm: Tensor, h=0.5, k=0.1):
@@ -91,8 +93,8 @@ def hovernet_post_process_old(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h
     return _watershed(energy, mark, sm_hard_pred)
 
 
-def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=7):  # todo doc and annotate
-    Sm = S(hv_map)
+def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=5):  # todo doc and annotate
+    Sm = _S(hv_map)
     thresh_q = (sm > h)
     thresh_q = torch.as_tensor(remove_small_objects(thresh_q.numpy(), min_size=20))
     Sm = (Sm - (1-thresh_q.float())).clip(0)  # importance regions with background haze removed via mask with clipping
@@ -109,7 +111,7 @@ def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=7
     markersv2 = (energy > k).numpy()
     markersv2 = binary_fill_holes(markersv2)
     markersv2 = label(markersv2)[0]
-    return watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy())
+    return torch.as_tensor(watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy()), dtype=torch.int)
 
 # times 2, ensures that an whole number of tiles fit in the image
 
