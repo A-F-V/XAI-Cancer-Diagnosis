@@ -1,0 +1,3 @@
+- rotation invariant convolution
+- long distance connections in HoVerNet
+- copy and paste augmentation for challenging cancer cases

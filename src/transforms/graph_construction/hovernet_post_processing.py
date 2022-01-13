@@ -96,7 +96,7 @@ def hovernet_post_process_old(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h
 def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=5):  # todo doc and annotate
     Sm = _S(hv_map)
     thresh_q = (sm > h)
-    thresh_q = torch.as_tensor(remove_small_objects(thresh_q.numpy(), min_size=20))
+    thresh_q = torch.as_tensor(remove_small_objects(thresh_q.numpy(), min_size=30))
     Sm = (Sm - (1-thresh_q.float())).clip(0)  # importance regions with background haze removed via mask with clipping
 
     # to get areas of low importance (i.e. centre of cells) as high energy and areas close to border are low energy
@@ -193,11 +193,14 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0)
 
 
-def instance_mask_prediction_hovernet(model, img, tile_size=32):
-    normalizer = Normalize(
-        {"image": [0.6441, 0.4474, 0.6039]},
-        {"image": [0.1892, 0.1922, 0.1535]})
-    t_img = normalizer({"image": img.clone()})["image"]
+def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=False):
+    if pre_normalized:
+        t_img = img
+    else:
+        normalizer = Normalize(
+            {"image": [0.6441, 0.4474, 0.6039]},
+            {"image": [0.1892, 0.1922, 0.1535]})
+        t_img = normalizer({"image": img.clone()})["image"]
     sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
     ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
     return ins_pred
