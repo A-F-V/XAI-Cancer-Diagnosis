@@ -1,4 +1,5 @@
-from calendar import c
+from torch import Tensor
+from tqdm import tqdm
 
 
 def island_identifier(img, max_islands=254):  # islands are 0, background is 1
@@ -30,3 +31,27 @@ def island_identifier(img, max_islands=254):  # islands are 0, background is 1
                 assert cur_col <= max_islands
             #print(x, y, cur_col)
     return img - 1  # background is 0, islands are colours from 1 onwards
+
+
+def hollow(img: Tensor):
+    """Hollows out an Instance Mask
+
+    Args:
+        img (Tensor): Instance Mask (H,W)
+
+    Returns:
+        Tensor: The hollowed out instance mask
+    """
+    output = img.clone()
+
+    def land_locked(r, c):
+        if r <= 0 or r >= (img.shape[0]-1) or c <= 0 or c >= (img.shape[1]-1):
+            return False
+        return (img[r, c] == img[r, c+1] == img[r, c-1] == img[r+1, c] == img[r-1, c]).item() & (img[r, c] != 0)
+
+    for row in tqdm(range(img.shape[0]), desc="Hollowing"):
+        for col in range(img.shape[1]):
+            if(land_locked(row, col)):
+                output[row, col] = 0
+
+    return output

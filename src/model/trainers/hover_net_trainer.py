@@ -26,6 +26,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.datasets.train_val_split import train_val_split
+from src.transforms.graph_construction.hovernet_post_processing import instance_mask_prediction_hovernet
+from src.model.metrics.panoptic_quality import panoptic_quality
 
 # todo
 """
@@ -36,16 +38,16 @@ scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_map": InterpolationMode.NEAREST}
 transforms_training = Compose([
     Compose([
-        #        RandomChoice([
-        #            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
-        #                        modes=scale_modes),
-        #            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
-        #                        modes=scale_modes),
-        #            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
-        #                        modes=scale_modes),
-        #
-        #        ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(64, 64))  # 64 for PanNuke,128 for MoNuSeg
+        RandomChoice([
+            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
+                        modes=scale_modes),
+            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
+                        modes=scale_modes),
+            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
+                        modes=scale_modes),
+
+        ], p=(0.05, 0.05, 0.9)),
+        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -98,9 +100,9 @@ class HoverNetTrainer(Base_Trainer):
             #    dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"])
+                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"])
+                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 
@@ -110,6 +112,7 @@ class HoverNetTrainer(Base_Trainer):
             checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
                 checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
+
             # model.encoder.freeze()
         else:
             model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
@@ -123,11 +126,20 @@ class HoverNetTrainer(Base_Trainer):
             trainer_callbacks.append(EarlyStopping(monitor="val_loss"))
 
         trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
-                             max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks)
+                             max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
+                             enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"),
+                             profiler="simple",)
+
+        ###########
+        # EXTRAS  #
+        ###########
+        model.encoder.unfreeze()
+
+        ###########
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-                lr_finder = trainer.tuner.lr_find(model, num_training=250, max_lr=10)
+                lr_finder = trainer.tuner.lr_find(model, num_training=100, max_lr=10)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -146,7 +158,7 @@ class HoverNetTrainer(Base_Trainer):
         model.eval()
         model.cpu()
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
-                                                  "MoNuSeg_TEST"), transform=transforms_val)
+                                                  "MoNuSeg_TRAIN"), transform=transforms_val)
         imgs = []
         with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{os.path.basename(checkpoint)}") as run:
             for i in range(10):
@@ -163,6 +175,18 @@ class HoverNetTrainer(Base_Trainer):
             cell_segmentation_sliding_window_gif_example(
                 model, dataset[0], location=os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
             mlflow.log_artifact(os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
+
+            # CALCULATE MEAN PANOPTIC QUALITY
+            dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
+                                                      "MoNuSeg_TRAIN"), transform=Compose([]))
+            pq_tot = 0
+            for i in range(10):
+                sample = dataset[i]
+                ins_pred = instance_mask_prediction_hovernet(model, sample['image'], tile_size=128)
+                pq = panoptic_quality(ins_pred.squeeze(), sample['instance_mask'].squeeze()[64:768+64, 64:768+64])
+                pq_tot += pq
+            pq_tot /= 10
+            mlflow.log_metric("Mean Panoptic Quality", pq_tot)
 
         pass
 

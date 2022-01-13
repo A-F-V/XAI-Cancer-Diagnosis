@@ -1,4 +1,5 @@
 from PIL import ImageFilter
+from numpy import tile
 from torchvision.transforms import ToPILImage
 from torch.nn.functional import conv2d
 from torch import Tensor
@@ -7,6 +8,14 @@ import torch
 from skimage.segmentation import watershed
 from skimage.feature.peak import peak_local_max
 from scipy import ndimage
+from tqdm import tqdm
+from src.transforms.image_processing.augmentation import Normalize
+from skimage.morphology import remove_small_objects
+from scipy.ndimage import binary_fill_holes, binary_closing
+from scipy.ndimage.measurements import label
+from skimage.segmentation import watershed
+from src.utilities.tensor_utilties import reset_ids
+import cv2
 
 
 def _S(hv_maps: Tensor):
@@ -63,8 +72,7 @@ def _watershed(dist: Tensor, mark: Tensor, mask: Tensor = None):
     return torch.as_tensor(watershed(-(dist.numpy()), markers=lbs, mask=(None if mask is None else mask.numpy()))).int()
 
 
-# todo do you really want to use the hard mask?
-def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.1):  # todo test
+def hovernet_post_process_old(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.5):
     """Takes a prediction and performs instance segmentation. (Usually pre-tiled)
 
     Args:
@@ -81,3 +89,120 @@ def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5
     mark = _markers(semantic_mask_pred.unsqueeze(0), Sm, h, k).squeeze()
     energy = _energy(semantic_mask_pred.unsqueeze(0), Sm, h, k).squeeze()
     return _watershed(energy, mark, sm_hard_pred)
+
+
+def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=7):  # todo doc and annotate
+    Sm = S(hv_map)
+    thresh_q = (sm > h)
+    thresh_q = torch.as_tensor(remove_small_objects(thresh_q.numpy(), min_size=20))
+    Sm = (Sm - (1-thresh_q.float())).clip(0)  # importance regions with background haze removed via mask with clipping
+
+    # to get areas of low importance (i.e. centre of cells) as high energy and areas close to border are low energy
+    energy = (1-Sm)*thresh_q
+    # also clip again background
+    energy = torch.as_tensor(cv2.GaussianBlur(energy.numpy(), (smooth_amt, smooth_amt), 0)
+                             )  # smooth landscape # especially important for long cells
+
+    markers = (thresh_q.float() - (Sm > k).float())
+    markers = label(markers)[0]
+    # Slightly different to paper - I use the energy levels instead because they have been smoothed
+    markersv2 = (energy > k).numpy()
+    markersv2 = binary_fill_holes(markersv2)
+    markersv2 = label(markersv2)[0]
+    return watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy())
+
+# times 2, ensures that an whole number of tiles fit in the image
+
+
+def tiled_hovernet_prediction(model, img, tile_size=32):
+    """Creates a prediction of an entire image through tiling
+
+    Args:
+        model (HoVerNet): The HoVerNet Model to use
+        img (Tensor): The (3,H,W) image to predict. This has already been normalized
+        tile_size (int, optional): The size of the smaller tiles. Defaults to 32.
+
+    Returns:
+        tuple: The semantic mask and hover maps for the entire image, slightly smaller than the original image (due to whole number of tiles used)
+    """
+    model.eval()
+    model.cuda()
+    assert tile_size % 2 == 0
+
+    # ENSURE WHOLE NUMBER OF TILES FIT
+    dim = list(img.shape[1:])
+    dim[0] = dim[0]//tile_size*tile_size
+    dim[1] = dim[1]//tile_size*tile_size
+    img = img[:, :dim[0], :dim[1]]
+
+    final_sm = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+    final_hv_x = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+    final_hv_y = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+
+    batch_size = 20//((2*tile_size//64)*(2*tile_size//64))
+    print(batch_size)
+    batch = None
+    batch_loc = []
+
+    def add_tiles(batch, batch_loc):
+        with torch.no_grad():
+            (sm, hv) = model(batch.cuda())
+            sm_b, hv_b = sm.cpu(), hv.cpu()
+            for (r, c), sm, hv in zip(batch_loc, sm_b, hv_b):
+                sm = sm.squeeze()
+                assert len(sm.shape) == 2
+                assert len(hv.shape) == 3
+                # mask = torch.ones_like(sm)
+                # if r!=0:
+                #    mask[:tile_size//2,:] = 0
+                # if r!=last_row:
+                #    mask[-tile_size//2:,:] = 0
+                # if c!=0:
+                #    mask[:,:tile_size//2] = 0
+                # if c!=last_col:
+                #    mask[:,-tile_size//2:] = 0
+                # final_sm[r:r+tile_size*2,c:c+tile_size*2] += sm*mask
+                # final_hv_x[r:r+tile_size*2,c:c+tile_size*2] += hv[0]*mask
+                # final_hv_y[r:r+tile_size*2,c:c+tile_size*2] += hv[1]*mask
+                final_sm[r:r+tile_size, c:c+tile_size] += sm[tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
+                final_hv_x[r:r+tile_size, c:c+tile_size] += hv[0,
+                                                               tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
+                final_hv_y[r:r+tile_size, c:c+tile_size] += hv[1,
+                                                               tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
+
+    for row in tqdm(range(0, dim[0]-tile_size, tile_size)):
+        for col in range(0, dim[1]-tile_size, tile_size):
+            if batch == None:
+                batch = img[:, row:row+tile_size*2, col:col+tile_size*2].unsqueeze(0)
+                batch_loc.append((row, col))
+            else:
+                batch = torch.concat([batch, img[:, row:row+tile_size*2, col:col+tile_size*2].unsqueeze(0)], dim=0)
+                batch_loc.append((row, col))
+            if batch.shape[0] >= batch_size:
+                add_tiles(batch, batch_loc)
+                del batch
+                torch.cuda.empty_cache()
+                batch = None
+                batch_loc = []
+    if batch != None:
+        add_tiles(batch, batch_loc)
+        del batch
+        torch.cuda.empty_cache()
+    return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0)
+
+
+def instance_mask_prediction_hovernet(model, img, tile_size=32):
+    normalizer = Normalize(
+        {"image": [0.6441, 0.4474, 0.6039]},
+        {"image": [0.1892, 0.1922, 0.1535]})
+    t_img = normalizer({"image": img.clone()})["image"]
+    sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
+    ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
+    return ins_pred
+
+
+def cut_img_from_tile(img, tile_size=32):
+    dim = list(img.shape[1:])
+    dim[0] = dim[0]//tile_size*tile_size
+    dim[1] = dim[1]//tile_size*tile_size
+    return img.clone()[:, tile_size//2:dim[0]+tile_size//2, tile_size//2:dim[1]+tile_size//2]

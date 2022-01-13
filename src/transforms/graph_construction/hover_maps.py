@@ -21,7 +21,7 @@ def _calculate_median_loc(arr, tot_value):
     raise ("Invalid inputs")
 
 
-def _find_centroid(img, nucleus_id):
+def find_centre_of_mass(img, nucleus_id):
     if not isinstance(img, Tensor):
         img = torch.as_tensor(img)
     mass = (img == nucleus_id)
@@ -54,7 +54,7 @@ def hover_map(mask):  # todo write docs
 
     for nuc_id in range(1, nuclei+1):
         cell_mask = mask.int() == nuc_id
-        centre = _find_centroid(mask.int(), nuc_id)
+        centre = find_centre_of_mass(mask.int(), nuc_id)
         x_dist, y_dist = x_coord-centre[0], y_coord-centre[1]
         x_dist, y_dist = cell_mask * x_dist, cell_mask * y_dist
         x_dist, y_dist = norm_dist(x_dist), norm_dist(y_dist)

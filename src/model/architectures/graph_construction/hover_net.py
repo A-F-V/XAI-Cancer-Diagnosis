@@ -1,4 +1,4 @@
-from torch import nn, optim
+from torch import nn, optim, Tensor
 import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
@@ -89,7 +89,7 @@ class HoVerNet(pl.LightningModule):
         pq_sum = 0
         for i in range(batch_size):
             sm_pred, hv_pred = y_hat[0][i], y_hat[1][i]
-            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu())
+            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu(), h=0.5, k=0.5)
             pq_sum += panoptic_quality(instance_pred, inm.cpu())
         self.log("Mean Panoptic Quality", pq_sum/batch_size)
 
@@ -121,6 +121,9 @@ class HoVerNet(pl.LightningModule):
                 cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
                 self.logger.experiment.log_artifact(
                     local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
+
+    def predict(self, image: Tensor, tile_size=64):
+        height, width = image.shape[1:]
 
 
 def create_diagnosis(y, y_hat, id):
@@ -246,8 +249,9 @@ class HoVerNetBranchHead(pl.LightningModule):
                 nn.Sigmoid())
         else:  # todo is there a better activation function?
             self.head = nn.Sequential(
-                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True),
-                nn.Tanh())
+                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
+                # ,nn.Tanh()
+                )
 
     def forward(self, sample):
         return self.head(self.activate(sample))

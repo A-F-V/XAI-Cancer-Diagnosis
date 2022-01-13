@@ -32,6 +32,28 @@ def setup():
         except:
             print("Failed to unzip: " + data_set)
 
+     ###############################################################################
+    # Process BACH_TRAIN                                                            #
+    ###############################################################################
+
+    BACH_Train_folder_final = os.path.join(data_path_folder, "BACH_TRAIN")
+
+    copy_dir(os.path.join(unzipped_folder, "BACH_TRAIN", "ICIAR2018_BACH_Challenge",
+             "Photos"), BACH_Train_folder_final)
+
+    # STAIN NORMALIZE
+    for folder in ["Benign", "InSitu", "Invasive", "Normal"]:
+        folder_path = os.path.join(BACH_Train_folder_final, folder)
+        for image_name in tqdm(os.listdir(folder_path), desc=f"Normalizing {folder} Images - BACH_TRAIN"):
+            img_path = os.path.join(folder_path, image_name)
+            if ".tif" not in img_path:
+                os.remove(img_path)
+            else:
+                img = Image.open(img_path)
+                img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+                img = ToPILImage()(img)
+                img.save(img_path)
+
     ###############################################################################
     # Process MoNuSeg_TRAIN                                                            #
     ###############################################################################
