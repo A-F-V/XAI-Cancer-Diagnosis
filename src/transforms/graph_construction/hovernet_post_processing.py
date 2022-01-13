@@ -10,6 +10,12 @@ from skimage.feature.peak import peak_local_max
 from scipy import ndimage
 from tqdm import tqdm
 from src.transforms.image_processing.augmentation import Normalize
+from skimage.morphology import remove_small_objects
+from scipy.ndimage import binary_fill_holes, binary_closing
+from scipy.ndimage.measurements import label
+from skimage.segmentation import watershed
+from src.utilities.tensor_utilties import reset_ids
+import cv2
 
 
 def _S(hv_maps: Tensor):
@@ -66,8 +72,7 @@ def _watershed(dist: Tensor, mark: Tensor, mask: Tensor = None):
     return torch.as_tensor(watershed(-(dist.numpy()), markers=lbs, mask=(None if mask is None else mask.numpy()))).int()
 
 
-# todo do you really want to use the hard mask?
-def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.5):  # todo test
+def hovernet_post_process_old(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5, k=0.5):
     """Takes a prediction and performs instance segmentation. (Usually pre-tiled)
 
     Args:
@@ -86,7 +91,29 @@ def hovernet_post_process(semantic_mask_pred: Tensor, hv_map_pred: Tensor, h=0.5
     return _watershed(energy, mark, sm_hard_pred)
 
 
+def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=7):  # todo doc and annotate
+    Sm = S(hv_map)
+    thresh_q = (sm > h)
+    thresh_q = torch.as_tensor(remove_small_objects(thresh_q.numpy(), min_size=20))
+    Sm = (Sm - (1-thresh_q.float())).clip(0)  # importance regions with background haze removed via mask with clipping
+
+    # to get areas of low importance (i.e. centre of cells) as high energy and areas close to border are low energy
+    energy = (1-Sm)*thresh_q
+    # also clip again background
+    energy = torch.as_tensor(cv2.GaussianBlur(energy.numpy(), (smooth_amt, smooth_amt), 0)
+                             )  # smooth landscape # especially important for long cells
+
+    markers = (thresh_q.float() - (Sm > k).float())
+    markers = label(markers)[0]
+    # Slightly different to paper - I use the energy levels instead because they have been smoothed
+    markersv2 = (energy > k).numpy()
+    markersv2 = binary_fill_holes(markersv2)
+    markersv2 = label(markersv2)[0]
+    return watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy())
+
 # times 2, ensures that an whole number of tiles fit in the image
+
+
 def tiled_hovernet_prediction(model, img, tile_size=32):
     """Creates a prediction of an entire image through tiling
 
