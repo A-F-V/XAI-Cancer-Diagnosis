@@ -26,6 +26,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.datasets.train_val_split import train_val_split
+from src.transforms.graph_construction.hovernet_post_processing import instance_mask_prediction_hovernet
+from src.model.metrics.panoptic_quality import panoptic_quality
 
 # todo
 """
@@ -45,7 +47,7 @@ transforms_training = Compose([
                         modes=scale_modes),
 
         ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
+        RandomCrop(size=(256, 256))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -156,7 +158,7 @@ class HoverNetTrainer(Base_Trainer):
         model.eval()
         model.cpu()
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
-                                                  "MoNuSeg_TEST"), transform=transforms_val)
+                                                  "MoNuSeg_TRAIN"), transform=transforms_val)
         imgs = []
         with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{os.path.basename(checkpoint)}") as run:
             for i in range(10):
@@ -173,6 +175,18 @@ class HoverNetTrainer(Base_Trainer):
             cell_segmentation_sliding_window_gif_example(
                 model, dataset[0], location=os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
             mlflow.log_artifact(os.path.join("experiments", "artifacts", "cell_seg_img.gif"))
+
+            # CALCULATE MEAN PANOPTIC QUALITY
+            dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
+                                                      "MoNuSeg_TRAIN"), transform=Compose([]))
+            pq_tot = 0
+            for i in range(10):
+                sample = dataset[i]
+                ins_pred = instance_mask_prediction_hovernet(model, sample['image'], tile_size=128)
+                pq = panoptic_quality(ins_pred.squeeze(), sample['instance_mask'].squeeze()[64:768+64, 64:768+64])
+                pq_tot += pq
+            pq_tot /= 10
+            mlflow.log_metric("Mean Panoptic Quality", pq_tot)
 
         pass
 

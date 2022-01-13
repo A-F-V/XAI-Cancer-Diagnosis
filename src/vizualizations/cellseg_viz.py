@@ -8,6 +8,8 @@ from src.utilities.img_utilities import tensor_to_numpy
 from src.transforms.graph_construction.hover_maps import hover_map
 from tqdm import tqdm
 import os
+from numpy.ma import masked_where
+from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
 
 
 def generate_mask_diagram(model, dataloader, mask_name="semantic_mask", args=None):
@@ -49,11 +51,12 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
     model.cuda()
 
     x_width = sample['image'].shape[2]
-    f, ax = plt.subplots(2, 4, figsize=(20, 10))
+    f, ax = plt.subplots(2, 5, figsize=(20, 10))
     with imageio.get_writer(location, mode='I', fps=fps, format="gif") as writer:
         for x in tqdm(range(0, x_width-64, 2), desc="Generating Prediction GIF"):
 
             cropped_image_orig = sample['image_original'][:, :64, x:x+64]
+            cropped_ins_seg = sample["instance_mask"][:, :64, x:x+64].squeeze()
             cropped_image_trans = sample['image'][:, :64, x:x+64]
             cropped_sm_gt = sample['semantic_mask'].squeeze()[:64, x:x+64]
             ground_hv = hover_map(sample["instance_mask"][:, :64, x:x+64].squeeze())
@@ -61,6 +64,7 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
             cropped_hv_y_gt = ground_hv[1]
 
             sm_pred, hv_map_pred = model(cropped_image_trans.unsqueeze(0).cuda())
+            ins_pred = hovernet_post_process(sm_pred.detach().cpu().squeeze(), hv_map_pred.detach().cpu().squeeze())
 
             ax[0, 0].imshow(tensor_to_numpy(cropped_image_orig.squeeze().detach().cpu()))
             ax[0, 0].set_title("Original Image")
@@ -82,7 +86,26 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
             ax[1, 3].imshow(hv_map_pred.squeeze()[1].detach().cpu().numpy(), cmap="jet", vmin=-1, vmax=1)
             ax[1, 3].set_title("Predicted Hover Map Y")
 
+            ax[0, 4].imshow(cropped_ins_seg.squeeze().detach().cpu().numpy(), cmap="nipy_spectral")
+            ax[0, 4].set_title("Ground Truth Instance Mask")
+            ax[1, 4].imshow(ins_pred.squeeze().detach().cpu().numpy(), cmap="nipy_spectral")
+            ax[1, 4].set_title("Predicted Instance Mask")
+
             buf = io.BytesIO()
             plt.savefig(buf, format='png')
             plt_img = imageio.imread(buf)
             writer.append_data(plt_img)
+
+
+def instance_segmentation_vizualised(img, instance_seg):
+    """Plots image and the segmentation overlayed on top
+
+    Args:
+        img (Tensor): Original Image (3,H,W)
+        instance_seg (Tensor): Instance Segmentation of Image (same size) (H,W)
+    """
+    assert img.shape == instance_seg.shape, "Image and instance segmentation must be same size"
+    plt.figure(figsize=(10, 10))
+    plt.imshow(tensor_to_numpy(img))
+    plt.imshow(masked_where(instance_seg != 0, instance_seg), cmap="nipy_spectral", alpha=0.7)
+    plt.axis("off")

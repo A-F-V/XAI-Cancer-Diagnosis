@@ -150,12 +150,12 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
             else:
                 batch = torch.concat([batch, img[:, row:row+tile_size*2, col:col+tile_size*2].unsqueeze(0)], dim=0)
                 batch_loc.append((row, col))
-                if batch.shape[0] >= batch_size:
-                    add_tiles(batch, batch_loc)
-                    del batch
-                    torch.cuda.empty_cache()
-                    batch = None
-                    batch_loc = []
+            if batch.shape[0] >= batch_size:
+                add_tiles(batch, batch_loc)
+                del batch
+                torch.cuda.empty_cache()
+                batch = None
+                batch_loc = []
     if batch != None:
         add_tiles(batch, batch_loc)
         del batch
