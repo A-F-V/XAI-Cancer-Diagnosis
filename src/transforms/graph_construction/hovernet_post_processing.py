@@ -1,4 +1,5 @@
 from PIL import ImageFilter
+from numpy import tile
 from torchvision.transforms import ToPILImage
 from torch.nn.functional import conv2d
 from torch import Tensor
@@ -124,7 +125,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
                 sm = sm.squeeze()
                 assert len(sm.shape) == 2
                 assert len(hv.shape) == 3
-                #mask = torch.ones_like(sm)
+                # mask = torch.ones_like(sm)
                 # if r!=0:
                 #    mask[:tile_size//2,:] = 0
                 # if r!=last_row:
@@ -133,9 +134,9 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
                 #    mask[:,:tile_size//2] = 0
                 # if c!=last_col:
                 #    mask[:,-tile_size//2:] = 0
-                #final_sm[r:r+tile_size*2,c:c+tile_size*2] += sm*mask
-                #final_hv_x[r:r+tile_size*2,c:c+tile_size*2] += hv[0]*mask
-                #final_hv_y[r:r+tile_size*2,c:c+tile_size*2] += hv[1]*mask
+                # final_sm[r:r+tile_size*2,c:c+tile_size*2] += sm*mask
+                # final_hv_x[r:r+tile_size*2,c:c+tile_size*2] += hv[0]*mask
+                # final_hv_y[r:r+tile_size*2,c:c+tile_size*2] += hv[1]*mask
                 final_sm[r:r+tile_size, c:c+tile_size] += sm[tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
                 final_hv_x[r:r+tile_size, c:c+tile_size] += hv[0,
                                                                tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
@@ -171,3 +172,10 @@ def instance_mask_prediction_hovernet(model, img, tile_size=32):
     sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
     ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
     return ins_pred
+
+
+def cut_img_from_tile(img, tile_size=32):
+    dim = list(img.shape[1:])
+    dim[0] = dim[0]//tile_size*tile_size
+    dim[1] = dim[1]//tile_size*tile_size
+    return img.clone()[:, tile_size//2:dim[0]+tile_size//2, tile_size//2:dim[1]+tile_size//2]

@@ -249,8 +249,9 @@ class HoVerNetBranchHead(pl.LightningModule):
                 nn.Sigmoid())
         else:  # todo is there a better activation function?
             self.head = nn.Sequential(
-                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True),
-                nn.Tanh())
+                nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
+                # ,nn.Tanh()
+                )
 
     def forward(self, sample):
         return self.head(self.activate(sample))
