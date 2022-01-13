@@ -1,3 +1,5 @@
+
+from tqdm import tqdm
 import torch
 from torch_geometric.data import InMemoryDataset, download_url
 from torch.utils.data import Dataset
@@ -6,6 +8,9 @@ from PIL import Image
 from torchvision.transforms import ToTensor, Compose
 from src.transforms.graph_construction.hovernet_post_processing import cut_img_from_tile, instance_mask_prediction_hovernet
 from src.transforms.graph_construction.graph_extractor import extract_graph
+from src.utilities.os_utilities import create_dir_if_not_exist
+
+#! only generate once!
 
 
 class BACH(Dataset):
@@ -18,6 +23,8 @@ class BACH(Dataset):
         self.reprocess = reprocess
         self.prc_folder = prc_folder
         self.cell_seg_model = cell_seg_model
+        self.processed = False
+        create_dir_if_not_exist(self.prc_folder, False)
 
     @property
     def raw_paths(self):
@@ -42,11 +49,13 @@ class BACH(Dataset):
         return [os.path.join(self.processed_dir, f) for f in self.processed_file_names]
 
     def process(self):
-        for path in self.raw_paths:
+        if self.processed and not self.reprocess:
+            return
+        for path in tqdm(self.raw_paths, desc="Creating Graphs from BACH"):
             img = Image.open(path)
             img = self.img_transform(img) if self.img_transform is not None else ToTensor()(
                 img)  # IMG ALREADY NORMALIZED!!!
-            ins_pred = instance_mask_prediction_hovernet(img, self.cell_seg_model, self.processed_dir, tile_size=128)
+            ins_pred = instance_mask_prediction_hovernet(self.cell_seg_model, img, tile_size=128)
             img = cut_img_from_tile(img, tile_size=128)
             graph = extract_graph(img, ins_pred, window_size=50)
             if self.data_augmenation is not None:
@@ -55,6 +64,8 @@ class BACH(Dataset):
             file_name = os.path.basename(path)[:-4] + ".pt"
             proc_path = os.path.join(self.processed_dir, file_name)
             torch.save(graph, proc_path)
+
+        self.processed = True
 
     def __len__(self):
         return len(self.processed_file_names)

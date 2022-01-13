@@ -142,7 +142,6 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     final_hv_y = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
 
     batch_size = 20//((2*tile_size//64)*(2*tile_size//64))
-    print(batch_size)
     batch = None
     batch_loc = []
 
@@ -172,7 +171,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
                 final_hv_y[r:r+tile_size, c:c+tile_size] += hv[1,
                                                                tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
 
-    for row in tqdm(range(0, dim[0]-tile_size, tile_size)):
+    for row in range(0, dim[0]-tile_size, tile_size):
         for col in range(0, dim[1]-tile_size, tile_size):
             if batch == None:
                 batch = img[:, row:row+tile_size*2, col:col+tile_size*2].unsqueeze(0)
