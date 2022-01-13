@@ -168,7 +168,7 @@ def instance_mask_prediction_hovernet(model, img, tile_size=32):
     normalizer = Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
-    t_img = normalizer({"image": img})["image"]
+    t_img = normalizer({"image": img.clone()})["image"]
     sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
     ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
     return ins_pred
