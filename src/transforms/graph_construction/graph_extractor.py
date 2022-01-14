@@ -6,7 +6,7 @@ from torch import Tensor
 from torchvision.transforms.functional import resize
 
 
-def extract_graph(orig_img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, model=None, downsample=2):
+def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, model=None, downsample=2):
     nuclei = ins_seg.max()
     centres = []
 
@@ -39,7 +39,7 @@ def extract_graph(orig_img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=1
     feature_matrix_x = torch.zeros((0, (window_size//downsample)**2*3))  # as 3 channels
     position_matrix = torch.zeros((0, 2))
     for x, y in centres:
-        feature = orig_img[:, y-window_size//2:y+window_size//2, x-window_size//2:x+window_size//2]
+        feature = img[:, y-window_size//2:y+window_size//2, x-window_size//2:x+window_size//2]
         feature = resize(feature, size=((window_size//downsample), (window_size//downsample))).flatten()
         feature_matrix_x = torch.cat((feature_matrix_x, feature.unsqueeze(0)), dim=0)
         position_matrix = torch.cat((position_matrix, torch.tensor([[x, y]])), dim=0)

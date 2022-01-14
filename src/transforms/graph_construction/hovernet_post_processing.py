@@ -209,4 +209,4 @@ def cut_img_from_tile(img, tile_size=32):
     dim = list(img.shape[1:])
     dim[0] = dim[0]//tile_size*tile_size
     dim[1] = dim[1]//tile_size*tile_size
-    return img.clone()[:, tile_size//2:dim[0]+tile_size//2, tile_size//2:dim[1]+tile_size//2]
+    return img.clone()[:, tile_size//2:dim[0]-tile_size//2, tile_size//2:dim[1]-tile_size//2]

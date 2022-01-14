@@ -46,8 +46,8 @@ transforms_training = Compose([
             RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
                         modes=scale_modes),
 
-        ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
+        ], p=(0.25, 0.25, 0.5)),
+        RandomCrop(size=(256, 256))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 

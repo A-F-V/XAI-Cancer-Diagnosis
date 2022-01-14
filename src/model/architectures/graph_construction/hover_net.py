@@ -50,7 +50,7 @@ class HoVerNet(pl.LightningModule):
         return semantic_mask, hover_maps
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_batches,  three_phase=True)
@@ -251,7 +251,7 @@ class HoVerNetBranchHead(pl.LightningModule):
             self.head = nn.Sequential(
                 nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
                 # ,nn.Tanh()
-                )
+            )
 
     def forward(self, sample):
         return self.head(self.activate(sample))
