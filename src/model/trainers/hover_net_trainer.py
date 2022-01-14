@@ -39,15 +39,15 @@ scale_modes = {"image": InterpolationMode.BILINEAR,
 transforms_training = Compose([
     Compose([
         RandomChoice([
-            RandomScale(x_fact_range=(0.45, 0.55), y_fact_range=(0.45, 0.55),
+            RandomScale(x_fact_range=(0.5, 0.55), y_fact_range=(0.5, 0.55),
                         modes=scale_modes),
             RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
                         modes=scale_modes),
             RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
                         modes=scale_modes),
 
-        ], p=(0.25, 0.25, 0.5)),
-        RandomCrop(size=(256, 256))  # 64 for PanNuke,128 for MoNuSeg
+        ], p=(0.3, 0.3, 0.3)),
+        RandomCrop(size=(64, 64))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -128,7 +128,8 @@ class HoverNetTrainer(Base_Trainer):
         trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                              enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"),
-                             profiler="simple",)
+                             profiler="simple",
+                             accumulate_grad_batches=64//args["BATCH_SIZE_TRAIN"],)
 
         ###########
         # EXTRAS  #
