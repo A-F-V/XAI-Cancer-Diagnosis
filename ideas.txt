@@ -1,3 +1,10 @@
 - rotation invariant convolution
 - long distance connections in HoVerNet
 - copy and paste augmentation for challenging cancer cases
+
+- Using e-LRP or equivalent to figure out contribution of pixels in original node
+    - then map these contributions back onto original image
+
+- use convolutions instead of MLP in PNA
+
+- use 1/DISTANCE**2 as edge weight

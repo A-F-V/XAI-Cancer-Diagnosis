@@ -122,9 +122,6 @@ class HoVerNet(pl.LightningModule):
                 self.logger.experiment.log_artifact(
                     local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 
-    def predict(self, image: Tensor, tile_size=64):
-        height, width = image.shape[1:]
-
 
 def create_diagnosis(y, y_hat, id):
     sm, sm_hat = y[0], y_hat[0]

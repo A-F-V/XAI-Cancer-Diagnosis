@@ -46,8 +46,8 @@ transforms_training = Compose([
             RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
                         modes=scale_modes),
 
-        ], p=(0.3, 0.3, 0.3)),
-        RandomCrop(size=(64, 64))  # 64 for PanNuke,128 for MoNuSeg
+        ], p=(0.0, 0.0, 1.0)),
+        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
@@ -181,7 +181,7 @@ class HoverNetTrainer(Base_Trainer):
             dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
                                                       "MoNuSeg_TRAIN"), transform=Compose([]))
             pq_tot = 0
-            for i in range(10):
+            for i in tqdm(range(10), desc="Calculating Mean Panoptic Quality"):
                 sample = dataset[i]
                 ins_pred = instance_mask_prediction_hovernet(model, sample['image'], tile_size=128)
                 pq = panoptic_quality(ins_pred.squeeze(), sample['instance_mask'].squeeze()[64:768+64, 64:768+64])
