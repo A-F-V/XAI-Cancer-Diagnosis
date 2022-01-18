@@ -83,7 +83,7 @@ class CancerNet(pl.LightningModule):
 
 
 class EncoderUnit(pl.LightningModule):
-    def __init__(self, channels, aggregators, scalers, deg, layers, donwsample=True, **args):
+    def __init__(self, channels, aggregators, scalers, deg, layers, downsample=True, **args):
         super(EncoderUnit, self).__init__()
         self.pooling = TopKPooling(channels, ratio=0.5)
         self.convs = ModuleList()
@@ -92,7 +92,7 @@ class EncoderUnit(pl.LightningModule):
             self.convs.append(PNAConv(channels, channels, aggregators=aggregators,
                                       scalers=scalers, deg=deg, edge_dim=1, pre_layers=0, post_layers=0))
             self.bn.append(BatchNorm(channels))
-        self.downsample = donwsample
+        self.downsample = downsample
 
     def forward(self, x, edge_index, edge_attr, batch):
         x_prime = x
