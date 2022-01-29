@@ -8,3 +8,6 @@
 - use convolutions instead of MLP in PNA
 
 - use 1/DISTANCE**2 as edge weight
+
+- Siamese network
+- No Softmax
