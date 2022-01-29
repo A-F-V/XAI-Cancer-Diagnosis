@@ -8,7 +8,7 @@ from torch import optim, Tensor
 
 
 class SimpleGNN(pl.LightningModule):
-    def __init__(self, img_size=30, layers=2, num_batches=0, train_loader=None, val_loader=None, **kwargs):
+    def __init__(self, img_size=30, layers=8, num_batches=0, train_loader=None, val_loader=None, **kwargs):
         super(SimpleGNN, self).__init__()
         self.args = kwargs
         self.img_size = img_size
@@ -18,7 +18,7 @@ class SimpleGNN(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.model = GIN(3*img_size**2, 300, num_layers=layers, dropout=0.05, out_channels=300)
+        self.model = GIN(3*img_size**2, 3*img_size**2, num_layers=layers, dropout=0.05, out_channels=300)
         self.predictor = Sequential(
 
             # BatchNorm1d(img_size**2*3),

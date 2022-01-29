@@ -30,3 +30,4 @@ torch-cluster
 torch-spline-conv
 torch-geometric
 opencv-python
+networkx

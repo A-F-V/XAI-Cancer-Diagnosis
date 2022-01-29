@@ -4,9 +4,12 @@ from torch_geometric.data import Data
 import torch
 from torch import Tensor
 from torchvision.transforms.functional import resize
+from torch_geometric.utils import to_networkx, from_networkx
+import networkx.algorithms as nx
+# todo remove small islands
 
 
-def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, model=None, downsample=2):
+def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, min_nodes=10, downsample=2):
     nuclei = ins_seg.max()
     centres = []
 
@@ -45,4 +48,10 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, m
         feature_matrix_x = torch.cat((feature_matrix_x, feature.unsqueeze(0)), dim=0)
         position_matrix = torch.cat((position_matrix, torch.tensor([[x, y]])), dim=0)
     output = Data(x=feature_matrix_x, edge_index=edges_index, edge_attr=edge_attr, pos=position_matrix)
+
+    G = to_networkx(output, to_undirected=True, node_attrs=['x', 'pos'], edge_attrs=['edge_attr'])
+    Gp = nx.operators.compose_all([G.subgraph(g) for g in nx.components.connected_components(G) if len(g) >= min_nodes])
+    output = from_networkx(Gp, group_node_attrs=['x', 'pos'], group_edge_attrs=['edge_attr'])
+    output.pos = output.x[:, -2:]
+    output.x = output.x[:, :-2]
     return output

@@ -55,6 +55,8 @@ class GNNTrainer(Base_Trainer):
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 
+        print(f"Using {len(train_set)} training examples and {len(val_set)} validation example")
+
         model = SimpleGNN(img_size=args["IMG_SIZE"], num_batches=num_training_batches,
                           val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
 
