@@ -11,6 +11,7 @@ from src.transforms.graph_construction.graph_extractor import extract_graph
 from src.utilities.os_utilities import create_dir_if_not_exist
 from torchvision.transforms import Normalize
 from threading import Thread
+from torch import Tensor
 
 
 class GraphExtractor(Thread):
@@ -37,7 +38,10 @@ class GraphExtractor(Thread):
             y[3] = 1
         graph.y = y
         graph_path = os.path.join(self.output_folder, os.path.basename(path))
-        torch.save(graph, graph_path)
+        if min(graph.x.shape) > 0:
+            torch.save(graph, graph_path)
+        else:
+            print(f"{path} has no nodes")
 
 
 class BACH(Dataset):
@@ -82,7 +86,7 @@ class BACH(Dataset):
 
     @property
     def graph_file_names(self):
-        return self.instance_segmentation_file_names
+        return [f for f in os.listdir(self.graph_dir) if ".pt" in f]
 
     @property
     def graph_paths(self):
@@ -116,9 +120,23 @@ class BACH(Dataset):
         return output
 
     def __len__(self):
-        return len(self.instance_segmentation_file_names)
+        return len(self.ids)
 
     def __getitem__(self, ind):
-        path = self.graph_paths[ind]
+        graph_id = self.ids[ind] % len(self.graph_file_names)
+        path = self.graph_paths[graph_id]
         graph = torch.load(path)
+        graph.y = categorise(graph.y)
         return graph
+
+    def get_graph_seg_pair(self, id):
+        f_name = self.instance_segmentation_file_names[id]
+        g_path, seg_path = os.path.join(self.graph_dir, f_name), os.path.join(self.instance_segmentation_dir, f_name)
+        assert os.path.exists(g_path) and os.path.exists(seg_path), "Graph-Segmentation Pair not found"
+        return torch.load(g_path), torch.load(seg_path)
+
+
+def categorise(t: Tensor):
+    if len(t.shape) == 1:
+        t = t.unsqueeze(0)
+    return t.argmax(dim=1)

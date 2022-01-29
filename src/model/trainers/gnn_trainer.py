@@ -12,7 +12,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
-from src.model.architectures.cancer_prediction.simple_gnn import CancerNet
+from src.model.architectures.cancer_prediction.cancer_net import CancerNet
+from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
 import json
 import torch
 
@@ -30,6 +31,7 @@ class GNNTrainer(Base_Trainer):
         self.args = args
 
     def train(self):
+
         print("Initializing Training")
         args = self.args
         print(f"The Args are: {args}")
@@ -53,24 +55,25 @@ class GNNTrainer(Base_Trainer):
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 
-        model = None
-        if args["START_CHECKPOINT"]:
-            print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
-            checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
-            model = CancerNet.load_from_checkpoint(
-                checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, degree_dist=node_dist,
-                down_samples=args["DOWN_SAMPLES"],
-                img_size=args["IMG_SIZE"],
-                tissue_radius=args["TISSUE_RADIUS"],
-                ** args)
+        model = SimpleGNN(img_size=args["IMG_SIZE"], num_batches=num_training_batches,
+                          val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
 
-            # model.encoder.freeze()
-        else:
-            model = CancerNet(degree_dist=node_dist, num_batches=num_training_batches,
-                              train_loader=train_loader, val_loader=val_loader,
-                              down_samples=args["DOWN_SAMPLES"],
-                              img_size=args["IMG_SIZE"],
-                              tissue_radius=args["TISSUE_RADIUS"], ** args)
+        # if args["START_CHECKPOINT"]:
+        #    print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
+        #    checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
+        #    model = CancerNet.load_from_checkpoint(
+        #        checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, degree_dist=node_dist,
+        #        down_samples=args["DOWN_SAMPLES"],
+        #        img_size=args["IMG_SIZE"],
+        #        tissue_radius=args["TISSUE_RADIUS"],** args)
+        #    # model.encoder.freeze()
+        # else:
+        #    model = CancerNet(degree_dist=node_dist, num_batches=num_training_batches,
+        #                      train_loader=train_loader, val_loader=val_loader,
+        #                      down_samples=args["DOWN_SAMPLES"],
+        #                      img_size=args["IMG_SIZE"],
+        #                      tissue_radius=args["TISSUE_RADIUS"], ** args)
+
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
         lr_monitor = LearningRateMonitor(logging_interval='step')
@@ -101,7 +104,7 @@ class GNNTrainer(Base_Trainer):
         else:
             print("Training Started")
             trainer.fit(model)
-            #print("Training Over\nEvaluating")
+            # print("Training Over\nEvaluating")
             # trainer.validate(model)
             ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
             ckpt_path = make_checkpoint_path(ckpt_file)
