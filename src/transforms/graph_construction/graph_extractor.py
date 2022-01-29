@@ -37,7 +37,7 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, m
         for to, length in closest:
             edges_index = torch.cat((edges_index, torch.tensor([[sr, to], [to, sr]])), dim=1)
             edge_attr = torch.cat((edge_attr, torch.tensor(
-                [[1/length**2], [1/length**2]])), dim=0)                 # USE 1/DIST**2
+                [[100/length**2], [100/length**2]])), dim=0)                 # USE 1/DIST**2
 
     # Perfrom Feature Extraction - NORMALIZE?
     feature_matrix_x = torch.zeros((0, (window_size//downsample)**2*3))  # as 3 channels

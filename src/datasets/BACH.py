@@ -24,7 +24,11 @@ class GraphExtractor(Thread):
     def run(self):
         path = self.instance_seg_path
         data = torch.load(path)
-        graph = extract_graph(data['image'], data['instance_mask'], **self.kwargs)
+        try:
+            graph = extract_graph(data['image'], data['instance_mask'], **self.kwargs)
+        except:
+            print(f"Failed to extract anything of value from {path}")
+            return
         y = torch.tensor([0, 0, 0, 0])
 
         label = os.path.basename(path)
@@ -44,8 +48,9 @@ class GraphExtractor(Thread):
             print(f"{path} has no nodes")
 
 
+# todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=2):
+    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=2, min_nodes=10):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -53,6 +58,7 @@ class BACH(Dataset):
         self.k = k
         self.window_size = window_size
         self.downsample = downsample
+        self.min_nodes = min_nodes
 
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
@@ -98,7 +104,7 @@ class BACH(Dataset):
             threads = []
             for path in self.instance_segmentation_paths[batch:min(len(self.instance_segmentation_paths), batch+num_workers)]:
                 thread = GraphExtractor(path, self.graph_dir, window_size=self.window_size,
-                                        k=self.k, dmin=self.dmin, downsample=self.downsample)
+                                        k=self.k, dmin=self.dmin, downsample=self.downsample, min_nodes=self.min_nodes)
                 thread.start()
                 threads.append(thread)
             for thread in threads:
