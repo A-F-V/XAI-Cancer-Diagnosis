@@ -18,7 +18,7 @@ class SimpleGNN(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.model = GIN(3*img_size**2, 3*img_size**2, num_layers=layers, dropout=0.05, out_channels=300)
+        self.model = GIN(3*img_size**2, 3*img_size**2, num_layers=layers, jk='lstm', dropout=0.05, out_channels=300)
         self.predictor = Sequential(
 
             # BatchNorm1d(img_size**2*3),

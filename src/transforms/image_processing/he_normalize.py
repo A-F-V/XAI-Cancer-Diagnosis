@@ -183,7 +183,8 @@ def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
         img (tensor): The RGB H&E image
     """
     v1, v2 = get_stain_vectors(img, alpha=0.01)
-    if abs(v1[0].item()-v2[0].item()) < 0.3:
+    if abs(v1[0].item()-v2[0].item()) < 0.3 or min(v1[0].item(), v2[0].item()) > 0.4:
+        print("Singular")
         return img  # This is for what I call singularly stained images
     standard_v1, standard_v2 = Tensor([0.7247, 0.6274, 0.2849]), Tensor([0.0624, 0.8357, 0.5456])
 
@@ -191,7 +192,7 @@ def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
     new_basis = torch.stack([standard_v1, standard_v2], dim=0).T
 
     flat_img = img.flatten(1, 2)
-    od = -torch.log10(flat_img)
+    od = -torch.log10(flat_img).clip(0, 4)
 
     new_od = new_basis @ torch.linalg.pinv(old_basis) @ od
     new_od = new_od.unflatten(1, (img.shape[1], img.shape[2]))
