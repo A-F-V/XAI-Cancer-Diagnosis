@@ -39,7 +39,7 @@ def setup():
     BACH_Train_folder_final = os.path.join(data_path_folder, "BACH_TRAIN")
 
     copy_dir(os.path.join(unzipped_folder, "BACH_TRAIN", "ICIAR2018_BACH_Challenge",
-             "Photos"), BACH_Train_folder_final)
+                          "Photos"), BACH_Train_folder_final)
 
     # STAIN NORMALIZE
     for folder in ["Benign", "InSitu", "Invasive", "Normal"]:

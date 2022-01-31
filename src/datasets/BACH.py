@@ -62,7 +62,7 @@ class BACH(Dataset):
 
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
-
+        create_dir_if_not_exist(os.path.join(self.instance_segmentation_dir,"VIZUALISED"), False)
     @property
     def original_image_paths(self):
         paths = []
