@@ -9,7 +9,7 @@ import networkx.algorithms as nx
 # todo remove small islands
 
 
-def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, min_nodes=10, downsample=2):
+def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, min_nodes=10, downsample=2, img_trans=None):
     nuclei = ins_seg.max()
     centres = []
 
@@ -40,11 +40,19 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, m
                 [[100/length**2], [100/length**2]])), dim=0)                 # USE 1/DIST**2
 
     # Perfrom Feature Extraction - NORMALIZE?
-    feature_matrix_x = torch.zeros((0, (window_size//downsample)**2*3))  # as 3 channels
+    feature_matrix_x = None
     position_matrix = torch.zeros((0, 2))
     for x, y in centres:
         feature = img[:, y-window_size//2:y+window_size//2, x-window_size//2:x+window_size//2]
-        feature = resize(feature, size=((window_size//downsample), (window_size//downsample))).flatten()
+        feature = resize(feature, size=((window_size//downsample), (window_size//downsample)))
+
+        # performs a transformation to the image (like passing through a VAE or getting mean pixel)
+        feature = img_trans(feature) if img_trans != None else feature
+        # print(feature.shape)
+        feature = feature.flatten()
+        if feature_matrix_x == None:
+            feature_matrix_x = torch.zeros(0, feature.shape[0])
+
         feature_matrix_x = torch.cat((feature_matrix_x, feature.unsqueeze(0)), dim=0)
         position_matrix = torch.cat((position_matrix, torch.tensor([[x, y]])), dim=0)
     output = Data(x=feature_matrix_x, edge_index=edges_index, edge_attr=edge_attr, pos=position_matrix)
@@ -55,3 +63,18 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, m
     output.pos = output.x[:, -2:]
     output.x = output.x[:, :-2]
     return output
+
+
+def mean_pixel_extraction(img: Tensor):
+    pixel = img.mean(dim=(1, 2)).flatten()
+    return pixel
+
+
+def principle_pixels_extraction(img: Tensor):
+    mean, mini, maxi = img.mean(dim=(1, 2)).flatten(), img.reshape(
+        (3, -1)).min(dim=1)[0].flatten(), img.reshape((3, -1)).max(dim=1)[0].flatten()
+    return torch.cat((mean, mini, maxi))
+
+
+def quantiles_pixel_extraction(img: Tensor):
+    return torch.cat([img.reshape((3, -1)).quantile(q=q, dim=1).flatten() for q in [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]])

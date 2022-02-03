@@ -53,11 +53,12 @@ class GNNTrainer(Base_Trainer):
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
 
-        num_training_batches = len(train_loader)*args["EPOCHS"]
+        accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
+        num_steps = len(train_loader)*args["EPOCHS"]//accum_batch
 
-        print(f"Using {len(train_set)} training examples and {len(val_set)} validation example")
+        print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
-        model = SimpleGNN(img_size=args["IMG_SIZE"], num_batches=num_training_batches,
+        model = SimpleGNN(img_size=args["IMG_SIZE"], num_steps=num_steps,
                           val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
 
         # if args["START_CHECKPOINT"]:
@@ -89,7 +90,7 @@ class GNNTrainer(Base_Trainer):
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                              enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"),
                              profiler="simple",
-                             accumulate_grad_batches=64//args["BATCH_SIZE_TRAIN"],)
+                             accumulate_grad_batches=accum_batch,)
 
         ###########
         # EXTRAS  #
@@ -99,7 +100,7 @@ class GNNTrainer(Base_Trainer):
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-                lr_finder = trainer.tuner.lr_find(model, num_training=25, max_lr=0.01)
+                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=0.01)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
