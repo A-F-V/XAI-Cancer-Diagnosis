@@ -99,7 +99,7 @@ class GNNTrainer(Base_Trainer):
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-                lr_finder = trainer.tuner.lr_find(model, num_training=100, max_lr=10)
+                lr_finder = trainer.tuner.lr_find(model, num_training=25, max_lr=0.01)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())

@@ -1,6 +1,6 @@
 
 import pytorch_lightning as pl
-from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN
+from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN
 from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax
 from torch.nn.functional import nll_loss, sigmoid, log_softmax
 import torch
@@ -18,16 +18,16 @@ class SimpleGNN(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.model = GIN(3*img_size**2, 3*img_size**2, num_layers=layers, jk='lstm', dropout=0.05, out_channels=300)
+        self.model = GIN(3*img_size**2, 3*img_size**2//4, num_layers=layers, dropout=0.8, out_channels=300)
         self.predictor = Sequential(
 
-            # BatchNorm1d(img_size**2*3),
+            # BatchNorm(300),
             ReLU(),
             Linear(300, 100),
-            # BatchNorm1d(100),
+            # BatchNorm(100),
             ReLU(),
             Linear(100, 10),
-            # BatchNorm1d(100),
+            #  BatchNorm(10),
             ReLU(),
             Linear(10, 4)
 
@@ -39,7 +39,7 @@ class SimpleGNN(pl.LightningModule):
         return self.predictor(xp)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.1)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_batches,  three_phase=True)
@@ -63,7 +63,15 @@ class SimpleGNN(pl.LightningModule):
         output = self.forward(x, edge_index, edge_attr, batch)
         y_hat = log_softmax(output, dim=1)
         loss = nll_loss(y_hat, y)
+        pred_cat = y_hat.argmax(dim=1)
+
+        canc_pred = (torch.where(pred_cat == 0 or pred_cat == 3, 0, 1)).float()
+        canc_grd = (torch.where(y == 0 or y == 3, 0, 1)).float()
+        acc = (pred_cat == y).float().mean()
+        canc_acc = (canc_pred == canc_grd).float().mean()
         self.log("val_loss", loss)
+        self.log("val_acc", acc)
+        self.log("val_canc_acc", canc_acc)
         return loss
 
     def train_dataloader(self):
