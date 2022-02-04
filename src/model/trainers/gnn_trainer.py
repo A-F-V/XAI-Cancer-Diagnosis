@@ -16,11 +16,15 @@ from src.model.architectures.cancer_prediction.cancer_net import CancerNet
 from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
 import json
 import torch
+from torch_geometric.transforms import Compose
+
+from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 
 node_dist = torch.as_tensor([598,    22,   927,    77,  1191,   169,  1296,   316,  1430,   441,
                              1666,   852,  2367,  2487,  5530,  9213, 17114, 28437, 44424, 58356,
                              65832, 61560, 47884, 30933, 17030,  8114,  3425,  1231,   443,   120,
                              35,    12,     2], dtype=torch.int64)
+# p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
 
 
 class GNNTrainer(Base_Trainer):
@@ -37,6 +41,8 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
+        graph_aug = Compose([EdgeDropout(p=0.02)])
+
         train_ind, val_ind = [], []
         for clss in range(4):
             random_ids = np.arange(clss*100, (clss+1)*100)
@@ -46,7 +52,8 @@ class GNNTrainer(Base_Trainer):
 
         src_folder = os.path.join("data", "processed",
                                   "BACH_TRAIN")
-        train_set, val_set = BACH(src_folder, ids=train_ind), BACH(src_folder, ids=val_ind)
+        train_set, val_set = BACH(src_folder, ids=train_ind,
+                                  graph_augmentation=graph_aug), BACH(src_folder, ids=val_ind)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)

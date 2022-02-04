@@ -135,6 +135,8 @@ class BACH(Dataset):
         graph_id = self.ids[ind] % len(self.graph_file_names)
         path = self.graph_paths[graph_id]
         graph = torch.load(path)
+        if self.graph_augmentation is not None:
+            graph = self.graph_augmentation(graph)
         graph.y = categorise(graph.y)
         return graph
 
