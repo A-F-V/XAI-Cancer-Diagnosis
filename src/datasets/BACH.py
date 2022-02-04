@@ -50,7 +50,7 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=2, min_nodes=10, img_trans=None, graph_augmentation=None):
+    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=2, min_nodes=10, img_augmentation=None, graph_augmentation=None):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -59,7 +59,7 @@ class BACH(Dataset):
         self.window_size = window_size
         self.downsample = downsample
         self.min_nodes = min_nodes
-        self.img_trans = img_trans
+        self.img_augmentation = img_augmentation
 
         self.graph_augmentation = graph_augmentation
         create_dir_if_not_exist(self.instance_segmentation_dir, False)

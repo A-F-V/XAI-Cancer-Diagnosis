@@ -19,20 +19,14 @@ class SimpleGNN(pl.LightningModule):
         self.val_loader = val_loader
 
         # self.model = GIN(3*img_size**2, 3*img_size**2//4, num_layers=layers, dropout=0.8, out_channels=300)'
-        self.model = GCN(21, 21, num_layers=layers, dropout=kwargs["DROPOUT"], jk="cat", out_channels=21) if kwargs["ARCH"] == "GCN" else GIN(
-            21, 21, num_layers=layers, dropout=kwargs["DROPOUT"], jk="cat", out_channels=21)
+        self.model = GCN(21, 5, num_layers=layers, dropout=kwargs["DROPOUT"], jk="cat", out_channels=5) if kwargs["ARCH"] == "GCN" else GIN(
+            21, 5, num_layers=layers, dropout=kwargs["DROPOUT"], out_channels=5)
         self.predictor = Sequential(
 
             # BatchNorm(300),
             ReLU(),
-            Linear(21, 10),
+            Linear(5, 4),
 
-            # BatchNorm(100),
-            ReLU(),
-            Linear(10, 10),
-            #  BatchNorm(10),
-            ReLU(),
-            Linear(10, 4)
 
         )
 

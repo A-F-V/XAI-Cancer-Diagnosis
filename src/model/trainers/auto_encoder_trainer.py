@@ -15,19 +15,14 @@ import numpy as np
 from src.model.architectures.cancer_prediction.cancer_net import CancerNet
 from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
 import json
-import torch
+from src.model.architectures.cancer_prediction.cell_autoencoder import CellAutoEncoder
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate
-
+from src.datasets.BACH_Cells import BACH_Cells
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
-
-node_dist = torch.as_tensor([598,    22,   927,    77,  1191,   169,  1296,   316,  1430,   441,
-                             1666,   852,  2367,  2487,  5530,  9213, 17114, 28437, 44424, 58356,
-                             65832, 61560, 47884, 30933, 17030,  8114,  3425,  1231,   443,   120,
-                             35,    12,     2], dtype=torch.int64)
-# p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
+from src.datasets.train_val_split import train_val_split
 
 
-class GNNTrainer(Base_Trainer):
+class CellAETrainer(Base_Trainer):
     def __init__(self, args=None):
         super(Base_Trainer, self).__init__()
         if args == None:
@@ -41,21 +36,15 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(50), KNNGraph(k=6), EdgeDropout(p=0.04)]
-                                  )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=6)])
-
-        train_ind, val_ind = [], []
-        for clss in range(4):
-            random_ids = np.arange(clss*100, (clss+1)*100)
-            np.random.shuffle(random_ids)
-            train_ind += list(random_ids[:int(100*0.75)])
-            val_ind += list(random_ids[int(100*0.75):])
+        tr_trans = Compose([RandomTranslate(50), KNNGraph(k=6), EdgeDropout(p=0.04)]
+                           )  # !TODO RECOMPUTE EDGE WEIGHTS
+        val_trans = Compose([KNNGraph(k=6)])
 
         src_folder = os.path.join("data", "processed",
                                   "BACH_TRAIN")
-        train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=None), BACH(src_folder, ids=val_ind, graph_augmentation=None)
+
+        BACH_Cells(src_folder).compile_cells()
+        train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
@@ -67,8 +56,8 @@ class GNNTrainer(Base_Trainer):
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
-        model = SimpleGNN(img_size=args["IMG_SIZE"], num_steps=num_steps,
-                          val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
+        model = CellAutoEncoder(img_size=args["IMG_SIZE"], num_steps=num_steps,
+                                val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
 
         # if args["START_CHECKPOINT"]:
         #    print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
