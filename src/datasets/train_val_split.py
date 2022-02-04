@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def train_val_split(dataset, src_folder, ratio, tr_trans, val_trans):
+def train_val_split(dataset, src_folder, ratio, tr_trans, val_trans, class_sizes=None):
     size = len(dataset(src_folder, None, None))
 
     random_ids = np.arange(size)

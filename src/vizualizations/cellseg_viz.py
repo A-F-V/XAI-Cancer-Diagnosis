@@ -10,6 +10,7 @@ from tqdm import tqdm
 import os
 from numpy.ma import masked_where
 from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
+from src.transforms.graph_construction.percolation import hollow
 
 
 def generate_mask_diagram(model, dataloader, mask_name="semantic_mask", args=None):
@@ -97,15 +98,17 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
             writer.append_data(plt_img)
 
 
-def instance_segmentation_vizualised(img, instance_seg):
+def instance_segmentation_vizualised(img, instance_seg, figsize=(20, 20)):
     """Plots image and the segmentation overlayed on top
 
     Args:
         img (Tensor): Original Image (3,H,W)
         instance_seg (Tensor): Instance Segmentation of Image (same size) (H,W)
     """
-    assert img.shape == instance_seg.shape, "Image and instance segmentation must be same size"
-    plt.figure(figsize=(10, 10))
+    assert img.shape[1:] == instance_seg.shape[:], "Image and instance segmentation must be same size"
+
+    hl = hollow(instance_seg)
+    plt.figure(figsize=figsize)
     plt.imshow(tensor_to_numpy(img))
-    plt.imshow(masked_where(instance_seg != 0, instance_seg), cmap="nipy_spectral", alpha=0.7)
+    plt.imshow(masked_where(hl != 0, hl), cmap="nipy_spectral", alpha=0.7)
     plt.axis("off")

@@ -50,7 +50,7 @@ class HoVerNet(pl.LightningModule):
         return semantic_mask, hover_maps
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_batches,  three_phase=True)
@@ -121,9 +121,6 @@ class HoVerNet(pl.LightningModule):
                 cell_segmentation_sliding_window_gif_example(self, sample, gif_diag_path)
                 self.logger.experiment.log_artifact(
                     local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
-
-    def predict(self, image: Tensor, tile_size=64):
-        height, width = image.shape[1:]
 
 
 def create_diagnosis(y, y_hat, id):
@@ -251,7 +248,7 @@ class HoVerNetBranchHead(pl.LightningModule):
             self.head = nn.Sequential(
                 nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
                 # ,nn.Tanh()
-                )
+            )
 
     def forward(self, sample):
         return self.head(self.activate(sample))

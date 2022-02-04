@@ -3,8 +3,9 @@ from src.scripts.setup import setup
 import os
 from src.model.trainers.hover_net_trainer import HoverNetTrainer
 import json
+from src.model.trainers.gnn_trainer import GNNTrainer
 
-models = {"hover_net": HoverNetTrainer}
+models = {"hover_net": HoverNetTrainer, "gnn": GNNTrainer}
 
 
 @click.command()
