@@ -1,8 +1,8 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "Auto Encoder TEST",
-  "EXPERIMENT_ID": 5,
-  "EXPERIMENT_NAME": "AE",
+  "RUN_NAME": "Simple Percentile Test 3",
+  "EXPERIMENT_ID": 4,
+  "EXPERIMENT_NAME": "SimpleGNN",
   "EPOCHS": 500,
   "BATCH_SIZE_TRAIN": 32,
   "BATCH_SIZE_VAL": 128,
@@ -14,6 +14,9 @@
   "EARLY_STOP": false,
   "LR_TEST": false,
   "DOWN_SAMPLES": 0,
-  "NOTES": "",
-  "WEIGHT_DECAY": 0.001
+  "IMG_SIZE": 32,
+  "TISSUE_RADIUS": 3,
+  "NOTES": "Structured Smaller Prediction+Edge Dropout, Random Brownian Motion",
+  "ARCH": "GIN",
+  "DROPOUT": 0.8
 }

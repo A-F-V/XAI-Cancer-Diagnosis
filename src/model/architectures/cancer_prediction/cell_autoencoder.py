@@ -45,17 +45,29 @@ class CellAutoEncoder(pl.LightningModule):
             DeConv(9, 3)
 
         )
+        self.predictor = nn.Sequential(
+
+            nn.Linear(21, 14),
+            nn.ReLU(),
+            nn.BatchNorm1d(14),
+            nn.Linear(14, 7),
+            nn.ReLU(),
+            nn.BatchNorm1d(7),
+            nn.Linear(7, 4),
+            nn.Softmax())
 
     def forward(self, x):
         x = self.encoder(x)
+        y = self.predictor(x)
         x = self.decoder(x)
-        return x
+        return x, y
 
     def encode(self, x):
         return self.encoder(x)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate,
+                               eps=1e-5, weight_decay=self.args["WEIGHT_DECAY"])
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
@@ -67,10 +79,10 @@ class CellAutoEncoder(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        cells, _ = train_batch
-        cell_hat = self.forward(cells)
+        cells, y = train_batch
+        cell_hat, y_hat = self.forward(cells)
 
-        loss = F.binary_cross_entropy(cells,cell_hat)
+        loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
         self.log("train_loss", loss)
         return loss
 
@@ -78,7 +90,8 @@ class CellAutoEncoder(pl.LightningModule):
         cells, _ = val_batch
         cell_hat = self.forward(cells)
 
-        loss = F.binary_cross_entropy(cells,cell_hat)
+        loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
+
         self.log("val_loss", loss)
         return loss
 

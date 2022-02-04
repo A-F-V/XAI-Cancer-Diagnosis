@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import os
 from src.utilities.os_utilities import create_dir_if_not_exist
+from torchvision.utils import save_image
 
 
 class BACH_Cells(Dataset):
@@ -24,12 +25,17 @@ class BACH_Cells(Dataset):
             y = graph.y
             for cell_id in range(n, n+x.shape[0]):
                 cell = x[cell_id-n].unflatten(3, self.img_dim, self.img_dim)
-                torch.save({'img': cell, 'diagnosis': y}, (os.path.join(self.cell_img_dir, '{}.png'.format(cell))))
+                torch.save({'img': cell, 'diagnosis': y}, (os.path.join(self.cell_dir, f'{cell_id}.pt')))
+                save_image(cell, os.path.join(self.cell_img_dir, f'{cell_id}.png'))
             n += x.shape[0]
 
     @property
     def cell_img_dir(self):
         return os.path.join(self.src_folder, "CELL_CROPS")
+
+    @property
+    def cell_dir(self):
+        return os.path.join(self.src_folder, "CELLS")
 
     @property
     def graph_dir(self):
@@ -43,11 +49,15 @@ class BACH_Cells(Dataset):
     def graph_paths(self):
         return [os.path.join(self.graph_dir, f) for f in self.graph_file_names]
 
+    @property
+    def cell_paths(self):
+        return [os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if f[-2:] == "pt"]
+
     def __len__(self):
         return len(os.listdir(self.cell_img_dir))
 
     def __getitem__(self, ind):
-        path = self.graph_paths[ind]
+        path = self.cell_paths[ind]
         data = torch.load(path)
         cell = data['img']
         pred = data['diagnosis']
