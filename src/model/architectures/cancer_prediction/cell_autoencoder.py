@@ -38,11 +38,11 @@ class CellAutoEncoder(pl.LightningModule):
             nn.Linear(72, (img_size//16)**2*9),
             nn.ReLU(True),
             nn.BatchNorm1d((img_size//16)**2*9),
-            nn.Unflatten(0, (9, (img_size//16), (img_size//16))),
-            DeConv(9, 9),
-            DeConv(9, 9),
-            DeConv(9, 9),
-            DeConv(9, 3)
+            nn.Unflatten(1, (9, (img_size//16), (img_size//16))),
+            DeConv(9, 9, (img_size//8)),
+            DeConv(9, 9, (img_size//4)),
+            DeConv(9, 9, (img_size//2)),
+            DeConv(9, 3, (img_size//1)),
 
         )
         self.predictor = nn.Sequential(
@@ -54,7 +54,7 @@ class CellAutoEncoder(pl.LightningModule):
             nn.ReLU(),
             nn.BatchNorm1d(7),
             nn.Linear(7, 4),
-            nn.Softmax())
+            nn.Softmax(dim=1))
 
     def forward(self, x):
         x = self.encoder(x)
@@ -79,7 +79,7 @@ class CellAutoEncoder(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        cells, y = train_batch["img"], train_batch["diagnosis"]
+        cells, y = train_batch["img"], train_batch["diagnosis"].float()
         cell_hat, y_hat = self.forward(cells)
 
         loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
@@ -87,8 +87,8 @@ class CellAutoEncoder(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        cells, y = val_batch['img'], val_batch["diagnosis"]
-        cell_hat,y_hat = self.forward(cells)
+        cells, y = val_batch['img'], val_batch["diagnosis"].float()
+        cell_hat, y_hat = self.forward(cells)
 
         loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
 
@@ -101,16 +101,41 @@ class CellAutoEncoder(pl.LightningModule):
     def val_dataloader(self):
         return self.val_loader
 
+    def on_epoch_end(self):
+        if self.current_epoch != 0:
+            if self.args["EPOCHS"] < 20 or self.current_epoch % ((self.args["EPOCHS"]+20)//10) == 0:
+
+                sample = self.val_dataloader().dataset[0]
+                # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
+
 
 def Conv(in_c, out_c):
-    return nn.Sequential(nn.Conv2d(in_c, out_channel=out_c, kernel_size=3, stride=1, padding=1),
+    return nn.Sequential(nn.Conv2d(in_channels=in_c, out_channels=out_c, kernel_size=3, stride=1, padding=1),
                          nn.ReLU(True),
                          nn.BatchNorm2d(out_c),
-                         nn.MaxPool2d((2, 2), stride=2))
-
-
-def DeConv(in_c, out_c):
-    return nn.Sequential(nn.Conv2d(in_c, out_channel=out_c, kernel_size=3, stride=1, padding=1),
+                         nn.Conv2d(in_channels=out_c, out_channels=out_c, kernel_size=3, stride=2, padding=1),
                          nn.ReLU(True),
-                         nn.BatchNorm2d(out_c),
-                         nn.MaxUnpool2d((2, 2), stride=2))
+                         nn.BatchNorm2d(out_c))
+
+
+class DeConv(nn.Module):
+    def __init__(self, in_c, out_c, out_img_dim=64):
+        super(DeConv, self).__init__()
+        self.conv1 = nn.ConvTranspose2d(in_channels=in_c, out_channels=out_c,
+                                        kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.conv2 = nn.Conv2d(in_channels=out_c, out_channels=out_c, kernel_size=3, stride=1, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_c)
+        self.bn2 = nn.BatchNorm2d(out_c)
+        self.relu1 = nn.ReLU(True)
+        self.relu2 = nn.ReLU(True)
+        self.out_img_dim = out_img_dim
+        self.out_c = out_c
+
+    def forward(self, x):
+        x = self.conv1(x, output_size=(x.size()[0], self.out_c, self.out_img_dim, self.out_img_dim))
+        x = self.bn1(x)
+        x = self.relu1(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu2(x)
+        return x

@@ -11,6 +11,7 @@ def test_counting_matrix():
     assert cm[0] == (0, 0)
     assert cm[3] == (1, 2)
     assert cm[8] == (3, 0)
+    assert len(cm) == 10
 
     try:
         cm[-1]

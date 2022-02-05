@@ -16,11 +16,24 @@ from src.model.architectures.cancer_prediction.cancer_net import CancerNet
 from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
 import json
 from src.model.architectures.cancer_prediction.cell_autoencoder import CellAutoEncoder
-from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate
 from src.datasets.BACH_Cells import BACH_Cells
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.datasets.train_val_split import train_val_split
 from src.transforms.image_processing.augmentation import *
+from torchvision.transforms import Compose, RandomVerticalFlip, RandomHorizontalFlip
+
+
+class AddGaussianNoise(object):
+    # FROM THE PYTORCH WEBSITE
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+
+    def __call__(self, tensor):
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
 class CellAETrainer(Base_Trainer):
@@ -38,7 +51,7 @@ class CellAETrainer(Base_Trainer):
         print("Getting the Data")
 
         tr_trans = Compose([
-            RandomFlip(fields=["img"]), AddGaussianNoise(0.1, fields=['img'])]
+            RandomHorizontalFlip(), RandomVerticalFlip()]
         )  # ! TODO
         val_trans = Compose([])
 
@@ -46,7 +59,7 @@ class CellAETrainer(Base_Trainer):
                                   "BACH_TRAIN")
 
         # BACH_Cells(src_folder).compile_cells()
-        train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
+        train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=val_trans, val_trans=val_trans)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
@@ -58,8 +71,8 @@ class CellAETrainer(Base_Trainer):
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
-        model = CellAutoEncoder(img_size=args["IMG_SIZE"], num_steps=num_steps,
-                                val_loader=val_loader, train_loader=train_loader, layers=args["TISSUE_RADIUS"], **args)
+        model = CellAutoEncoder(img_size=64, num_steps=num_steps,
+                                val_loader=val_loader, train_loader=train_loader, **args)
 
         # if args["START_CHECKPOINT"]:
         #    print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")

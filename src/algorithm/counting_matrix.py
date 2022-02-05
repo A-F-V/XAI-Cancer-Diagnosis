@@ -10,10 +10,12 @@ class CountingMatrix:
     def add(self, index):
         self.matrix[index] += 1
         self._dirty = True
+        self.size += 1
 
     def add_many(self, index, amt):
         self.matrix[index] += amt
         self._dirty = True
+        self.size += amt
 
     def cumulate(self):
         for i in range(1, self.width):
