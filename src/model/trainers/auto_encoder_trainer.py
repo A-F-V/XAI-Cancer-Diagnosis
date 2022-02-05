@@ -20,6 +20,7 @@ from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate
 from src.datasets.BACH_Cells import BACH_Cells
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.datasets.train_val_split import train_val_split
+from src.transforms.image_processing.augmentation import *
 
 
 class CellAETrainer(Base_Trainer):
@@ -36,14 +37,15 @@ class CellAETrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        tr_trans = Compose([RandomTranslate(50), KNNGraph(k=6), EdgeDropout(p=0.04)]
-                           )  # !TODO RECOMPUTE EDGE WEIGHTS
-        val_trans = Compose([KNNGraph(k=6)])
+        tr_trans = Compose([
+            RandomFlip(fields=["img"]), AddGaussianNoise(0.1, fields=['img'])]
+        )  # ! TODO
+        val_trans = Compose([])
 
         src_folder = os.path.join("data", "processed",
                                   "BACH_TRAIN")
 
-        BACH_Cells(src_folder).compile_cells()
+        # BACH_Cells(src_folder).compile_cells()
         train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],

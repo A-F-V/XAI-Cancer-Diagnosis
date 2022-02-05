@@ -3,6 +3,8 @@ from torch.utils.data import Dataset
 import os
 from src.utilities.os_utilities import create_dir_if_not_exist
 from torchvision.utils import save_image
+from tqdm import tqdm
+from multiprocessing import Pool
 
 
 class BACH_Cells(Dataset):
@@ -11,22 +13,30 @@ class BACH_Cells(Dataset):
         self.src_folder = src_folder
         self.img_dim = img_dim
 
-        create_dir_if_not_exist(self.cell_img_dir)
+        create_dir_if_not_exist(self.cell_img_dir, file_path=False)
+        create_dir_if_not_exist(self.cell_dir, file_path=False)
         if(len(os.listdir(self.cell_img_dir)) == 0):
             self.compile_cells()
 
         self.img_augmentation = transforms
 
-    def compile_cells(self):
+    def compile_cells(self, processes=5):
         n = 0
-        for graph_path in self.graph_paths:
+        for graph_path in tqdm(self.graph_paths, "Compiling individual cell images"):
             graph = torch.load(graph_path)
             x = graph.x
             y = graph.y
-            for cell_id in range(n, n+x.shape[0]):
-                cell = x[cell_id-n].unflatten(3, self.img_dim, self.img_dim)
+
+            def saver(cell_id):
+                cell = x[cell_id-n].unflatten(0, (3, self.img_dim, self.img_dim))
                 torch.save({'img': cell, 'diagnosis': y}, (os.path.join(self.cell_dir, f'{cell_id}.pt')))
                 save_image(cell, os.path.join(self.cell_img_dir, f'{cell_id}.png'))
+            # with Pool(processes=processes) as pool:
+            #    pool.map(saver, range(n, n + x.shape[0]))
+
+            for cell_id in range(n, n + x.shape[0]):
+                saver(cell_id)
+                #
             n += x.shape[0]
 
     @property
@@ -63,4 +73,4 @@ class BACH_Cells(Dataset):
         pred = data['diagnosis']
         if self.img_augmentation is not None:
             cell = self.graph_augmentation(cell)
-        return cell, pred
+        return {'img': cell, "diagnosis": pred}

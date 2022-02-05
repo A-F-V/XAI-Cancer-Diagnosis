@@ -79,7 +79,7 @@ class CellAutoEncoder(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        cells, y = train_batch
+        cells, y = train_batch["img"], train_batch["diagnosis"]
         cell_hat, y_hat = self.forward(cells)
 
         loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
@@ -87,8 +87,8 @@ class CellAutoEncoder(pl.LightningModule):
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        cells, _ = val_batch
-        cell_hat = self.forward(cells)
+        cells, y = val_batch['img'], val_batch["diagnosis"]
+        cell_hat,y_hat = self.forward(cells)
 
         loss = F.binary_cross_entropy(cells, cell_hat) + F.cross_entropy(y, y_hat)
 

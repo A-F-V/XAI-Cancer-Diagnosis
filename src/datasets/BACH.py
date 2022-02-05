@@ -25,7 +25,7 @@ class GraphExtractor(Thread):
         path = self.instance_seg_path
         data = torch.load(path)
         try:
-            graph = extract_graph(data['image'], data['instance_mask'], **self.kwargs)
+            graph = extract_graph(data['original_image'], data['instance_mask'], **self.kwargs)
         except:
             print(f"Failed to extract anything of value from {path}")
             return
@@ -107,7 +107,7 @@ class BACH(Dataset):
             threads = []
             for path in self.instance_segmentation_paths[batch:min(len(self.instance_segmentation_paths), batch+num_workers)]:
                 thread = GraphExtractor(path, self.graph_dir, window_size=self.window_size,
-                                        k=self.k, dmin=self.dmin, downsample=self.downsample, min_nodes=self.min_nodes, img_trans=self.img_trans)
+                                        k=self.k, dmin=self.dmin, downsample=self.downsample, min_nodes=self.min_nodes, img_trans=self.img_augmentation)
                 thread.start()
                 threads.append(thread)
             for thread in threads:
