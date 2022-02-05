@@ -5,6 +5,7 @@ from src.utilities.os_utilities import create_dir_if_not_exist
 from torchvision.utils import save_image
 from tqdm import tqdm
 from multiprocessing import Pool
+from src.algorithm.counting_matrix import CountingMatrix
 
 
 class BACH_Cells(Dataset):
@@ -13,39 +14,15 @@ class BACH_Cells(Dataset):
         self.src_folder = src_folder
         self.img_dim = img_dim
 
-        create_dir_if_not_exist(self.cell_img_dir, file_path=False)
-        create_dir_if_not_exist(self.cell_dir, file_path=False)
-        if(len(os.listdir(self.cell_img_dir)) == 0):
-            self.compile_cells()
-
+        self.compile_cells()
         self.img_augmentation = transforms
 
-    def compile_cells(self, processes=5):
-        n = 0
-        for graph_path in tqdm(self.graph_paths, "Compiling individual cell images"):
-            graph = torch.load(graph_path)
-            x = graph.x
-            y = graph.y
-
-            def saver(cell_id):
-                cell = x[cell_id-n].unflatten(0, (3, self.img_dim, self.img_dim))
-                torch.save({'img': cell, 'diagnosis': y}, (os.path.join(self.cell_dir, f'{cell_id}.pt')))
-                save_image(cell, os.path.join(self.cell_img_dir, f'{cell_id}.png'))
-            # with Pool(processes=processes) as pool:
-            #    pool.map(saver, range(n, n + x.shape[0]))
-
-            for cell_id in range(n, n + x.shape[0]):
-                saver(cell_id)
-                #
-            n += x.shape[0]
-
-    @property
-    def cell_img_dir(self):
-        return os.path.join(self.src_folder, "CELL_CROPS")
-
-    @property
-    def cell_dir(self):
-        return os.path.join(self.src_folder, "CELLS")
+    def compile_cells(self):
+        self.cm = CountingMatrix(len(self.graph_paths))
+        for i, path in tqdm(enumerate(self.graph_paths)):
+            data = torch.load(path)
+            self.cm.add_many(i, data.x.shape[0])
+        self.cm.cumulate()
 
     @property
     def graph_dir(self):
@@ -59,18 +36,14 @@ class BACH_Cells(Dataset):
     def graph_paths(self):
         return [os.path.join(self.graph_dir, f) for f in self.graph_file_names]
 
-    @property
-    def cell_paths(self):
-        return [os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if f[-2:] == "pt"]
-
     def __len__(self):
-        return len(os.listdir(self.cell_img_dir))
+        return len(self.cm)
 
     def __getitem__(self, ind):
-        path = self.cell_paths[ind]
-        data = torch.load(path)
-        cell = data['img']
-        pred = data['diagnosis']
+        (graph_idx, cell_idx) = self.cm[ind]
+        graph = torch.load(self.graph_paths[graph_idx])
+        cell = graph.x[cell_idx]
+        y = graph.y[cell_idx]
         if self.img_augmentation is not None:
-            cell = self.graph_augmentation(cell)
-        return {'img': cell, "diagnosis": pred}
+            cell = self.img_augmentation(cell)
+        return {'img': cell, "diagnosis": y}

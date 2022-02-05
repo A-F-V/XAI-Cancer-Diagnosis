@@ -6,7 +6,5 @@ import os
 if __name__ == "__main__":
     torch.multiprocessing.freeze_support()
     #trainer = GNNTrainer()
-    #trainer = CellAETrainer()
-    # trainer.train()
-
-    BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells()
+    trainer = CellAETrainer()
+    trainer.train()
