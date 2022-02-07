@@ -17,9 +17,11 @@ class BACH_Cells(Dataset):
 
         create_dir_if_not_exist(self.cell_dir, False)
         create_dir_if_not_exist(self.cell_img_dir, False)
+
         self.compile_cells()
         self.ids = ids if ids is not None else list(range(self.num_cells))
         self.img_augmentation = transform
+        self.hit = 0
 
     # def compile_cells(self, regenerate=False):
     #    if os.path.exists(self.saved_cm) and not regenerate:
@@ -35,8 +37,11 @@ class BACH_Cells(Dataset):
 
     def compile_cells(self, recompute=False):
         n = 0
-        if not recompute and len(os.listdir(self.cell_dir)) != 0:
-            self.num_cells = len(os.listdir(self.cell_dir))
+        print("Finding Cells")
+        num_cells = len([os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if ".pt" == f[-3:]])
+        print("Found {} cells".format(num_cells))
+        if not recompute and num_cells != 0:
+            self.num_cells = num_cells
         else:
             for graph_path in tqdm(self.graph_paths):
                 graph = torch.load(graph_path)
@@ -76,10 +81,6 @@ class BACH_Cells(Dataset):
     def graph_paths(self):
         return [os.path.join(self.graph_dir, f) for f in self.graph_file_names]
 
-    @property
-    def cell_paths(self):
-        return [os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if ".pt" == f[-3:]]
-
     def __len__(self):
         return len(self.ids)
 
@@ -91,7 +92,7 @@ class BACH_Cells(Dataset):
         # if self.img_augmentation is not None:
         #    cell = self.img_augmentation(cell)
         # return {'img': cell, "diagnosis": y}
-        path = self.cell_paths[self.ids[ind]]
+        path = os.path.join(self.cell_dir, str(self.ids[ind])+".pt")
         data = torch.load(path)
         cell, y = data['img'], data['diagnosis']
         if self.img_augmentation is not None:
