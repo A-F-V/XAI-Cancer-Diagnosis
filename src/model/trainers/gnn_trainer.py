@@ -19,10 +19,10 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.model.architectures.cancer_prediction.cancer_net import CancerNet
-from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
+from src.model.architectures.cancer_prediction.simple_gnn import CellGraphSignatureGNN
 import json
 import torch
-from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate
+from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
 
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 
@@ -43,9 +43,9 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(30), KNNGraph(k=6), EdgeDropout(p=0.04)]
+        graph_aug_train = Compose([RandomTranslate(30), KNNGraph(k=6), EdgeDropout(p=0.04), Distance(cat=False)]
                                   )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=6)])
+        graph_aug_pred = Compose([KNNGraph(k=6), Distance(cat=False)])
 
         train_ind, val_ind = [], []
         for clss in range(4):
@@ -143,8 +143,8 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    model = SimpleGNN(img_size=args["IMG_SIZE"], num_steps=num_steps,
-                      val_loader=val_loader, train_loader=train_loader, **args)
+    model = CellGraphSignatureGNN(img_size=args["IMG_SIZE"], num_steps=num_steps,
+                                  val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     trainer_callbacks = [
@@ -166,7 +166,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
         trainer_callbacks.append(trc)
 
     trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
-                         max_epochs=args["EPOCHS"], logger=mlf_logger if not grid_search else False, callbacks=trainer_callbacks,
+                         max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",
                          accumulate_grad_batches=accum_batch, progress_bar_refresh_rate=0 if grid_search else 1)

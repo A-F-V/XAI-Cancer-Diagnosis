@@ -25,5 +25,7 @@
   ],
   "GRID_SEARCH": true,
   "NODE_REDUCER": "MEAN_PIXEL",
-  "TRIALS": 10
+  "TRIALS": 10,
+  "GLOBAL_POOL": "MAX",
+  "WIDTH": 10
 }

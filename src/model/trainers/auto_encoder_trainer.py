@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.model.architectures.cancer_prediction.cancer_net import CancerNet
-from src.model.architectures.cancer_prediction.simple_gnn import SimpleGNN
+from src.model.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
 import json
 from src.model.architectures.cancer_prediction.cell_autoencoder import CellAutoEncoder
 from src.datasets.BACH_Cells import BACH_Cells
