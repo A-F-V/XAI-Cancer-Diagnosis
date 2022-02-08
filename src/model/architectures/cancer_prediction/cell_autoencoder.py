@@ -18,7 +18,7 @@ class CellAutoEncoder(pl.LightningModule):
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
-
+        self.bottleneck = kwargs["BOTTLENECK"]
         self.encoder = nn.Sequential(
             nn.BatchNorm2d(3),
             Conv(3, 9),
@@ -28,18 +28,18 @@ class CellAutoEncoder(pl.LightningModule):
             nn.Flatten(),
 
 
-            nn.Linear((img_size//16)**2*81, 72),
+            nn.Linear((img_size//16)**2*81, 400),
             nn.ReLU(True),
-            nn.BatchNorm1d(72),
-            nn.Linear(72, 21),
+            nn.BatchNorm1d(400),
+            nn.Linear(400, self.bottleneck),
             nn.ReLU(True),
-            nn.BatchNorm1d(21)
+            nn.BatchNorm1d(self.bottleneck)
         )
         self.decoder = nn.Sequential(
-            nn.Linear(21, 72),
+            nn.Linear(self.bottleneck, 400),
             nn.ReLU(True),
-            nn.BatchNorm1d(72),
-            nn.Linear(72, (img_size//16)**2*81),
+            nn.BatchNorm1d(400),
+            nn.Linear(400, (img_size//16)**2*81),
             nn.ReLU(True),
             nn.BatchNorm1d((img_size//16)**2*81),
             nn.Unflatten(1, (81, (img_size//16), (img_size//16))),
@@ -51,7 +51,7 @@ class CellAutoEncoder(pl.LightningModule):
         )
         self.predictor = nn.Sequential(
 
-            nn.Linear(21, 14),
+            nn.Linear(self.bottleneck, 14),
             nn.ReLU(),
             nn.BatchNorm1d(14),
             nn.Linear(14, 7),
@@ -85,9 +85,14 @@ class CellAutoEncoder(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         cells, y = train_batch["img"], train_batch["diagnosis"].float()
         cell_hat, y_hat = self.forward(cells)
+        batch_size = y.shape[0]
 
-        mse, ce = F.mse_loss(cell_hat, cells), F.cross_entropy(y, y_hat)
+        mse, ce = F.mse_loss(cell_hat, cells)*10, F.cross_entropy(y, y_hat)
         loss = mse+ce
+
+        sim = categorise(y).eq(categorise(y_hat)).int().sum()
+        acc = sim.div(batch_size)
+        self.log("train_acc", acc)
         self.log("train_mse", mse)
         self.log("train_ce", ce)
         self.log("train_loss", loss)
@@ -97,7 +102,7 @@ class CellAutoEncoder(pl.LightningModule):
         cells, y = val_batch['img'], val_batch["diagnosis"].float()
         cell_hat, y_hat = self.forward(cells)
         batch_size = y.shape[0]
-        mse, ce = F.mse_loss(cell_hat, cells), F.cross_entropy(y, y_hat)
+        mse, ce = F.mse_loss(cell_hat, cells)*10, F.cross_entropy(y, y_hat)
         loss = mse+ce
         sim = categorise(y).eq(categorise(y_hat)).int().sum()
         acc = sim.div(batch_size)
