@@ -21,3 +21,4 @@ def plot_images(images, dimensions, cmap='nipy_spectral', figsize=None, **kwargs
                     continue
                 ax[i, j].imshow(images[i*dimensions[1]+j], cmap=cmap, **kwargs)
                 ax[i, j].axis('off')
+    return f

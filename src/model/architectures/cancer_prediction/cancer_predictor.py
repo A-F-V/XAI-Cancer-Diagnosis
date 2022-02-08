@@ -5,35 +5,44 @@ from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax,
 from torch.nn.functional import nll_loss, sigmoid, log_softmax
 import torch
 from torch import optim, Tensor
+from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
+from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignatureGNN
 
 
-class SimpleGNN(pl.LightningModule):
-    def __init__(self, img_size=30, layers=8, num_steps=0, train_loader=None, val_loader=None, **kwargs):
-        super(SimpleGNN, self).__init__()
-        self.args = kwargs
+def mean_pixel(X: Tensor):  # batched
+    img_size = int((X.shape[1]//3)**0.5)
+    pixel = X.unflatten(1, (3, img_size, img_size)).mean(dim=(2, 3))
+    return pixel
+
+
+class CancerPredictorGNN(pl.LightningModule):
+
+    def reducer(self, name):
+        if name == "MEAN_PIXEL":
+            return mean_pixel, 3
+
+    def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **config):
+        super(CancerPredictorGNN, self).__init__()
+        self.args = dict(config)
         self.img_size = img_size
-        self.learning_rate = kwargs["START_LR"]
+        self.learning_rate = config["START_LR"]
 
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
 
+        self.node_reducer, node_dim = self.reducer(config["NODE_REDUCER"])
+
         # self.model = GIN(3*img_size**2, 3*img_size**2//4, num_layers=layers, dropout=0.8, out_channels=300)'
-        self.model = GCN(21, 5, num_layers=layers, dropout=kwargs["DROPOUT"], jk="cat", out_channels=5) if kwargs["ARCH"] == "GCN" else GIN(
-            21, 5, num_layers=layers, dropout=kwargs["DROPOUT"], out_channels=5)
-        self.predictor = Sequential(
+        self.args.update({"INPUT_WIDTH": node_dim})
 
-            # BatchNorm(300),
-            ReLU(),
-            Linear(5, 4),
-
-
-        )
+        self.model = CellGraphSignatureGNN(**self.args)
+        self.predictor = create_linear_predictor(**self.args)
 
     def forward(self, x, edge_index, edge_attr, batch):
-        x = self.model(x, edge_index)  # , edge_weight=edge_attr)
-        xp = global_mean_pool(x, batch)
-        return self.predictor(xp)
+        x = self.node_reducer(x)
+        x_pooled = self.model(x, edge_index, edge_attr, batch)  # , edge_weight=edge_attr)
+        return self.predictor(x_pooled)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
@@ -69,10 +78,29 @@ class SimpleGNN(pl.LightningModule):
         self.log("val_loss", loss)
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)
-        return loss
+        return {'val_loss': loss, 'val_acc': acc, 'val_canc_acc': canc_acc}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        avg_acc = torch.stack([x["val_acc"] for x in outputs]).mean()
+        avg_canc_acc = torch.stack([x["val_canc_acc"] for x in outputs]).mean()
+        self.log("ep/val_loss", avg_loss)
+        self.log("ep/val_acc", avg_acc)
+        self.log("ep/val_canc_acc", avg_canc_acc)
 
     def train_dataloader(self):
         return self.train_loader
 
     def val_dataloader(self):
         return self.val_loader
+
+
+def create_linear_predictor(**config):
+    widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
+    layers = []
+    for i in range(config["FFN_DEPTH"]):
+        layers.append(Dropout(config["DROPOUT"]))
+        layers.append(ReLU())
+        layers.append(BatchNorm(widths[i]))
+        layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
+    return Sequential(*layers)
