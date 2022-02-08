@@ -31,3 +31,5 @@ torch-spline-conv
 torch-geometric
 opencv-python
 networkx
+ray[tune]
+rsync

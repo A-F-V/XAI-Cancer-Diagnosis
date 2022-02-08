@@ -17,5 +17,5 @@
   "NOTES": "Wider Linear",
   "WEIGHT_DECAY": 0.001,
   "BOTTLENECK": 200,
-  "DENSITY": 1
+  "DENSITY": 1,
 }
