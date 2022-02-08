@@ -32,4 +32,4 @@ torch-geometric
 opencv-python
 networkx
 ray[tune]
-rsync
+gputil

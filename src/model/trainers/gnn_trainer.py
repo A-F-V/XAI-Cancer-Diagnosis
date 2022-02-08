@@ -1,6 +1,7 @@
 import ray
 from ray.tune.integration.pytorch_lightning import TuneReportCallback, \
     TuneReportCheckpointCallback
+from ray.tune.utils.util import wait_for_gpu
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter
 from ray import tune
@@ -42,7 +43,7 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(50), KNNGraph(k=6), EdgeDropout(p=0.04)]
+        graph_aug_train = Compose([RandomTranslate(30), KNNGraph(k=6), EdgeDropout(p=0.04)]
                                   )  # !TODO RECOMPUTE EDGE WEIGHTS
         graph_aug_pred = Compose([KNNGraph(k=6)])
 
@@ -57,7 +58,7 @@ class GNNTrainer(Base_Trainer):
                                   "BACH_TRAIN")
         print(f"The data source folder is {src_folder}")
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=None), BACH(src_folder, ids=val_ind, graph_augmentation=None)
+                                  graph_augmentation=graph_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
@@ -103,10 +104,12 @@ class GNNTrainer(Base_Trainer):
         pass
 
 
-def grid_search(train_loader, val_loader, num_steps, accum_batch, num_samples=3, **args):
+def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
     def tuner_type_parser(tuner_info):  # expose outside
         if tuner_info["TYPE"] == "CHOICE":
             return tune.choice(tuner_info["VALUE"])
+        if tuner_info["TYPE"] == "UNIFORM":
+            return tune.uniform(*tuner_info["VALUE"])
         return None
 
     config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
@@ -116,9 +119,10 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, num_samples=3,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
-        metric_columns=["loss", "training_iteration"])
+        metric_columns=["loss", "mean_accuracy", "mean_canc_accuracy", "training_iteration"])
 
     def train_fn(config):
+        wait_for_gpu(target_util=0.1)
         targs = dict(args)
         targs.update(config)  # use args but with grid searched params
         model, trainer = create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=True, ** targs)
@@ -133,7 +137,7 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, num_samples=3,
                         progress_reporter=reporter,
                         name="tune_gnn_asha",
                         resources_per_trial=resources_per_trial,
-                        num_samples=num_samples)  # number of trials
+                        num_samples=args["TRIALS"])  # number of trials
 
     print(f"Best Config found was: " + analysis.get_best_config(metric="loss", mode="min"))
 
@@ -143,12 +147,11 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
                       val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
-    lr_monitor = LearningRateMonitor(logging_interval='step')
-
     trainer_callbacks = [
-        lr_monitor
     ]
 
+    if args["LR_TEST"]:
+        trainer_callbacks.append(LearningRateMonitor(logging_interval='step'))
     if args["EARLY_STOP"]:
         trainer_callbacks.append(EarlyStopping(monitor="ep/val_loss"))
 
@@ -163,7 +166,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
         trainer_callbacks.append(trc)
 
     trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
-                         max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
+                         max_epochs=args["EPOCHS"], logger=mlf_logger if not grid_search else False, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",
                          accumulate_grad_batches=accum_batch, progress_bar_refresh_rate=0 if grid_search else 1)
