@@ -1,6 +1,6 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "V2 Simple Mean Test1",
+  "RUN_NAME": "V3 Customize GNN Test 1",
   "EXPERIMENT_ID": 4,
   "EXPERIMENT_NAME": "SimpleGNN",
   "EPOCHS": 10,
@@ -9,7 +9,7 @@
   "MAX_LR": 0.005,
   "ONE_CYCLE": true,
   "START_LR": 0.0005,
-  "NUM_WORKERS": 2,
+  "NUM_WORKERS": 0,
   "START_CHECKPOINT": "",
   "EARLY_STOP": true,
   "LR_TEST": false,
@@ -21,11 +21,14 @@
   "GRID": [
     { "HP": "LAYERS", "TYPE": "CHOICE", "VALUE": [1, 3, 5, 7, 9] },
     { "HP": "DROPOUT", "TYPE": "UNIFORM", "VALUE": [0, 0.9] },
-    { "HP": "ARCH", "TYPE": "CHOICE", "VALUE": ["GIN", "GCN"] }
+    { "HP": "GLOBAL_POOL", "TYPE": "CHOICE", "VALUE": ["MAX", "MEAN"] },
+    { "HP": "WIDTH", "TYPE": "CHOICE", "VALUE": [3, 10, 20, 50, 100] },
+    { "HP": "FFN_DEPTH", "TYPE": "CHOICE", "VALUE": [2, 3] }
   ],
-  "GRID_SEARCH": true,
+  "GRID_SEARCH": false,
   "NODE_REDUCER": "MEAN_PIXEL",
-  "TRIALS": 10,
+  "TRIALS": 5,
   "GLOBAL_POOL": "MAX",
-  "WIDTH": 10
+  "WIDTH": 10,
+  "FFN_DEPTH": 3
 }

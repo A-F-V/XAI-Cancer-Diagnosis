@@ -19,7 +19,7 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.model.architectures.cancer_prediction.cancer_net import CancerNet
-from src.model.architectures.cancer_prediction.simple_gnn import CellGraphSignatureGNN
+from src.model.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
@@ -143,8 +143,8 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    model = CellGraphSignatureGNN(img_size=args["IMG_SIZE"], num_steps=num_steps,
-                                  val_loader=val_loader, train_loader=train_loader, **args)
+    model = CancerPredictorGNN(num_steps=num_steps,
+                               val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     trainer_callbacks = [
@@ -169,7 +169,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
                          max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",
-                         accumulate_grad_batches=accum_batch, progress_bar_refresh_rate=0 if grid_search else 1)
+                         accumulate_grad_batches=accum_batch, enable_progress_bar=not grid_search)
     return model, trainer
 
 

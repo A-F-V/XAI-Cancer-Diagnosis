@@ -6,6 +6,7 @@ from torch.nn.functional import nll_loss, sigmoid, log_softmax
 import torch
 from torch import optim, Tensor
 from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
+from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignatureGNN
 
 
 def mean_pixel(X: Tensor):  # batched
@@ -20,9 +21,9 @@ class CancerPredictorGNN(pl.LightningModule):
         if name == "MEAN_PIXEL":
             return mean_pixel, 3
 
-    def __init__(self, img_size=30, num_steps=0, train_loader=None, val_loader=None, **config):
+    def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **config):
         super(CancerPredictorGNN, self).__init__()
-        self.args = config
+        self.args = dict(config)
         self.img_size = img_size
         self.learning_rate = config["START_LR"]
 
@@ -33,22 +34,15 @@ class CancerPredictorGNN(pl.LightningModule):
         self.node_reducer, node_dim = self.reducer(config["NODE_REDUCER"])
 
         # self.model = GIN(3*img_size**2, 3*img_size**2//4, num_layers=layers, dropout=0.8, out_channels=300)'
-        self.model = GCN(node_dim, 5, num_layers=config["LAYERS"], dropout=config["DROPOUT"], out_channels=5) if config["ARCH"] == "GCN" else GIN(
-            node_dim, 5, num_layers=config["LAYERS"], dropout=config["DROPOUT"], out_channels=5)
-        self.predictor = Sequential(
+        self.args.update({"INPUT_WIDTH": node_dim})
 
-            # BatchNorm(300),
-            ReLU(),
-            Linear(5, 4),
-
-
-        )
+        self.model = CellGraphSignatureGNN(**self.args)
+        self.predictor = create_linear_predictor(**self.args)
 
     def forward(self, x, edge_index, edge_attr, batch):
         x = self.node_reducer(x)
-        x = self.model(x, edge_index)  # , edge_weight=edge_attr)
-        xp = global_mean_pool(x, batch)
-        return self.predictor(xp)
+        x_pooled = self.model(x, edge_index, edge_attr, batch)  # , edge_weight=edge_attr)
+        return self.predictor(x_pooled)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
@@ -99,3 +93,14 @@ class CancerPredictorGNN(pl.LightningModule):
 
     def val_dataloader(self):
         return self.val_loader
+
+
+def create_linear_predictor(**config):
+    widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
+    layers = []
+    for i in range(config["FFN_DEPTH"]):
+        layers.append(Dropout(config["DROPOUT"]))
+        layers.append(ReLU())
+        layers.append(BatchNorm(widths[i]))
+        layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
+    return Sequential(*layers)
