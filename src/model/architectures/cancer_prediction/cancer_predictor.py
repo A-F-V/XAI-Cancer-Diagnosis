@@ -1,18 +1,21 @@
 
 import pytorch_lightning as pl
 from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN
-from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout
-from torch.nn.functional import nll_loss, sigmoid, log_softmax
+from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU
+from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy
 import torch
-from torch import optim, Tensor
+from torch import optim, Tensor, softmax
 from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
 from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignatureGNN
 
 
 def mean_pixel(X: Tensor):  # batched
-    img_size = int((X.shape[1]//3)**0.5)
-    pixel = X.unflatten(1, (3, img_size, img_size)).mean(dim=(2, 3))
-    return pixel
+    pixels = X.unflatten(1, (3, -1)).mean(dim=2)
+    return pixels
+
+
+def constant(X: Tensor):
+    return X.new_ones((X.shape[0], 1))
 
 
 class CancerPredictorGNN(pl.LightningModule):
@@ -20,6 +23,8 @@ class CancerPredictorGNN(pl.LightningModule):
     def reducer(self, name):
         if name == "MEAN_PIXEL":
             return mean_pixel, 3
+        if name == "CONSTANT":
+            return constant, 1
 
     def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **config):
         super(CancerPredictorGNN, self).__init__()
@@ -32,6 +37,7 @@ class CancerPredictorGNN(pl.LightningModule):
         self.val_loader = val_loader
 
         self.node_reducer, node_dim = self.reducer(config["NODE_REDUCER"])
+        self.norm = BatchNorm(node_dim)
 
         # self.model = GIN(3*img_size**2, 3*img_size**2//4, num_layers=layers, dropout=0.8, out_channels=300)'
         self.args.update({"INPUT_WIDTH": node_dim})
@@ -41,6 +47,7 @@ class CancerPredictorGNN(pl.LightningModule):
 
     def forward(self, x, edge_index, edge_attr, batch):
         x = self.node_reducer(x)
+        x = self.norm(x)
         x_pooled = self.model(x, edge_index, edge_attr, batch)  # , edge_weight=edge_attr)
         return self.predictor(x_pooled)
 
@@ -59,17 +66,15 @@ class CancerPredictorGNN(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = train_batch.x, train_batch.edge_index, train_batch.edge_attr, train_batch.y, train_batch.batch
         output = self.forward(x, edge_index, edge_attr, batch)
-        y_hat = log_softmax(output, dim=1)
-        loss = nll_loss(y_hat, y)
+        loss = cross_entropy(output, y)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = val_batch.x, val_batch.edge_index, val_batch.edge_attr, val_batch.y, val_batch.batch
         output = self.forward(x, edge_index, edge_attr, batch)
-        y_hat = log_softmax(output, dim=1)
-        loss = nll_loss(y_hat, y)
-        pred_cat = y_hat.argmax(dim=1)
+        loss = cross_entropy(output, y)
+        pred_cat = output.argmax(dim=1)
 
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
         canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
@@ -99,8 +104,8 @@ def create_linear_predictor(**config):
     widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
     layers = []
     for i in range(config["FFN_DEPTH"]):
-        layers.append(Dropout(config["DROPOUT"]))
-        layers.append(ReLU())
+        layers.append(Dropout(config["DROPOUT"], inplace=True))
         layers.append(BatchNorm(widths[i]))
+        layers.append(LeakyReLU(inplace=True))
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
     return Sequential(*layers)

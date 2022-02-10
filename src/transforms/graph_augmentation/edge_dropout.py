@@ -21,6 +21,7 @@ class EdgeDropout(BaseTransform):
         if (e_w != None):
             e_w = e_w.index_select(0, keep)
             graph.edge_attr = e_w
+            assert e_w.shape[0] == e_ind.shape[1]
         return graph
 
     def __call__(self, data):

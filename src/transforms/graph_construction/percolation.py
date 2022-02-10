@@ -49,7 +49,7 @@ def hollow(img: Tensor):
             return False
         return (img[r, c] == img[r, c+1] == img[r, c-1] == img[r+1, c] == img[r-1, c]).item() & (img[r, c] != 0)
 
-    for row in tqdm(range(img.shape[0]), desc="Hollowing"):
+    for row in range(img.shape[0]):
         for col in range(img.shape[1]):
             if(land_locked(row, col)):
                 output[row, col] = 0

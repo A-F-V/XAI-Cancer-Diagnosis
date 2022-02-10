@@ -43,9 +43,9 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(30), KNNGraph(k=6), EdgeDropout(p=0.04), Distance(cat=False)]
+        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False)]
                                   )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=6), Distance(cat=False)])
+        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False,cat=False)])
 
         train_ind, val_ind = [], []
         for clss in range(4):
@@ -66,7 +66,7 @@ class GNNTrainer(Base_Trainer):
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
 
         accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
-        num_steps = len(train_loader)*args["EPOCHS"]//accum_batch
+        num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
@@ -81,7 +81,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=0.01)
+                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=1)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -115,7 +115,7 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
     config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
     scheduler = ASHAScheduler(
         max_t=args["EPOCHS"],
-        grace_period=1,
+        grace_period=10,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
@@ -150,8 +150,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     trainer_callbacks = [
     ]
 
-    if args["LR_TEST"]:
-        trainer_callbacks.append(LearningRateMonitor(logging_interval='step'))
+    trainer_callbacks.append(LearningRateMonitor(logging_interval='step'))
     if args["EARLY_STOP"]:
         trainer_callbacks.append(EarlyStopping(monitor="ep/val_loss"))
 
