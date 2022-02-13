@@ -25,6 +25,7 @@ import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
 
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
+from src.transforms.graph_augmentation.largest_component import LargeComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
 
@@ -43,9 +44,9 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False)]
+        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), LargestComponent(), Distance(norm=False, cat=False)]
                                   )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False, cat=False)])
+        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), LargestComponent(), Distance(norm=False, cat=False)])
 
         train_ind, val_ind = [], []
         for clss in range(4):
