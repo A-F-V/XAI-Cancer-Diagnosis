@@ -25,7 +25,7 @@ import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
 
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
-from src.transforms.graph_augmentation.largest_component import LargeComponent
+from src.transforms.graph_augmentation.largest_component import LargestComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
 
@@ -44,9 +44,9 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), LargestComponent(), Distance(norm=False, cat=False)]
-                                  )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), LargestComponent(), Distance(norm=False, cat=False)])
+        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False), LargestComponent()]
+                                  )
+        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False, cat=False), LargestComponent()])
 
         train_ind, val_ind = [], []
         for clss in range(4):
@@ -82,7 +82,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=1)
+                lr_finder = trainer.tuner.lr_find(model, num_training=50, max_lr=1)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -165,7 +165,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
             on="validation_end")
         trainer_callbacks.append(trc)
 
-    trainer = pl.Trainer(log_every_n_steps=1, gpus=0,
+    trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
                          max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",

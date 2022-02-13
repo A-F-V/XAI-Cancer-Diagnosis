@@ -14,7 +14,7 @@ class EdgeDropout(BaseTransform):
         if(self.p_mass != None):
             p_mass = self.p_mass(e_w[range(0, e_w.shape[0], 2), :])
         else:
-            p_mass = torch.zeros(e_ind.shape[0]//2)+self.p
+            p_mass = torch.zeros(e_ind.shape[1]//2)+self.p
         keep = torch.bernoulli(1-p_mass).repeat_interleave(2).nonzero().squeeze()
         e_ind = e_ind.index_select(1, keep)
         graph.edge_index = e_ind

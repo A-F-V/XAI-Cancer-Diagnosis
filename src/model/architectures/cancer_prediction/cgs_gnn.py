@@ -50,6 +50,6 @@ class CGSLayer(nn.Module):
             x = self.model["conv"](x=x, edge_index=edge_index, edge_attr=edge_attr)  # 1 for conv 1 for gat
         elif self.config["ARCH"] == "GCN":
             x = self.model["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
-        #x = self.model["bn"](x)
+        x = self.model["bn"](x)
         x = self.model["act"](x)
         return x
