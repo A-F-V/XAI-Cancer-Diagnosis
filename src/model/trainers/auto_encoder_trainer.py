@@ -16,6 +16,7 @@ from src.model.architectures.cancer_prediction.cancer_net import CancerNet
 from src.model.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
 import json
 from src.model.architectures.cancer_prediction.cell_autoencoder import CellAutoEncoder
+from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
 from src.datasets.BACH_Cells import BACH_Cells
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.datasets.train_val_split import train_val_split
@@ -58,7 +59,7 @@ class CellAETrainer(Base_Trainer):
         src_folder = os.path.join("data", "processed",
                                   "BACH_TRAIN")
 
-        # BACH_Cells(src_folder).compile_cells()
+        BACH_Cells(src_folder).compile_cells()
         train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=val_trans, val_trans=val_trans)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
@@ -71,8 +72,8 @@ class CellAETrainer(Base_Trainer):
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
-        model = CellAutoEncoder(img_size=64, num_steps=num_steps,
-                                val_loader=val_loader, train_loader=train_loader, **args)
+        model = UNET_AE(img_size=64, num_steps=num_steps,
+                        val_loader=val_loader, train_loader=train_loader, **args)
 
         # if args["START_CHECKPOINT"]:
         #    print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")

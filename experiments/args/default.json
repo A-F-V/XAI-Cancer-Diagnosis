@@ -1,14 +1,14 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "Overfitting Test",
-  "EXPERIMENT_ID": 4,
-  "EXPERIMENT_NAME": "SimpleGNN",
-  "EPOCHS": 100,
-  "BATCH_SIZE_TRAIN": 2,
-  "BATCH_SIZE_VAL": 2,
-  "MAX_LR": 0.005,
-  "ONE_CYCLE": false,
-  "START_LR": 0.00005,
+  "RUN_NAME": "AE Test 4",
+  "EXPERIMENT_ID": 5,
+  "EXPERIMENT_NAME": "AE",
+  "EPOCHS": 1,
+  "BATCH_SIZE_TRAIN": 128,
+  "BATCH_SIZE_VAL": 128,
+  "MAX_LR": 0.001,
+  "ONE_CYCLE": true,
+  "START_LR": 0.00001,
   "NUM_WORKERS": 4,
   "START_CHECKPOINT": "",
   "EARLY_STOP": false,
@@ -33,5 +33,6 @@
   "FFN_DEPTH": 3,
   "K_NN": 6,
   "ENCODER_BOTTLENECK": 10,
-  "ENCODING_DEPTH": 2
+  "ENCODING_DEPTH": 2,
+  "WEIGHT_DECAY": 0.001
 }

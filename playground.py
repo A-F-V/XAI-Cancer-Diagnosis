@@ -4,10 +4,11 @@ from src.model.trainers.gnn_trainer import GNNTrainer
 import torch
 from src.datasets.BACH_Cells import BACH_Cells
 import os
+from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
 if __name__ == "__main__":
     torch.multiprocessing.freeze_support()
     torch.autograd.set_detect_anomaly(True)
-    trainer = GNNTrainer()
-    #trainer = CellAETrainer()
+    #trainer = GNNTrainer()
+    trainer = CellAETrainer()
     trainer.train()
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True)
