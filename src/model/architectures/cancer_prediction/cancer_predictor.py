@@ -7,6 +7,9 @@ import torch
 from torch import optim, Tensor, softmax
 from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
 from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignatureGNN
+from src.model.architectures.cancer_prediction.cell_autoencoder import Conv
+import torch.nn as nn
+from src.utilities.pytorch_utilities import incremental_forward
 
 
 def mean_pixel(X: Tensor):  # batched
@@ -25,6 +28,8 @@ class CancerPredictorGNN(pl.LightningModule):
             return mean_pixel, 3
         if name == "CONSTANT":
             return constant, 1
+        if name == "ENCODER":
+            return self.node_encoder, self.args["ENCODER_BOTTLENECK"]
 
     def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **config):
         super(CancerPredictorGNN, self).__init__()
@@ -35,6 +40,10 @@ class CancerPredictorGNN(pl.LightningModule):
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
+
+        if self.args["NODE_REDUCER"] == "ENCODER":
+            self.node_encoder = CellEncoder(**self.args)
+            #self.node_encoder = LinearEncoder(**self.args)
 
         self.node_reducer, node_dim = self.reducer(config["NODE_REDUCER"])
         self.norm = BatchNorm(node_dim)
@@ -47,7 +56,7 @@ class CancerPredictorGNN(pl.LightningModule):
 
     def forward(self, x, edge_index, edge_attr, batch):
         x = self.node_reducer(x)
-        #x = self.norm(x)
+        x = self.norm(x)
         edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         x_pooled = self.model(x, edge_index, edge_attr, batch)  # , edge_weight=edge_attr)
         return self.predictor(x_pooled)
@@ -111,3 +120,42 @@ def create_linear_predictor(**config):
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
     layers.append(Softmax(dim=1))
     return Sequential(*layers)
+
+
+class CellEncoder(nn.Module):  # todo make even more customizable
+    def __init__(self, batch_size=16, **config):
+        super(CellEncoder, self).__init__()
+        self.bottleneck = config["ENCODER_BOTTLENECK"]
+        depth = config["ENCODING_DEPTH"]
+        self.conv_encoder = nn.Sequential(
+            nn.BatchNorm2d(3),
+            Conv(3, 3, depth=depth),
+            Conv(3, 3, depth=depth),
+            Conv(3, 3, depth=depth),
+            Conv(3, 3, depth=depth),
+            nn.Flatten(),
+
+
+            nn.Linear(16*3, 20),
+            nn.LeakyReLU(True),
+            nn.BatchNorm1d(20),
+            nn.Linear(20, self.bottleneck),
+            nn.LeakyReLU(True),
+            nn.BatchNorm1d(self.bottleneck)
+        )
+        self.batch_size = batch_size
+
+    def forward(self, x):
+        x_unflat = x.unflatten(1, (3, 64, 64))
+        return self.conv_encoder(x_unflat)
+
+
+class LinearEncoder(nn.Module):
+    def __init__(self, **config):
+        super(LinearEncoder, self).__init__()
+        self.enc = nn.Linear(3*8*8, config["ENCODER_BOTTLENECK"])
+
+    def forward(self, x):
+        x = x.unflatten(1, (3, 64, 64))
+        x = nn.AdaptiveAvgPool2d((3, 8, 8))(x).flatten(1)
+        return self.enc(x)

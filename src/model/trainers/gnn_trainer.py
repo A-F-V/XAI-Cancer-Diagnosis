@@ -44,9 +44,9 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False), LargestComponent()]
+        graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False)]
                                   )
-        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False, cat=False), LargestComponent()])
+        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False, cat=False)])
 
         train_ind, val_ind = [], []
         for clss in range(4):
