@@ -141,7 +141,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     final_hv_x = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
     final_hv_y = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
 
-    batch_size = 20//((2*tile_size//64)*(2*tile_size//64))
+    batch_size = 10//((2*tile_size//64)*(2*tile_size//64))
     batch = None
     batch_loc = []
 

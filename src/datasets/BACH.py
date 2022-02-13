@@ -132,7 +132,7 @@ class BACH(Dataset):
         return len(self.ids)
 
     def __getitem__(self, ind):
-        graph_id = self.ids[ind] % len(self.graph_file_names)
+        graph_id = (self.ids[ind]-1) % len(self.graph_file_names)
         path = self.graph_paths[graph_id]
         graph = torch.load(path)
         if self.graph_augmentation is not None:

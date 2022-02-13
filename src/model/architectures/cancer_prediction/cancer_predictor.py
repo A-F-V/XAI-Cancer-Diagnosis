@@ -47,7 +47,8 @@ class CancerPredictorGNN(pl.LightningModule):
 
     def forward(self, x, edge_index, edge_attr, batch):
         x = self.node_reducer(x)
-        x = self.norm(x)
+        #x = self.norm(x)
+        edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         x_pooled = self.model(x, edge_index, edge_attr, batch)  # , edge_weight=edge_attr)
         return self.predictor(x_pooled)
 
@@ -66,14 +67,14 @@ class CancerPredictorGNN(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = train_batch.x, train_batch.edge_index, train_batch.edge_attr, train_batch.y, train_batch.batch
         output = self.forward(x, edge_index, edge_attr, batch)
-        loss = cross_entropy(output, y)
+        loss = nll_loss(torch.log(output), y)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = val_batch.x, val_batch.edge_index, val_batch.edge_attr, val_batch.y, val_batch.batch
         output = self.forward(x, edge_index, edge_attr, batch)
-        loss = cross_entropy(output, y)
+        loss = nll_loss(torch.log(output), y)
         pred_cat = output.argmax(dim=1)
 
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
@@ -104,8 +105,9 @@ def create_linear_predictor(**config):
     widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
     layers = []
     for i in range(config["FFN_DEPTH"]):
-        layers.append(Dropout(config["DROPOUT"], inplace=True))
+        #layers.append(Dropout(config["DROPOUT"], inplace=True))
         layers.append(BatchNorm(widths[i]))
-        layers.append(LeakyReLU(inplace=True))
+        layers.append(ReLU(inplace=True))
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
+    layers.append(Softmax(dim=1))
     return Sequential(*layers)

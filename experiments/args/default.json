@@ -12,11 +12,11 @@
   "NUM_WORKERS": 3,
   "START_CHECKPOINT": "",
   "EARLY_STOP": false,
-  "LR_TEST": true,
+  "LR_TEST": false,
   "IMG_SIZE": 64,
-  "LAYERS": 10,
+  "LAYERS": 3,
   "NOTES": "Trying to get Tuning",
-  "ARCH": "GIN",
+  "ARCH": "GCN",
   "DROPOUT": 0,
   "GRID": [
     { "HP": "LAYERS", "TYPE": "CHOICE", "VALUE": [1, 3, 5, 7, 9] },
@@ -29,7 +29,7 @@
   "NODE_REDUCER": "CONSTANT",
   "TRIALS": 50,
   "GLOBAL_POOL": "MAX",
-  "WIDTH": 100,
-  "FFN_DEPTH": 2,
-  "K_NN": 15
+  "WIDTH": 10,
+  "FFN_DEPTH": 1,
+  "K_NN": 6
 }

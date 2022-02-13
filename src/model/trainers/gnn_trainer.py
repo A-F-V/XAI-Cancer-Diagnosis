@@ -45,7 +45,7 @@ class GNNTrainer(Base_Trainer):
 
         graph_aug_train = Compose([RandomTranslate(0), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0), Distance(norm=False, cat=False)]
                                   )  # !TODO RECOMPUTE EDGE WEIGHTS
-        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False,cat=False)])
+        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]), Distance(norm=False, cat=False)])
 
         train_ind, val_ind = [], []
         for clss in range(4):
@@ -164,7 +164,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
             on="validation_end")
         trainer_callbacks.append(trc)
 
-    trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
+    trainer = pl.Trainer(log_every_n_steps=1, gpus=0,
                          max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",
