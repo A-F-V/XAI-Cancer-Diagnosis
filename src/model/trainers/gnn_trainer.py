@@ -5,6 +5,7 @@ from ray.tune.utils.util import wait_for_gpu
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter
 from ray import tune
+from src.model.architectures.cancer_prediction.pred_gnn import PredGNN
 from src.model.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
@@ -59,7 +60,7 @@ class GNNTrainer(Base_Trainer):
                                   "BACH_TRAIN")
         print(f"The data source folder is {src_folder}")
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred)
+                                  graph_augmentation=graph_aug_train, pred_mode=True), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred, pred_mode=True)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
@@ -82,7 +83,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=50, max_lr=1)
+                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=1)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -144,8 +145,8 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    model = CancerPredictorGNN(num_steps=num_steps,
-                               val_loader=val_loader, train_loader=train_loader, **args)
+    model = PredGNN(num_steps=num_steps,
+                    val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     trainer_callbacks = [

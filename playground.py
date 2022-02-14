@@ -28,9 +28,9 @@ if __name__ == "__main__":
     torch.multiprocessing.freeze_support()
     torch.autograd.set_detect_anomaly(True)
 
-    create_prob()
+    # create_prob()
 
-    #trainer = GNNTrainer()
+    trainer = GNNTrainer()
     #trainer = CellAETrainer()
-    # trainer.train()
+    trainer.train()
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True)
