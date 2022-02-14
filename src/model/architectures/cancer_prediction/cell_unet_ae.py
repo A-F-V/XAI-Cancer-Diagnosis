@@ -7,6 +7,7 @@ from src.vizualizations.image_viz import plot_images
 from src.utilities.img_utilities import tensor_to_numpy
 from src.utilities.mlflow_utilities import log_plot
 import torch
+from src.utilities.pytorch_utilities import incremental_forward
 
 
 class UNET_AE(pl.LightningModule):
@@ -29,9 +30,11 @@ class UNET_AE(pl.LightningModule):
                                      self.unet.upconv2, self.unet.decoder2, self.unet.upconv1, self.unet.decoder1, self.unet.conv)
         self.predictor = nn.Sequential(
             nn.Flatten(),
+            nn.Dropout(self.args["DROPOUT"]),
             nn.Linear(512*16, 1000),
             nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d(1000),
+            nn.Dropout(self.args["DROPOUT"]),
             nn.Linear(1000, 100),
             nn.ReLU(inplace=True),
             nn.BatchNorm1d(100),
@@ -64,6 +67,10 @@ class UNET_AE(pl.LightningModule):
 
         return x_hat, y_hat
 
+    @incremental_forward(64)
+    def forward_pred(self, x):
+        return self.forward(x.cuda())[1].cpu()
+
     def encode(self, x):
         return self.encoder(x)
 
@@ -72,7 +79,7 @@ class UNET_AE(pl.LightningModule):
                                eps=1e-5, weight_decay=self.args["WEIGHT_DECAY"])
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
-                optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
+                optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=False)
             return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
         else:
             return optimizer

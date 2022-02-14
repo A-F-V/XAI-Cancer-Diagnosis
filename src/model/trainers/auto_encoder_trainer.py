@@ -52,15 +52,15 @@ class CellAETrainer(Base_Trainer):
         print("Getting the Data")
 
         tr_trans = Compose([
-            RandomHorizontalFlip(), RandomVerticalFlip()]
-        )  # ! TODO
+            RandomHorizontalFlip(), RandomVerticalFlip(), AddGaussianNoise(0, 0.01)]
+        )
         val_trans = Compose([])
 
         src_folder = os.path.join("data", "processed",
                                   "BACH_TRAIN")
 
         BACH_Cells(src_folder).compile_cells()
-        train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=val_trans, val_trans=val_trans)
+        train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)

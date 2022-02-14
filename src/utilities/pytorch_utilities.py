@@ -3,7 +3,6 @@ from functools import wraps
 
 
 def incremental_forward(batch_size=2):
-    print(batch_size)
 
     def decorator(func):
         @wraps(func)
@@ -17,8 +16,11 @@ def incremental_forward(batch_size=2):
                 else:
                     output = torch.cat((output, temp_output), dim=0)
                 torch.cuda.empty_cache()
-            final_batch_size = x.shape[0]-output.shape[0]
-            output = torch.cat((output, func(self, x[-final_batch_size:])), dim=0)
-            return output
+            if output == None:
+                return func(self, x)
+            else:
+                final_batch_size = x.shape[0]-output.shape[0]
+                output = torch.cat((output, func(self, x[-final_batch_size:])), dim=0)
+                return output
         return wrapper
     return decorator
