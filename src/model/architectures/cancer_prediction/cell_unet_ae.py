@@ -79,7 +79,7 @@ class UNET_AE(pl.LightningModule):
                                eps=1e-5, weight_decay=self.args["WEIGHT_DECAY"])
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
-                optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=False)
+                optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
             return [optimizer], [{'scheduler': lr_scheduler, 'interval': 'step'}]
         else:
             return optimizer

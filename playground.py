@@ -14,7 +14,7 @@ def create_prob():
     src_folder = os.path.join("data", "processed", "BACH_TRAIN")
     args = json.load(open(os.path.join(os.getcwd(), "experiments", "args", "ae.json")))
     model = UNET_AE.load_from_checkpoint(os.path.join(
-        os.getcwd(), "experiments", "checkpoints", "AE_UNET_PREDICTOR.ckpt"), **args)
+        os.getcwd(), "experiments", "checkpoints", "AE_UNET_PREDICTOR_GOOD.ckpt"), **args)
     with torch.no_grad():
         model.eval()
         model = model.cuda()
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     # create_prob()
 
-    trainer = GNNTrainer()
-    #trainer = CellAETrainer()
+    #trainer = GNNTrainer()
+    trainer = CellAETrainer()
     trainer.train()
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True)

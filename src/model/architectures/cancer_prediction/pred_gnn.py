@@ -2,7 +2,7 @@
 import pytorch_lightning as pl
 from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN
 from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU
-from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy
+from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
 import torch
 from torch import optim, Tensor, softmax
 from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
@@ -23,15 +23,17 @@ class PredGNN(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.model = GCN(in_channels=4, hidden_channels=4, out_channels=4,
+        self.model = GIN(in_channels=4, hidden_channels=4, out_channels=4,
                          num_layers=self.args["LAYERS"], act=LeakyReLU(inplace=True))
         self.pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
 
     def forward(self, x, edge_index, edge_attr, batch):
         edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         # , edge_weight=edge_attr)
-        x_pooled = self.pool(x=self.model(x=x, edge_index=edge_index, edge_weight=edge_attr), batch=batch)
-        return softmax(x_pooled, dim=1)
+        x = one_hot(x.argmax(dim=1), num_classes=4).float()
+        x = self.model(x=x, edge_index=edge_index)
+        x_pool = self.pool(x, batch)
+        return softmax(x_pool, dim=1)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)

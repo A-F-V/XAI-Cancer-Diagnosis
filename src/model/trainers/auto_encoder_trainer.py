@@ -3,7 +3,6 @@ from src.model.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
 from torch_geometric.loader.dataloader import DataLoader
-from src.transforms.image_processing.augmentation import *
 import mlflow
 from src.datasets.BACH import BACH
 import pytorch_lightning as pl
@@ -20,8 +19,8 @@ from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
 from src.datasets.BACH_Cells import BACH_Cells
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.datasets.train_val_split import train_val_split
-from src.transforms.image_processing.augmentation import *
-from torchvision.transforms import Compose, RandomVerticalFlip, RandomHorizontalFlip
+from torchvision.transforms import Compose, RandomVerticalFlip, RandomHorizontalFlip, ColorJitter, GaussianBlur, RandomChoice
+import torch
 
 
 class AddGaussianNoise(object):
@@ -52,7 +51,7 @@ class CellAETrainer(Base_Trainer):
         print("Getting the Data")
 
         tr_trans = Compose([
-            RandomHorizontalFlip(), RandomVerticalFlip(), AddGaussianNoise(0, 0.01)]
+            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(0.2, 0.1, 0.1, 0.01), RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
         )
         val_trans = Compose([])
 
