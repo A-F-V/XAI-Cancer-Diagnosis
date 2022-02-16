@@ -15,7 +15,7 @@ import mlflow
 from src.datasets.BACH import BACH
 import pytorch_lightning as pl
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
@@ -45,7 +45,7 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(10), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0),  Distance(norm=False, cat=False)]
+        graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0),  Distance(norm=False, cat=False)]
                                   )
         graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]),  Distance(norm=False, cat=False)])
 
@@ -83,7 +83,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=1)
+                lr_finder = trainer.tuner.lr_find(model, num_training=300, max_lr=1000)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -117,14 +117,14 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
     config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
     scheduler = ASHAScheduler(
         max_t=args["EPOCHS"],
-        grace_period=10,
+        grace_period=20,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
         metric_columns=["loss", "mean_accuracy", "mean_canc_accuracy", "training_iteration"])
 
     def train_fn(config):
-        wait_for_gpu(target_util=0.1)
+        # wait_for_gpu(target_util=0.1)
         targs = dict(args)
         targs.update(config)  # use args but with grid searched params
         model, trainer = create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=True, ** targs)
@@ -149,7 +149,20 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
                     val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
+    ############################
+    # FOR UNFREEZING THE STEEPNESS
+    ###################
+    model.steepness.requires_grad_(False)
+    ############################
+
+    def unfreeze_after_x(att, time):
+        def _unfreeze(trainer, pl_module):
+            if trainer.current_epoch >= time:
+                model.__getattribute__(att).requires_grad_(True)
+        return _unfreeze
+
     trainer_callbacks = [
+        #LambdaCallback(on_train_epoch_start=unfreeze_after_x("steepness", 50))
     ]
 
     trainer_callbacks.append(LearningRateMonitor(logging_interval='step'))

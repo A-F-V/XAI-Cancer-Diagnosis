@@ -1,7 +1,7 @@
 
 import pytorch_lightning as pl
-from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN
-from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU
+from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv
+from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter
 from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
 import torch
 from torch import optim, Tensor, softmax
@@ -23,17 +23,22 @@ class PredGNN(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        self.model = GIN(in_channels=4, hidden_channels=4, out_channels=4,
-                         num_layers=self.args["LAYERS"], act=LeakyReLU(inplace=True))
+        self.model = ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
+                                "conv": GCNConv(4, 4), "post_act": Softmax(dim=1)})
+        self.steepness = Parameter(data=torch.zeros(1)+config["STEEPNESS"],)
         self.pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
 
     def forward(self, x, edge_index, edge_attr, batch):
         edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         # , edge_weight=edge_attr)
-        x = one_hot(x.argmax(dim=1), num_classes=4).float()
-        x = self.model(x=x, edge_index=edge_index)
+        #x = one_hot(x.argmax(dim=1), num_classes=4).float()
+        for i in range(self.args["LAYERS"]):
+           # x = self.model["pre_act"](self.model["pre_trans"](x))
+            x = self.model["conv"](x=x, edge_index=edge_index)
+            x = self.model["post_act"](x*self.steepness)
         x_pool = self.pool(x, batch)
-        return softmax(x_pool, dim=1)
+        soft = softmax(x_pool, dim=1)
+        return x_pool
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
@@ -52,6 +57,7 @@ class PredGNN(pl.LightningModule):
         output = self.forward(x, edge_index, edge_attr, batch)
         loss = nll_loss(torch.log(output), y)
         self.log("train_loss", loss)
+        # print(self.steepness.data)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
