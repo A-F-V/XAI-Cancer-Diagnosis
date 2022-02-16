@@ -35,7 +35,7 @@ class BACH_Cells(Dataset):
     #        self.cm.cumulate()
     #        pickle.dump(self.cm, open(self.saved_cm, 'wb'))
 
-    def compile_cells(self, recompute=False):
+    def compile_cells(self, recompute=False, train_test_split=None):
         n = 0
         print("Finding Cells")
         num_cells = len([os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if ".pt" == f[-3:]])
