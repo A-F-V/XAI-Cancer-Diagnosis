@@ -23,20 +23,20 @@ class PredGNN(pl.LightningModule):
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.layers = self.args["LAYERS"]
 
-        self.model = ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
-                                "conv": GCNConv(4, 4), "post_act": Softmax(dim=1)})
-        self.steepness = Parameter(data=torch.zeros(1)+config["STEEPNESS"], requires_grad=False)
+        self.model = ModuleList([ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
+                                "conv": GCNConv(4, 4), "post_act": Softmax(dim=1)}) for i in range(self.layers)])
         self.pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
 
     def forward(self, x, edge_index, edge_attr, batch):
         edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         # , edge_weight=edge_attr)
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
-        for i in range(self.args["LAYERS"]):
+        for i in range(self.layers):
            # x = self.model["pre_act"](self.model["pre_trans"](x))
-            x = self.model["conv"](x=x, edge_index=edge_index)
-            x = self.model["post_act"](x*self.steepness)
+            x = self.model[i]["conv"](x=x, edge_index=edge_index)
+            x = self.model[i]["post_act"](x*1)
         x_pool = self.pool(x, batch)
         soft = softmax(x_pool, dim=1)
         return x_pool
@@ -72,8 +72,6 @@ class PredGNN(pl.LightningModule):
         acc = (pred_cat == y).float().mean()
         canc_acc = (canc_pred == canc_grd).float().mean()
 
-        self.log("pre_model_agreement", hard_agreement(x, edge_index))
-        self.log("post_model_agreement", hard_agreement(output, edge_index))
         self.log("val_loss", loss)
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)

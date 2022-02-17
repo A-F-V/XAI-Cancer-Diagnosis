@@ -150,19 +150,21 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     ############################
-    # FOR UNFREEZING THE STEEPNESS
+    # Layering
     ###################
-    model.steepness.requires_grad_(False)
-    ############################
+    #model.layers = 1
 
-    def unfreeze_after_x(att, time):
-        def _unfreeze(trainer, pl_module):
+    def layer_after_x(time):
+        def _layer(trainer, pl_module):
             if trainer.current_epoch >= time:
-                model.__getattribute__(att).requires_grad_(True)
-        return _unfreeze
+                model.layers = args["LAYERS"]
+        return _layer
+
+    ############################
 
     trainer_callbacks = [
         #LambdaCallback(on_train_epoch_start=unfreeze_after_x("steepness", 50))
+        # LambdaCallback(on_train_epoch_start=layer_after_x(10))
     ]
 
     trainer_callbacks.append(LearningRateMonitor(logging_interval='step'))
