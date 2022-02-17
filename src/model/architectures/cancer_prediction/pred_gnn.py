@@ -10,6 +10,7 @@ from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignature
 from src.model.architectures.cancer_prediction.cell_autoencoder import Conv
 import torch.nn as nn
 from src.utilities.pytorch_utilities import incremental_forward
+from src.model.metrics.graph_agreement import hard_agreement
 
 
 class PredGNN(pl.LightningModule):
@@ -25,13 +26,13 @@ class PredGNN(pl.LightningModule):
 
         self.model = ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
                                 "conv": GCNConv(4, 4), "post_act": Softmax(dim=1)})
-        self.steepness = Parameter(data=torch.zeros(1)+config["STEEPNESS"],)
+        self.steepness = Parameter(data=torch.zeros(1)+config["STEEPNESS"], requires_grad=False)
         self.pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
 
     def forward(self, x, edge_index, edge_attr, batch):
         edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         # , edge_weight=edge_attr)
-        #x = one_hot(x.argmax(dim=1), num_classes=4).float()
+        # x = one_hot(x.argmax(dim=1), num_classes=4).float()
         for i in range(self.args["LAYERS"]):
            # x = self.model["pre_act"](self.model["pre_trans"](x))
             x = self.model["conv"](x=x, edge_index=edge_index)
@@ -70,6 +71,9 @@ class PredGNN(pl.LightningModule):
         canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
         acc = (pred_cat == y).float().mean()
         canc_acc = (canc_pred == canc_grd).float().mean()
+
+        self.log("pre_model_agreement", hard_agreement(x, edge_index))
+        self.log("post_model_agreement", hard_agreement(output, edge_index))
         self.log("val_loss", loss)
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)
@@ -94,7 +98,7 @@ def create_linear_predictor(**config):
     widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
     layers = []
     for i in range(config["FFN_DEPTH"]):
-        #layers.append(Dropout(config["DROPOUT"], inplace=True))
+        # layers.append(Dropout(config["DROPOUT"], inplace=True))
         layers.append(BatchNorm(widths[i]))
         layers.append(ReLU(inplace=True))
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
