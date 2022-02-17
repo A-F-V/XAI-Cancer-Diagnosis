@@ -7,7 +7,7 @@ import mlflow
 from src.datasets.BACH import BACH
 import pytorch_lightning as pl
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
@@ -21,19 +21,6 @@ from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.datasets.train_val_split import train_val_split
 from torchvision.transforms import Compose, RandomVerticalFlip, RandomHorizontalFlip, ColorJitter, GaussianBlur, RandomChoice
 import torch
-
-
-class AddGaussianNoise(object):
-    # FROM THE PYTORCH WEBSITE
-    def __init__(self, mean=0., std=1.):
-        self.std = std
-        self.mean = mean
-
-    def __call__(self, tensor):
-        return tensor + torch.randn(tensor.size()) * self.std + self.mean
-
-    def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
 
 class CellAETrainer(Base_Trainer):
@@ -61,7 +48,8 @@ class CellAETrainer(Base_Trainer):
 
         BACH_Cells(src_folder).compile_cells()
         # train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
-        train_set, val_set = BACH_Cells(src_folder, transform = tr_trans, val=False), BACH_Cells(src_folder, transform = val_trans, val=True)
+        train_set, val_set = BACH_Cells(src_folder, transform=tr_trans, val=False), BACH_Cells(
+            src_folder, transform=val_trans, val=True)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
@@ -91,12 +79,28 @@ class CellAETrainer(Base_Trainer):
         #                      down_samples=args["DOWN_SAMPLES"],
         #                      img_size=args["IMG_SIZE"],
         #                      tissue_radius=args["TISSUE_RADIUS"], ** args)
+        def freeze(layer, unfreeze=False):
+            for param in layer.parameters():
+                param.requires_grad_(unfreeze)
+            print(f"I have {'un' if unfreeze else ''}frozen the layer {layer}")
+
+        def ae_scheduler(trainer, *args, **kwargs):
+            print(F"Current Epoch:{trainer.current_epoch}")
+            if trainer.current_epoch == 0:
+                freeze(model.predictor)
+            if trainer.current_epoch == 1:
+                freeze(model.predictor, unfreeze=True)
+                freeze(model.encoder, unfreeze=False)
+                freeze(model.decoder, unfreeze=False)
+            if trainer.current_epoch == 2:
+                freeze(model.encoder, unfreeze=True)
 
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
         lr_monitor = LearningRateMonitor(logging_interval='step')
         trainer_callbacks = [
-            lr_monitor
+            lr_monitor,
+            LambdaCallback(on_epoch_start=ae_scheduler)
         ]
         if args["EARLY_STOP"]:
             trainer_callbacks.append(EarlyStopping(monitor="val_loss"))
