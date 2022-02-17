@@ -51,8 +51,9 @@ class CellAETrainer(Base_Trainer):
         print("Getting the Data")
 
         tr_trans = Compose([                                       # ASPIRATIONAL
-            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(brightness=0.3, contrast=0.1, saturation=0.1, hue=(-0.1, 0.1)), RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
-        )
+            # , RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
+            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(brightness=0.3, contrast=0.1, saturation=0.1, hue=(-0.1, 0.1))
+        ])
         val_trans = Compose([])
 
         src_folder = os.path.join("data", "processed",
@@ -60,7 +61,7 @@ class CellAETrainer(Base_Trainer):
 
         BACH_Cells(src_folder).compile_cells()
         # train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
-        train_set,val_set = BACH_Cells(src_folder,transform = tr_trans,val=False),BACH_Cells(src_folder,transform = val_trans,val=True)
+        train_set, val_set = BACH_Cells(src_folder, transform = tr_trans, val=False), BACH_Cells(src_folder, transform = val_trans, val=True)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)

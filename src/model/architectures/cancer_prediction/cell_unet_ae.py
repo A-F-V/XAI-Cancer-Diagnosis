@@ -10,6 +10,11 @@ import torch
 from src.utilities.pytorch_utilities import incremental_forward
 
 
+# todo!
+# First epoch is training the model's decoder and freeze predictor.
+# Next epoch is to train predictor and freeze encoder and decoder
+# Final epoch is to train predictor and encoder together.
+
 class UNET_AE(pl.LightningModule):
     def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **kwargs):
         super(UNET_AE, self).__init__()
@@ -20,9 +25,10 @@ class UNET_AE(pl.LightningModule):
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.width = kwargs["WIDTH"]
         self.unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                                   in_channels=3, out_channels=1, init_features=32, pretrained=True)
-        self.unet.conv = nn.Conv2d(32, 3, kernel_size=1, stride=1)
+                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=False)
+        self.unet.conv = nn.Conv2d(self.width, 3, kernel_size=1, stride=1)
 
         self.encoder = nn.Sequential(self.unet.encoder1, self.unet.pool1, self.unet.encoder2,
                                      self.unet.pool2, self.unet.encoder3, self.unet.pool3, self.unet.encoder4, self.unet.pool4, self.unet.bottleneck)
@@ -31,14 +37,14 @@ class UNET_AE(pl.LightningModule):
         self.predictor = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(self.args["DROPOUT"]),
-            nn.Linear(512*16, 1000),
+            nn.Linear((512*self.width*16)//32, (1000*self.width)//32),
             nn.LeakyReLU(inplace=True),
-            nn.BatchNorm1d(1000),
+            nn.BatchNorm1d((1000*self.width)//32),
             nn.Dropout(self.args["DROPOUT"]),
-            nn.Linear(1000, 100),
+            nn.Linear((1000*self.width)//32, (200*self.width)//32),
             nn.ReLU(inplace=True),
-            nn.BatchNorm1d(100),
-            nn.Linear(100, 4),
+            nn.BatchNorm1d((200*self.width)//32),
+            nn.Linear((200*self.width)//32, 4),
             nn.Softmax(dim=1))
 
     def forward(self, x):
