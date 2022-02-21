@@ -39,7 +39,8 @@ class CellAETrainer(Base_Trainer):
 
         tr_trans = Compose([                                       # ASPIRATIONAL
             # , RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
-            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(brightness=0.3, contrast=0.1, saturation=0.1, hue=(-0.1, 0.1))
+            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(
+                brightness=0.05, contrast=0.05, saturation=0.05, hue=(-0.01, 0.01))
         ])
         val_trans = Compose([])
 
@@ -54,10 +55,10 @@ class CellAETrainer(Base_Trainer):
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
+                                shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
 
-        accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
-        num_steps = len(train_loader)*args["EPOCHS"]//accum_batch
+        accum_batch = max(1, 512//args["BATCH_SIZE_TRAIN"])
+        num_steps = (len(train_loader)*args["EPOCHS"])//accum_batch+accum_batch + 100
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
@@ -90,17 +91,18 @@ class CellAETrainer(Base_Trainer):
                 freeze(model.predictor)
             if trainer.current_epoch == 1:
                 freeze(model.predictor, unfreeze=True)
-                freeze(model.encoder, unfreeze=False)
-                freeze(model.decoder, unfreeze=False)
-            if trainer.current_epoch == 2:
-                freeze(model.encoder, unfreeze=True)
+            #    freeze(model.encoder, unfreeze=False)
+            #    freeze(model.decoder, unfreeze=False)
+            # if trainer.current_epoch == 2:
+            #    freeze(model.encoder, unfreeze=True)
+            model.phase = min(trainer.current_epoch, 2)
 
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
         lr_monitor = LearningRateMonitor(logging_interval='step')
         trainer_callbacks = [
             lr_monitor,
-            LambdaCallback(on_epoch_start=ae_scheduler)
+            # LambdaCallback(on_epoch_start=ae_scheduler)
         ]
         if args["EARLY_STOP"]:
             trainer_callbacks.append(EarlyStopping(monitor="val_loss"))

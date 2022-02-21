@@ -27,13 +27,14 @@ class UNET_AE(pl.LightningModule):
         self.val_loader = val_loader
         self.width = kwargs["WIDTH"]
         self.unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=False)
+                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=True)
         self.unet.conv = nn.Conv2d(self.width, 3, kernel_size=1, stride=1)
 
         self.encoder = nn.Sequential(self.unet.encoder1, self.unet.pool1, self.unet.encoder2,
                                      self.unet.pool2, self.unet.encoder3, self.unet.pool3, self.unet.encoder4, self.unet.pool4, self.unet.bottleneck)
         self.decoder = nn.Sequential(self.unet.upconv4, self.unet.decoder4, self.unet.upconv3, self.unet.decoder3,
                                      self.unet.upconv2, self.unet.decoder2, self.unet.upconv1, self.unet.decoder1, self.unet.conv)
+        self.phase = 0
         self.predictor = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(self.args["DROPOUT"]),
@@ -42,9 +43,13 @@ class UNET_AE(pl.LightningModule):
             nn.BatchNorm1d((1000*self.width)//32),
             nn.Dropout(self.args["DROPOUT"]),
             nn.Linear((1000*self.width)//32, (200*self.width)//32),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d((200*self.width)//32),
-            nn.Linear((200*self.width)//32, 4),
+            nn.Dropout(self.args["DROPOUT"]),
+            nn.Linear((200*self.width)//32, (40*self.width)//32),
+            nn.LeakyReLU(inplace=True),
+            nn.BatchNorm1d((40*self.width)//32),
+            nn.Linear((40*self.width)//32, 4),
             nn.Softmax(dim=1))
 
     def forward(self, x):
@@ -98,7 +103,7 @@ class UNET_AE(pl.LightningModule):
         cell_hat, y_hat = self.forward(cells)
         batch_size = y.shape[0]
 
-        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
+        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10 * (1 if self.phase > 0 else 0)
         loss = mse+ce
 
         pred_cat = y_hat.argmax(dim=1)
@@ -117,7 +122,8 @@ class UNET_AE(pl.LightningModule):
         cells, y = val_batch['img'], categorise(val_batch["diagnosis"].float())
         cell_hat, y_hat = self.forward(cells)
         batch_size = y.shape[0]
-        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
+        mse, ce = F.mse_loss(cell_hat, cells) * (1 if self.phase !=
+                                                 1 else 0), F.nll_loss(torch.log(y_hat), y)*10 * (1 if self.phase > 0 else 0)
         loss = mse+ce
 
         pred_cat = y_hat.argmax(dim=1)
@@ -143,7 +149,7 @@ class UNET_AE(pl.LightningModule):
         sample = self.val_dataloader().dataset[0]['img'].unsqueeze(0).to(self.device)
         pred_out = self.forward(sample)[0]
         f = plot_images([tensor_to_numpy(sample.squeeze().detach().cpu()),
-                        tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
+                         tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
         log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
         # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 

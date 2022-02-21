@@ -4,8 +4,8 @@
   "EXPERIMENT_ID": 5,
   "EXPERIMENT_NAME": "AE",
   "EPOCHS": 3,
-  "BATCH_SIZE_TRAIN": 16,
-  "BATCH_SIZE_VAL": 16,
+  "BATCH_SIZE_TRAIN": 128,
+  "BATCH_SIZE_VAL": 128,
   "MAX_LR": 0.001,
   "ONE_CYCLE": true,
   "START_LR": 0.00001,
@@ -15,7 +15,7 @@
   "LR_TEST": false,
   "IMG_SIZE": 64,
   "LAYERS": 7,
-  "NOTES": "Colour Augmentation",
+  "NOTES": "Trying to get working again",
   "ARCH": "GAT",
   "DROPOUT": 0.01,
   "GRID": [
@@ -25,9 +25,9 @@
     { "HP": "WIDTH", "TYPE": "CHOICE", "VALUE": [6, 12, 20, 50, 100] },
     { "HP": "FFN_DEPTH", "TYPE": "CHOICE", "VALUE": [2, 3] }
   ],
-  "GRID_SEARCH": false,
+  "GRID_SEARCH": true,
   "NODE_REDUCER": "ENCODER",
   "TRIALS": 50,
-  "WIDTH": 64,
-  "WEIGHT_DECAY": 0.01
+  "WIDTH": 32,
+  "WEIGHT_DECAY": 0.001
 }
