@@ -40,9 +40,9 @@ class BACH_Cells(Dataset):
 
     def compile_cells(self, recompute=False, train_test_split=1.0):
         n = 0
-        print("Finding Cells")
+        #print("Finding Cells")
         num_cells = len([os.path.join(self.cell_dir, f) for f in os.listdir(self.cell_dir) if ".pt" == f[-3:]])
-        print("Found {} cells".format(num_cells))
+        #print("Found {} cells".format(num_cells))
         if not recompute and num_cells != 0:
             self.num_cells = num_cells
         else:

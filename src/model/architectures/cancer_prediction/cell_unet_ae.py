@@ -8,23 +8,21 @@ from src.utilities.img_utilities import tensor_to_numpy
 from src.utilities.mlflow_utilities import log_plot
 import torch
 from src.utilities.pytorch_utilities import incremental_forward
+from torchvision.transforms import RandomVerticalFlip, RandomHorizontalFlip, ColorJitter, Compose
+from src.datasets.BACH_Cells import BACH_Cells
+import os
+from torch.utils.data import DataLoader, RandomSampler
 
-
-# todo!
-# First epoch is training the model's decoder and freeze predictor.
-# Next epoch is to train predictor and freeze encoder and decoder
-# Final epoch is to train predictor and encoder together.
 
 class UNET_AE(pl.LightningModule):
-    def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **kwargs):
+    def __init__(self, data_set_path, img_size=64, num_steps=0, **kwargs):
         super(UNET_AE, self).__init__()
         self.args = kwargs
         self.img_size = img_size
         self.learning_rate = kwargs["START_LR"]
 
+        self.src_folder = data_set_path
         self.num_steps = num_steps
-        self.train_loader = train_loader
-        self.val_loader = val_loader
         self.width = kwargs["WIDTH"]
         self.unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
                                    in_channels=3, out_channels=1, init_features=self.width, pretrained=True)
@@ -51,6 +49,32 @@ class UNET_AE(pl.LightningModule):
             nn.BatchNorm1d((40*self.width)//32),
             nn.Linear((40*self.width)//32, 4),
             nn.Softmax(dim=1))
+
+        self.setup_datasets()
+
+    def setup_datasets(self):
+        tr_trans = Compose([                                       # ASPIRATIONAL
+            # , RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
+            RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(
+                brightness=self.args["IMG_AUG"], contrast=self.args["IMG_AUG"], saturation=self.args["IMG_AUG"], hue=(-self.args["IMG_AUG"]/5, self.args["IMG_AUG"]/5))
+        ])
+        val_trans = Compose([])
+
+        # train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
+        train_set, val_set = BACH_Cells(self.src_folder, transform=tr_trans, val=False), BACH_Cells(
+            self.src_folder, transform=val_trans, val=True)
+
+        self.train_loader = DataLoader(train_set, batch_size=self.args["BATCH_SIZE_TRAIN"],
+                                       shuffle=False, num_workers=self.args["NUM_WORKERS"],
+                                       sampler=RandomSampler(
+            torch.randint(high=len(train_set), size=(self.args["NUM_BATCHES_PER_EPOCH"]*self.args["BATCH_SIZE_TRAIN"],))
+        ),)
+        self.val_loader = DataLoader(val_set, batch_size=self.args["BATCH_SIZE_VAL"],
+                                     shuffle=False, num_workers=self.args["NUM_WORKERS"], sampler=RandomSampler(
+            torch.randint(high=len(train_set), size=(
+                self.args["NUM_BATCHES_PER_EPOCH"]*self.args["BATCH_SIZE_VAL"]//4,))
+        ))
+        print("BAM")
 
     def forward(self, x):
         enc1 = self.unet.encoder1(x)
@@ -103,7 +127,7 @@ class UNET_AE(pl.LightningModule):
         cell_hat, y_hat = self.forward(cells)
         batch_size = y.shape[0]
 
-        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10 * (1 if self.phase > 0 else 0)
+        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
         loss = mse+ce
 
         pred_cat = y_hat.argmax(dim=1)
@@ -122,8 +146,7 @@ class UNET_AE(pl.LightningModule):
         cells, y = val_batch['img'], categorise(val_batch["diagnosis"].float())
         cell_hat, y_hat = self.forward(cells)
         batch_size = y.shape[0]
-        mse, ce = F.mse_loss(cell_hat, cells) * (1 if self.phase !=
-                                                 1 else 0), F.nll_loss(torch.log(y_hat), y)*10 * (1 if self.phase > 0 else 0)
+        mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
         loss = mse+ce
 
         pred_cat = y_hat.argmax(dim=1)
@@ -152,6 +175,9 @@ class UNET_AE(pl.LightningModule):
                          tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
         log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
         # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
+
+    def on_train_epoch_start(self):
+        self.setup_datasets()
 
 
 def categorise(t: Tensor):
