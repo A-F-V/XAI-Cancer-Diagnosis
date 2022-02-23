@@ -3,9 +3,9 @@
   "RUN_NAME": "UNET_PREDICTOR_GOOD",
   "EXPERIMENT_ID": 5,
   "EXPERIMENT_NAME": "AE",
-  "EPOCHS": 20,
+  "EPOCHS": 100,
   "BATCH_SIZE_TRAIN": 128,
-  "BATCH_SIZE_VAL": 128,
+  "BATCH_SIZE_VAL": 32,
   "MAX_LR": 0.001,
   "ONE_CYCLE": true,
   "START_LR": 0.00001,
@@ -17,21 +17,26 @@
   "LAYERS": 7,
   "NOTES": "Trying to get working again",
   "ARCH": "GAT",
-  "DROPOUT": 0.01,
+  "DROPOUT": 0.2,
   "GRID": [
-    { "HP": "DROPOUT", "TYPE": "CHOICE", "VALUE": [0, 0.001, 0.01, 0.1, 0] },
+    {
+      "HP": "DROPOUT",
+      "TYPE": "CHOICE",
+      "VALUE": [0, 0.001, 0.01, 0.1, 0, 0.2, 0.3, 0.5, 0.8]
+    },
     { "HP": "WEIGHT_DECAY", "TYPE": "CHOICE", "VALUE": [0, 0.001, 0.01, 0.1] },
     {
       "HP": "IMG_AUG",
       "TYPE": "CHOICE",
-      "VALUE": [0, 0.05, 0.01, 0.1, 0.2, 0.3]
+      "VALUE": [0, 0.05, 0.01, 0.1, 0.2]
     }
   ],
-  "GRID_SEARCH": true,
+  "GRID_SEARCH": false,
   "NODE_REDUCER": "ENCODER",
-  "TRIALS": 50,
+  "TRIALS": 20,
   "WIDTH": 32,
-  "WEIGHT_DECAY": 0.001,
-  "IMG_AUG": 0.05,
-  "NUM_BATCHES_PER_EPOCH": 128
+  "WEIGHT_DECAY": 0.005,
+  "IMG_AUG": 0.3,
+  "NUM_BATCHES_PER_EPOCH": 128,
+  "EPOCH_MODE": "PARTIAL"
 }

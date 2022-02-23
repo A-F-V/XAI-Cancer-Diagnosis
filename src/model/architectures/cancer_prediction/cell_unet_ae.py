@@ -12,6 +12,7 @@ from torchvision.transforms import RandomVerticalFlip, RandomHorizontalFlip, Col
 from src.datasets.BACH_Cells import BACH_Cells
 import os
 from torch.utils.data import DataLoader, RandomSampler
+from src.utilities.pytorch_utilities import random_subset
 
 
 class UNET_AE(pl.LightningModule):
@@ -60,21 +61,23 @@ class UNET_AE(pl.LightningModule):
         ])
         val_trans = Compose([])
 
+        train_set_size, val_set_size = self.args["NUM_BATCHES_PER_EPOCH"] * \
+            self.args["BATCH_SIZE_TRAIN"], self.args["NUM_BATCHES_PER_EPOCH"]*self.args["BATCH_SIZE_VAL"]
+
         # train_set, val_set = train_val_split(BACH_Cells, src_folder, 0.8, tr_trans=tr_trans, val_trans=val_trans)
         train_set, val_set = BACH_Cells(self.src_folder, transform=tr_trans, val=False), BACH_Cells(
             self.src_folder, transform=val_trans, val=True)
 
+        if self.args["EPOCH_MODE"] != "FULL":
+            train_set, val_set = random_subset(train_set, train_set_size), random_subset(val_set, val_set_size)
+
         self.train_loader = DataLoader(train_set, batch_size=self.args["BATCH_SIZE_TRAIN"],
-                                       shuffle=False, num_workers=self.args["NUM_WORKERS"],
-                                       sampler=RandomSampler(
-            torch.randint(high=len(train_set), size=(self.args["NUM_BATCHES_PER_EPOCH"]*self.args["BATCH_SIZE_TRAIN"],))
-        ),)
+                                       shuffle=True, num_workers=self.args["NUM_WORKERS"],
+                                       persistent_workers=self.args["EPOCH_MODE"] == "FULL"
+                                       )
         self.val_loader = DataLoader(val_set, batch_size=self.args["BATCH_SIZE_VAL"],
-                                     shuffle=False, num_workers=self.args["NUM_WORKERS"], sampler=RandomSampler(
-            torch.randint(high=len(train_set), size=(
-                self.args["NUM_BATCHES_PER_EPOCH"]*self.args["BATCH_SIZE_VAL"]//4,))
-        ))
-        print("BAM")
+                                     shuffle=False, num_workers=self.args["NUM_WORKERS"],
+                                     persistent_workers=self.args["EPOCH_MODE"] == "FULL")
 
     def forward(self, x):
         enc1 = self.unet.encoder1(x)
@@ -102,7 +105,7 @@ class UNET_AE(pl.LightningModule):
 
         return x_hat, y_hat
 
-    @incremental_forward(64)
+    @ incremental_forward(64)
     def forward_pred(self, x):
         return self.forward(x.cuda())[1].cpu()
 
@@ -173,11 +176,12 @@ class UNET_AE(pl.LightningModule):
         pred_out = self.forward(sample)[0]
         f = plot_images([tensor_to_numpy(sample.squeeze().detach().cpu()),
                          tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
-        log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
+       # log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
         # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 
     def on_train_epoch_start(self):
-        self.setup_datasets()
+        if self.args["EPOCH_MODE"] != "FULL":
+            self.setup_datasets()
 
 
 def categorise(t: Tensor):
