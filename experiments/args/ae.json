@@ -1,23 +1,23 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "UNET_PREDICTOR_GOOD",
+  "RUN_NAME": "UNET_PREDICTOR_NO_MSE",
   "EXPERIMENT_ID": 5,
   "EXPERIMENT_NAME": "AE",
-  "EPOCHS": 3,
+  "EPOCHS": 100,
   "BATCH_SIZE_TRAIN": 128,
   "BATCH_SIZE_VAL": 128,
-  "MAX_LR": 0.1,
+  "MAX_LR": 0.001,
   "ONE_CYCLE": true,
-  "START_LR": 0.001,
+  "START_LR": 0.00001,
   "NUM_WORKERS": 4,
   "START_CHECKPOINT": "",
   "EARLY_STOP": false,
   "LR_TEST": false,
   "IMG_SIZE": 64,
   "LAYERS": 7,
-  "NOTES": "Trying to get working again",
+  "NOTES": "No Joint Training, Only CE",
   "ARCH": "GAT",
-  "DROPOUT": 0.01,
+  "DROPOUT": 0.8,
   "GRID": [
     {
       "HP": "DROPOUT",
@@ -28,14 +28,15 @@
     {
       "HP": "IMG_AUG",
       "TYPE": "CHOICE",
-      "VALUE": [0, 0.05, 0.01, 0.1, 0.2, 0.3, 0.5]
+      "VALUE": [0, 0.05, 0.01, 0.1, 0.2]
     }
   ],
   "GRID_SEARCH": false,
   "NODE_REDUCER": "ENCODER",
-  "TRIALS": 50,
+  "TRIALS": 20,
   "WIDTH": 32,
-  "WEIGHT_DECAY": 0.001,
-  "IMG_AUG": 0.01,
-  "NUM_BATCHES_PER_EPOCH": 128
+  "WEIGHT_DECAY": 0.05,
+  "IMG_AUG": 0.6,
+  "NUM_BATCHES_PER_EPOCH": 512,
+  "EPOCH_MODE": "PARTIAL"
 }

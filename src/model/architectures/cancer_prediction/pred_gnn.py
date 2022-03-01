@@ -19,6 +19,7 @@ class PredGNN(pl.LightningModule):
         self.args = dict(config)
         self.img_size = img_size
         self.learning_rate = config["START_LR"]
+        print(self.learning_rate)
 
         self.num_steps = num_steps
         self.train_loader = train_loader
@@ -34,12 +35,12 @@ class PredGNN(pl.LightningModule):
         # , edge_weight=edge_attr)
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
         for i in range(self.layers):
-           # x = self.model["pre_act"](self.model["pre_trans"](x))
+           # x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
             x = self.model[i]["conv"](x=x, edge_index=edge_index)
-            x = self.model[i]["post_act"](x*1)
+           # x = self.model[i]["post_act"](x*1)
         x_pool = self.pool(x, batch)
         soft = softmax(x_pool, dim=1)
-        return x_pool
+        return soft
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)

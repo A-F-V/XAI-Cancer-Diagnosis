@@ -50,14 +50,18 @@ class GNNTrainer(Base_Trainer):
         graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]),  Distance(norm=False, cat=False)])
 
         train_ind, val_ind = [], []
-        for clss in range(4):
-            random_ids = np.arange(clss*100, (clss+1)*100)
-            np.random.shuffle(random_ids)
-            train_ind += list(random_ids[:int(100*0.75)])
-            val_ind += list(random_ids[int(100*0.75):])
-
         src_folder = os.path.join(os.getcwd(), "data", "processed",
                                   "BACH_TRAIN")
+        graph_split = os.path.join(src_folder, "graph_ind.txt")
+        with open(graph_split, "r") as f:
+            train_ind = map(int, f.readline()[1:-1].split(","))
+            val_ind = map(int, f.readline()[1:-1].split(","))
+            # for clss in range(4):  # TODO CHANGE TO FILE IDS!
+            #    random_ids = np.arange(clss*100, (clss+1)*100)
+            #    np.random.shuffle(random_ids)
+            #    train_ind += list(random_ids[:int(100*0.75)])
+            #    val_ind += list(random_ids[int(100*0.75):])
+
         print(f"The data source folder is {src_folder}")
         train_set, val_set = BACH(src_folder, ids=train_ind,
                                   graph_augmentation=graph_aug_train, pred_mode=True), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred, pred_mode=True)

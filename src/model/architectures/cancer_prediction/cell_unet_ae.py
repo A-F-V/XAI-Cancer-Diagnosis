@@ -57,7 +57,7 @@ class UNET_AE(pl.LightningModule):
         tr_trans = Compose([                                       # ASPIRATIONAL
             # , RandomChoice(transforms=[GaussianBlur(kernel_size=3), AddGaussianNoise(0, 0.01)], p=[0.5, 0.5])]
             RandomHorizontalFlip(), RandomVerticalFlip(), ColorJitter(
-                brightness=self.args["IMG_AUG"], contrast=self.args["IMG_AUG"], saturation=self.args["IMG_AUG"], hue=(-self.args["IMG_AUG"]/5, self.args["IMG_AUG"]/5))
+                brightness=self.args["IMG_AUG"], contrast=self.args["IMG_AUG"], saturation=self.args["IMG_AUG"], hue=(-self.args["IMG_AUG"]/2, self.args["IMG_AUG"]/2))
         ])
         val_trans = Compose([])
 
@@ -105,7 +105,7 @@ class UNET_AE(pl.LightningModule):
 
         return x_hat, y_hat
 
-    @ incremental_forward(64)
+    @incremental_forward(64)
     def forward_pred(self, x):
         return self.forward(x.cuda())[1].cpu()
 
@@ -131,7 +131,7 @@ class UNET_AE(pl.LightningModule):
         batch_size = y.shape[0]
 
         mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
-        loss = mse+ce
+        loss = ce
 
         pred_cat = y_hat.argmax(dim=1)
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
@@ -175,8 +175,8 @@ class UNET_AE(pl.LightningModule):
         sample = self.val_dataloader().dataset[0]['img'].unsqueeze(0).to(self.device)
         pred_out = self.forward(sample)[0]
         f = plot_images([tensor_to_numpy(sample.squeeze().detach().cpu()),
-                         tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
-       # log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
+                        tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
+        log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
         # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 
     def on_train_epoch_start(self):

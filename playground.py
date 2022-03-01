@@ -12,9 +12,9 @@ def create_prob():
     from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
     import json
     src_folder = os.path.join(os.getcwd(), "data", "processed", "BACH_TRAIN")
-    args = json.load(open(os.path.join(os.getcwd(), "experiments", "args", "ae.json")))
+    args = json.load(open(os.path.join(os.getcwd(), "experiments", "args", "default.json")))
     model = UNET_AE.load_from_checkpoint(os.path.join(
-        os.getcwd(), "experiments", "checkpoints", "AE_UNET_PREDICTOR_GOOD.ckpt"), data_set_path=src_folder, **args)
+        os.getcwd(), "experiments", "checkpoints", "AE_UNET_PREDICTOR_NO_MSE.ckpt"), data_set_path=src_folder, **args)
     with torch.no_grad():
         model.eval()
         model = model.cuda()
@@ -30,8 +30,8 @@ if __name__ == "__main__":
 
     #BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)
 
-    #trainer = GNNTrainer()
-    trainer = CellAETrainer()
+    trainer = GNNTrainer()
+    #trainer = CellAETrainer()
     trainer.train()
 
-    create_prob()
+    # create_prob()
