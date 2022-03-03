@@ -131,7 +131,7 @@ class UNET_AE(pl.LightningModule):
         batch_size = y.shape[0]
 
         mse, ce = F.mse_loss(cell_hat, cells), F.nll_loss(torch.log(y_hat), y)*10
-        loss = ce
+        loss = ce + mse
 
         pred_cat = y_hat.argmax(dim=1)
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()

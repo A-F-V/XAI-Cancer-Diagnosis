@@ -35,8 +35,8 @@ class PredGNN(pl.LightningModule):
         # , edge_weight=edge_attr)
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
         for i in range(self.layers):
-           # x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
-            x = self.model[i]["conv"](x=x, edge_index=edge_index)
+            #x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
+            x = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
            # x = self.model[i]["post_act"](x*1)
         x_pool = self.pool(x, batch)
         soft = softmax(x_pool, dim=1)
@@ -58,9 +58,18 @@ class PredGNN(pl.LightningModule):
         x, edge_index, edge_attr, y, batch = train_batch.x, train_batch.edge_index, train_batch.edge_attr, train_batch.y, train_batch.batch
         output = self.forward(x, edge_index, edge_attr, batch)
         loss = nll_loss(torch.log(output), y)
+        pred_cat = output.argmax(dim=1)
+
+        canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
+        canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
+        acc = (pred_cat == y).float().mean()
+        canc_acc = (canc_pred == canc_grd).float().mean()
+
         self.log("train_loss", loss)
+        self.log("train_acc", acc)
+        self.log("train_canc_acc", canc_acc)
         # print(self.steepness.data)
-        return loss
+        return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
     def validation_step(self, val_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = val_batch.x, val_batch.edge_index, val_batch.edge_attr, val_batch.y, val_batch.batch
@@ -77,6 +86,14 @@ class PredGNN(pl.LightningModule):
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)
         return {'val_loss': loss, 'val_acc': acc, 'val_canc_acc': canc_acc}
+
+    def train_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
+        avg_acc = torch.stack([x["train_acc"] for x in outputs]).mean()
+        avg_canc_acc = torch.stack([x["train_canc_acc"] for x in outputs]).mean()
+        self.log("ep/train_loss", avg_loss)
+        self.log("ep/train_acc", avg_acc)
+        self.log("ep/train_canc_acc", avg_canc_acc)
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()

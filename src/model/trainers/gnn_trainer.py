@@ -54,8 +54,10 @@ class GNNTrainer(Base_Trainer):
                                   "BACH_TRAIN")
         graph_split = os.path.join(src_folder, "graph_ind.txt")
         with open(graph_split, "r") as f:
-            train_ind = map(int, f.readline()[1:-1].split(","))
-            val_ind = map(int, f.readline()[1:-1].split(","))
+            l1 = f.readline().strip()
+            l2 = f.readline().strip()
+            train_ind = list(map(int, l1[1:-1].split(",")))
+            val_ind = list(map(int, l2[1:-1].split(",")))
             # for clss in range(4):  # TODO CHANGE TO FILE IDS!
             #    random_ids = np.arange(clss*100, (clss+1)*100)
             #    np.random.shuffle(random_ids)
@@ -121,11 +123,11 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
     config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
     scheduler = ASHAScheduler(
         max_t=args["EPOCHS"],
-        grace_period=20,
+        grace_period=35,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
-        metric_columns=["loss", "mean_accuracy", "mean_canc_accuracy", "training_iteration"])
+        metric_columns=["loss", "train_accuracy", "val_mean_accuracy", "train_canc_accuracy", "val_mean_canc_accuracy", "training_iteration"])
 
     def train_fn(config):
         # wait_for_gpu(target_util=0.1)
@@ -145,7 +147,7 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
                         resources_per_trial=resources_per_trial,
                         num_samples=args["TRIALS"])  # number of trials
 
-    print(f"Best Config found was: " + analysis.get_best_config(metric="loss", mode="min"))
+    print(f"Best Config found was: " + str(analysis.get_best_config(metric="loss", mode="min")))
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
@@ -156,7 +158,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     ############################
     # Layering
     ###################
-    #model.layers = 1
+    # model.layers = 1
 
     def layer_after_x(time):
         def _layer(trainer, pl_module):
@@ -167,7 +169,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     ############################
 
     trainer_callbacks = [
-        #LambdaCallback(on_train_epoch_start=unfreeze_after_x("steepness", 50))
+        # LambdaCallback(on_train_epoch_start=unfreeze_after_x("steepness", 50))
         # LambdaCallback(on_train_epoch_start=layer_after_x(10))
     ]
 
@@ -179,11 +181,19 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
         trc = TuneReportCallback(
             {
                 "loss": "ep/val_loss",
-                "mean_accuracy": "ep/val_acc",
-                "mean_canc_accuracy": "ep/val_canc_acc"
+                "val_mean_accuracy": "ep/val_acc",
+                "val_mean_canc_accuracy": "ep/val_canc_acc",
+
             },
             on="validation_end")
+        trct = TuneReportCallback(
+            {
+                "train_canc_accuracy": "ep/train_canc_acc",
+                "train_accuracy": "ep/train_acc"
+            },
+            on="train_end")
         trainer_callbacks.append(trc)
+        trainer_callbacks.append(trct)
 
     trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
                          max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
