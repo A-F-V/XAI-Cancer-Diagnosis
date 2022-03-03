@@ -24,11 +24,11 @@ class GraphExtractor(Thread):
     def run(self):
         path = self.instance_seg_path
         data = torch.load(path)
-        try:
-            graph = extract_graph(data['original_image'], data['instance_mask'], **self.kwargs)
-        except:
-            print(f"Failed to extract anything of value from {path}")
-            return
+        # try:
+        graph = extract_graph(data['original_image'], data['instance_mask'], **self.kwargs)
+        # except:
+        #   print(f"Failed to extract anything of value from {path}")
+        #    return
         y = torch.tensor([0, 0, 0, 0])
 
         label = os.path.basename(path)
@@ -50,7 +50,7 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=2, min_nodes=10, img_augmentation=None, graph_augmentation=None):
+    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None, pred_mode=False):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -60,10 +60,11 @@ class BACH(Dataset):
         self.downsample = downsample
         self.min_nodes = min_nodes
         self.img_augmentation = img_augmentation
-
+        self.pred_mode = pred_mode
         self.graph_augmentation = graph_augmentation
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
+        create_dir_if_not_exist(self.prob_graph_dir, False)
         create_dir_if_not_exist(os.path.join(self.instance_segmentation_dir, "VIZUALISED"), False)
 
     @property
@@ -90,6 +91,18 @@ class BACH(Dataset):
         return [os.path.join(self.instance_segmentation_dir, f) for f in self.instance_segmentation_file_names]
 
     @property
+    def prob_graph_dir(self):
+        return os.path.join(self.src_folder, "PROB_GRAPH")
+
+    @property
+    def prob_graph_file_names(self):
+        return [f for f in os.listdir(self.prob_graph_dir) if ".pt" in f]
+
+    @property
+    def prob_graph_paths(self):
+        return [os.path.join(self.prob_graph_dir, f) for f in self.prob_graph_file_names]
+
+    @property
     def graph_dir(self):
         return os.path.join(self.src_folder, "GRAPH")
 
@@ -113,6 +126,12 @@ class BACH(Dataset):
             for thread in threads:
                 thread.join()
 
+    def generate_prob_graphs(self, model):
+        for gn in tqdm(self.graph_file_names, desc="Generating Prob Graphs"):
+            graph = torch.load(os.path.join(self.graph_dir, gn))
+            graph.x = model.forward_pred(graph.x.unflatten(1, (3, 64, 64)))
+            torch.save(graph, os.path.join(self.prob_graph_dir, gn))
+
     def generate_node_distribution(self):
         counts = {}
         for path in self.graph_paths:
@@ -132,8 +151,8 @@ class BACH(Dataset):
         return len(self.ids)
 
     def __getitem__(self, ind):
-        graph_id = self.ids[ind] % len(self.graph_file_names)
-        path = self.graph_paths[graph_id]
+        graph_id = (self.ids[ind]-1) % len(self.graph_file_names)
+        path = self.graph_paths[graph_id] if not self.pred_mode else self.prob_graph_paths[graph_id]
         graph = torch.load(path)
         if self.graph_augmentation is not None:
             graph = self.graph_augmentation(graph)

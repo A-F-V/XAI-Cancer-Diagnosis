@@ -1,9 +1,9 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "AE Test 4",
+  "RUN_NAME": "UNET_PREDICTOR_NO_MSE",
   "EXPERIMENT_ID": 5,
   "EXPERIMENT_NAME": "AE",
-  "EPOCHS": 5,
+  "EPOCHS": 120,
   "BATCH_SIZE_TRAIN": 128,
   "BATCH_SIZE_VAL": 128,
   "MAX_LR": 0.001,
@@ -13,9 +13,30 @@
   "START_CHECKPOINT": "",
   "EARLY_STOP": false,
   "LR_TEST": false,
-  "DOWN_SAMPLES": 0,
-  "NOTES": "Wider Linear",
-  "WEIGHT_DECAY": 0.001,
-  "BOTTLENECK": 200,
-  "DENSITY": 1,
+  "IMG_SIZE": 64,
+  "LAYERS": 7,
+  "NOTES": "No Joint Training, Only CE, Less IMG AUG",
+  "ARCH": "GAT",
+  "DROPOUT": 0.93,
+  "GRID": [
+    {
+      "HP": "DROPOUT",
+      "TYPE": "CHOICE",
+      "VALUE": [0, 0.001, 0.01, 0.1, 0, 0.2, 0.3, 0.5, 0.8]
+    },
+    { "HP": "WEIGHT_DECAY", "TYPE": "CHOICE", "VALUE": [0, 0.001, 0.01, 0.1] },
+    {
+      "HP": "IMG_AUG",
+      "TYPE": "CHOICE",
+      "VALUE": [0, 0.05, 0.01, 0.1, 0.2]
+    }
+  ],
+  "GRID_SEARCH": false,
+  "NODE_REDUCER": "ENCODER",
+  "TRIALS": 20,
+  "WIDTH": 32,
+  "WEIGHT_DECAY": 0.06,
+  "IMG_AUG": 0.1,
+  "NUM_BATCHES_PER_EPOCH": 128,
+  "EPOCH_MODE": "PARTIAL"
 }

@@ -49,6 +49,7 @@ def setup():
             if ".tif" not in img_path:
                 os.remove(img_path)
             else:
+                continue  # NO STAIN NORMING
                 img = Image.open(img_path)
                 img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
                 img = ToPILImage()(img)
