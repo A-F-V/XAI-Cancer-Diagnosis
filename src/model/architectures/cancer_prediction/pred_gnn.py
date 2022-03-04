@@ -18,8 +18,7 @@ class PredGNN(pl.LightningModule):
         super(PredGNN, self).__init__()
         self.args = dict(config)
         self.img_size = img_size
-        self.learning_rate = config["START_LR"]
-        print(self.learning_rate)
+        self.learning_rate = config["START_LR"] if "START_LR" in config else 1e-3
 
         self.num_steps = num_steps
         self.train_loader = train_loader

@@ -16,17 +16,26 @@ from src.utilities.pytorch_utilities import random_subset
 
 
 class UNET_AE(pl.LightningModule):
-    def __init__(self, data_set_path, img_size=64, num_steps=0, **kwargs):
+    def __init__(self, predictOnly=False, data_set_path=None, img_size=64, num_steps=0, **kwargs):
         super(UNET_AE, self).__init__()
         self.args = kwargs
         self.img_size = img_size
-        self.learning_rate = kwargs["START_LR"]
+        self.learning_rate = kwargs["START_LR"] if "START_LR" in kwargs else 1e-3
+        self.num_steps = num_steps
+        #self.data_set = BACH_Cells(data_set_path, img_size=self.img_size, **kwargs)
+        # self.data_loader = DataLoader(
+        #    self.data_set, batch_size=kwargs["BATCH_SIZE"], shuffle=True, num_workers=kwargs["NUM_WORKERS"])
+
+        #self.encoder = UNET_Encoder(in_channels=3, out_channels=64, num_steps=self.num_steps, **kwargs)
+        #self.decoder = UNET_Decoder(in_channels=64, out_channels=3, num_steps=self.num_steps, **kwargs)
 
         self.src_folder = data_set_path
         self.num_steps = num_steps
-        self.width = kwargs["WIDTH"]
+        self.width = kwargs["WIDTH"] if "WIDTH" in kwargs else 32
+        self.dropout = kwargs["DROPOUT"] if "DROPOUT" in kwargs else 0
+
         self.unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=True)
+                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=True, verbose=False)
         self.unet.conv = nn.Conv2d(self.width, 3, kernel_size=1, stride=1)
 
         self.encoder = nn.Sequential(self.unet.encoder1, self.unet.pool1, self.unet.encoder2,
@@ -36,22 +45,23 @@ class UNET_AE(pl.LightningModule):
         self.phase = 0
         self.predictor = nn.Sequential(
             nn.Flatten(),
-            nn.Dropout(self.args["DROPOUT"]),
+            nn.Dropout(self.dropout),
             nn.Linear((512*self.width*16)//32, (1000*self.width)//32),
             nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d((1000*self.width)//32),
-            nn.Dropout(self.args["DROPOUT"]),
+            nn.Dropout(self.dropout),
             nn.Linear((1000*self.width)//32, (200*self.width)//32),
             nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d((200*self.width)//32),
-            nn.Dropout(self.args["DROPOUT"]),
+            nn.Dropout(self.dropout),
             nn.Linear((200*self.width)//32, (40*self.width)//32),
             nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d((40*self.width)//32),
             nn.Linear((40*self.width)//32, 4),
             nn.Softmax(dim=1))
 
-        self.setup_datasets()
+        if data_set_path != None:
+            self.setup_datasets()
 
     def setup_datasets(self):
         tr_trans = Compose([                                       # ASPIRATIONAL

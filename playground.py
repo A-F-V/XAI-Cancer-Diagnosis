@@ -7,6 +7,9 @@ import os
 from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
 from src.datasets.BACH import BACH
 
+from tqdm import tqdm
+from src.predict_cancer import predict_cancer
+
 
 def create_prob():
     from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
@@ -23,6 +26,27 @@ def create_prob():
         bach_prob.generate_prob_graphs(model)
 
 
+def create_test_set_predictions():
+    directory = os.path.join("data", "raw", "unzipped", "BACH_TEST", "ICIAR2018_BACH_Challenge_TestDataset", "Photos")
+    with open("predictions.csv", "w") as f:
+        f.write("case,class")
+        for img_id in tqdm(range(100)):
+            img_path = os.path.join(directory, f"test{img_id}.tif")
+            prediction = None
+            try:
+                prediction = predict_cancer(img_path).squeeze().argmax()
+                # TO GET IN CORRECT FORMAT
+                if prediction == 3:
+                    prediction = 0
+                else:
+                    prediction += 1
+            except Exception as e:
+                print(img_id)
+                print(e)
+                prediction = 0
+            f.write(f"\n{img_id},{prediction}")
+
+
 if __name__ == "__main__":
 
     torch.multiprocessing.freeze_support()
@@ -30,8 +54,9 @@ if __name__ == "__main__":
 
     #BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)
 
-    trainer = GNNTrainer()
+    #trainer = GNNTrainer()
     #trainer = CellAETrainer()
-    trainer.train()
+    # trainer.train()
 
     # create_prob()
+    create_test_set_predictions()

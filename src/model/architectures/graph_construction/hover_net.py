@@ -28,13 +28,17 @@ class HoVerNet(pl.LightningModule):
 
     def __init__(self, num_batches=0, train_loader=None, val_loader=None, **kwargs):
         super(HoVerNet, self).__init__()
-        resnet_size = kwargs["RESNET_SIZE"]
+        resnet_size = kwargs["RESNET_SIZE"] if "RESNET_SIZE" in kwargs else 50
         assert resnet_size in resnet_sizes
         decodersize = (resnet_sizes.index(resnet_size)+2)*0.25
         self.encoder = HoVerNetEncoder(resnet_size)
         self.np_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("np"))
         self.hover_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("hover"))
-        self.learning_rate = kwargs["START_LR"]
+        self.learning_rate = kwargs["START_LR"] if "START_LR" in kwargs else 1e-3
+        self.num_batches = num_batches
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.args = kwargs
         self.args = kwargs
         self.num_batches = num_batches
         self.train_loader = train_loader
