@@ -85,3 +85,5 @@ lightning_logs/*
 
 experiments/checkpoints/*
 experiments/artifacts/*
+
+model/*

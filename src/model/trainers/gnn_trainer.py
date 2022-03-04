@@ -45,7 +45,7 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.0),  Distance(norm=False, cat=False)]
+        graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.02),  Distance(norm=False, cat=False)]
                                   )
         graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]),  Distance(norm=False, cat=False)])
 
@@ -123,7 +123,7 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
     config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
     scheduler = ASHAScheduler(
         max_t=args["EPOCHS"],
-        grace_period=35,
+        grace_period=40,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
