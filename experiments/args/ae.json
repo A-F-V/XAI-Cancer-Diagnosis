@@ -15,7 +15,7 @@
   "LR_TEST": false,
   "IMG_SIZE": 64,
   "LAYERS": 7,
-  "NOTES": "No Joint Training, Only CE, Less IMG AUG",
+  "NOTES": "Less IMG AUG",
   "ARCH": "GAT",
   "DROPOUT": 0.93,
   "GRID": [

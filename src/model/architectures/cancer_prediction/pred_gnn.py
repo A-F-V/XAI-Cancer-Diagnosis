@@ -1,6 +1,6 @@
 
 import pytorch_lightning as pl
-from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv
+from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv, TopKPooling
 from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter
 from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
 import torch
@@ -27,18 +27,32 @@ class PredGNN(pl.LightningModule):
         self.layers = self.args["LAYERS"]
 
         self.model = ModuleList([ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
-                                "conv": GCNConv(4, 4), "post_act": Softmax(dim=1)}) for i in range(self.layers)])
-        self.pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
+                                "conv": GCNConv(4 if i == 0 else self.args["WIDTH"], 4 if i == self.layers-1 else self.args["WIDTH"]), "post_act": Softmax(dim=1)}) for i in range(self.layers)])
+        self.global_pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
+        self.pool = TopKPooling(in_channels=self.args["WIDTH"], ratio=self.args["POOL_RATIO"])
 
     def forward(self, x, edge_index, edge_attr, batch):
-        edge_attr = (50**2)/(edge_attr.squeeze()**(2))
+        if self.args["RADIUS_FUNCTION"] == "INVSQUARE":
+            edge_attr = (50**2)/(edge_attr.squeeze()**(2))
+        if self.args["RADIUS_FUNCTION"] == "ID":
+            edge_attr = edge_attr.squeeze()
+        if self.args["RADIUS_FUNCTION"] == "INV":
+            edge_attr = 1/edge_attr.squeeze()
+        if self.args["RADIUS_FUNCTION"] == "CONST":
+            edge_attr = torch.ones_like(edge_attr.squeeze())
         # , edge_weight=edge_attr)
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
         for i in range(self.layers):
             #x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
-            x = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
+            if self.args["RADIUS_FUNCTION"] == "NONE":
+                x = self.model[i]["conv"](x=x, edge_index=edge_index)
+            else:
+                x = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
+
+            # if i % 5 == 4 and i != self.layers-1:
+            #x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
            # x = self.model[i]["post_act"](x*1)
-        x_pool = self.pool(x, batch)
+        x_pool = self.global_pool(x, batch)
         soft = softmax(x_pool, dim=1)
         return soft
 
