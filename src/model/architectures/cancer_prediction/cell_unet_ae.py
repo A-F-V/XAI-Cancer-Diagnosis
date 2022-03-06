@@ -117,7 +117,7 @@ class UNET_AE(pl.LightningModule):
 
     @incremental_forward(64)
     def forward_pred(self, x):
-        return self.forward(x.cuda())[1].cpu()
+        return self.forward(x)[1]
 
     def encode(self, x):
         return self.encoder(x)

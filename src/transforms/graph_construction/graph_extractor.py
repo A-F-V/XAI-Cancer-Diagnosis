@@ -81,7 +81,7 @@ def quantiles_pixel_extraction(img: Tensor):
 
 
 def cell_to_voting_graph(cell_graph: Data, cell_predictor):
-    votes = cell_predictor(cell_graph.x.unflatten(1,(3,64,64)))
+    votes = cell_predictor(cell_graph.x.unflatten(1, (3, 64, 64)))
 
     graph_new = Data(x=votes, edge_index=cell_graph.edge_index, edge_attr=cell_graph.edge_attr, pos=cell_graph.pos)
     return graph_new

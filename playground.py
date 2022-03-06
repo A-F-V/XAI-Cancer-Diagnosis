@@ -47,6 +47,13 @@ def create_test_set_predictions():
             f.write(f"\n{img_id},{prediction}")
 
 
+def test_explainability():
+    directory = os.path.join("data", "raw", "unzipped", "BACH_TEST", "ICIAR2018_BACH_Challenge_TestDataset", "Photos")
+    file_name = "test0.tif"
+    explainability_path = os.getcwd()
+    predict_cancer(os.path.join(directory, file_name), explainability_location=explainability_path)
+
+
 if __name__ == "__main__":
 
     torch.multiprocessing.freeze_support()
@@ -59,4 +66,5 @@ if __name__ == "__main__":
     # trainer.train()
 
     # create_prob()
-    create_test_set_predictions()
+    # create_test_set_predictions()
+    test_explainability()
