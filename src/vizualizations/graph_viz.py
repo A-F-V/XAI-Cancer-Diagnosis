@@ -1,11 +1,9 @@
 from src.model.graph_construction.graph import Graph
+from torch_geometric.data import Data
 
 
-def show_graph(graph: Graph, plot, with_edges=True):
-    """
-    Shows the graph using graphviz.
-    """
-    points = list(map(lambda x: x['centre'], graph.nodes.values()))
+def show_graph(graph: Data, plot, with_edges=True):
+    points = list(map(lambda x: x['centre'], graph))
     x, y = map(list, zip(*points))
     plot.scatter(x, y, c="r")
     if with_edges:

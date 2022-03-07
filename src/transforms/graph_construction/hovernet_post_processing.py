@@ -192,6 +192,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0)
 
 
+@torch.no_grad()
 def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=False):
     if pre_normalized:
         t_img = img

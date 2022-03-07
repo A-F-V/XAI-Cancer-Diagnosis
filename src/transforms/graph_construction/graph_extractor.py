@@ -1,4 +1,4 @@
-from src.model.graph_construction.graph import Graph
+
 from src.transforms.graph_construction.hover_maps import find_centre_of_mass
 from torch_geometric.data import Data
 import torch
@@ -9,7 +9,7 @@ import networkx.algorithms as nx
 # todo remove small islands
 
 
-def extract_graph(img: Tensor, ins_seg: Tensor, window_size=70, k=6, dmin=150, min_nodes=10, downsample=1, img_trans=None):
+def extract_graph(img: Tensor, ins_seg: Tensor, window_size=64, k=6, dmin=150, min_nodes=10, downsample=1, img_trans=None):
     nuclei = ins_seg.max()
     centres = []
 
@@ -78,3 +78,10 @@ def principle_pixels_extraction(img: Tensor):
 
 def quantiles_pixel_extraction(img: Tensor):
     return torch.cat([img.reshape((3, -1)).quantile(q=q, dim=1).flatten() for q in [0, 0.1, 0.3, 0.5, 0.7, 0.9, 1]])
+
+
+def cell_to_voting_graph(cell_graph: Data, cell_predictor):
+    votes = cell_predictor(cell_graph.x.unflatten(1, (3, 64, 64)))
+
+    graph_new = Data(x=votes, edge_index=cell_graph.edge_index, edge_attr=cell_graph.edge_attr, pos=cell_graph.pos)
+    return graph_new

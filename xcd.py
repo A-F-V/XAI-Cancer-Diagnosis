@@ -4,6 +4,7 @@ import os
 from src.model.trainers.hover_net_trainer import HoverNetTrainer
 import json
 from src.model.trainers.gnn_trainer import GNNTrainer
+from src.predict_cancer import predict_cancer
 
 models = {"hover_net": HoverNetTrainer, "gnn": GNNTrainer}
 
@@ -13,7 +14,8 @@ models = {"hover_net": HoverNetTrainer, "gnn": GNNTrainer}
 @click.option('--model', '-m', default=None, help='Model to use')
 @click.option('--checkpoint', '-c', default=None, help='Checkpoint to use')
 @click.option('--args', default=os.path.join("experiments", "args", "default.json"), help="File containing args")
-def cli(action, model, checkpoint, args):
+@click.option('--img_loc', '-i')
+def cli(action, model, checkpoint, args, img_loc):
     args = json.load(open(args))
     if action == "setup":
         setup()
@@ -36,6 +38,9 @@ def cli(action, model, checkpoint, args):
     #        return
     #    experiments[experiment]()
     #    return
+    if action == "predict":
+        print(predict_cancer(img_loc))
+        return
     print(f"{action} is not a valid argument")
 
 
