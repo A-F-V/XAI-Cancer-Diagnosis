@@ -47,7 +47,7 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
         hover_net = HoVerNet.load_from_checkpoint(hover_net_loc).eval().cuda()
         cell_predictor = UNET_AE.load_from_checkpoint(cell_predictor_loc).eval().cuda()
         def cell_predict(X): return cell_predictor.forward_pred(X)
-        gnn_voter = PredGNN.load_from_checkpoint(gnn_voter_loc, **gnn_voter_args).eval().cpu()
+        gnn_voter = PredGNN.load_from_checkpoint(gnn_voter_loc, **gnn_voter_args).eval().cuda()
 
         # Load the image
         image = ToTensor()(Image.open(img_loc))
@@ -58,19 +58,19 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
 
         del hover_net
         # Generate Cell Graph
-        cell_graph = extract_graph(image_cropped, instance_mask)
+        cell_graph = extract_graph(image_cropped, instance_mask).cuda()
 
         # Generate Voting Graph
 
         voting_graph = cell_to_voting_graph(cell_graph, cell_predict)
-        voting_graph = graph_trans(voting_graph)
+        voting_graph = graph_trans(voting_graph).cuda()
 
         del cell_predictor
 
         # Make Final Prediction
 
         prediction = gnn_voter(voting_graph.x, voting_graph.edge_index, voting_graph.edge_attr,
-                               torch.zeros(voting_graph.x.shape[0]).long()).squeeze()
+                               torch.zeros(voting_graph.x.shape[0]).long().cuda()).squeeze()
 
         del gnn_voter
 

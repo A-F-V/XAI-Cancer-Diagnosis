@@ -11,6 +11,8 @@ from tqdm import tqdm
 from src.predict_cancer import predict_cancer
 
 
+# todo train with all data
+
 def create_prob():
     from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
     import json
@@ -66,5 +68,5 @@ if __name__ == "__main__":
     # trainer.train()
 
     # create_prob()
-    # create_test_set_predictions()
-    test_explainability()
+    create_test_set_predictions()
+    # test_explainability()
