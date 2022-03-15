@@ -33,3 +33,4 @@ opencv-python
 networkx
 ray[tune]
 gputil
+seaborn

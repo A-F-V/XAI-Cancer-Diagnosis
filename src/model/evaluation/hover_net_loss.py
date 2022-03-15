@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 
-from src.model.metrics.dice_loss import DiceLoss
-from src.model.metrics.msegradloss import MSEGradLoss
+from src.model.evaluation.dice_loss import DiceLoss
+from src.model.evaluation.msegradloss import MSEGradLoss
 
 
 class HoVerNetLoss(nn.Module):

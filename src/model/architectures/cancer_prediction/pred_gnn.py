@@ -10,7 +10,7 @@ from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignature
 from src.model.architectures.cancer_prediction.cell_autoencoder import Conv
 import torch.nn as nn
 from src.utilities.pytorch_utilities import incremental_forward
-from src.model.metrics.graph_agreement import hard_agreement
+from src.model.evaluation.graph_agreement import hard_agreement
 
 
 class PredGNN(pl.LightningModule):

@@ -3,7 +3,7 @@ import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
 import pytorch_lightning as pl
-from src.model.metrics.hover_net_loss import HoVerNetLoss
+from src.model.evaluation.hover_net_loss import HoVerNetLoss
 import matplotlib.pyplot as plt
 from PIL import Image
 import io
@@ -13,7 +13,7 @@ from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_
 from src.utilities.img_utilities import tensor_to_numpy
 from torch.nn.functional import binary_cross_entropy
 import os
-from src.model.metrics.panoptic_quality import panoptic_quality
+from src.model.evaluation.panoptic_quality import panoptic_quality
 from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
 resnet_sizes = [18, 34, 50, 101, 152]
 
