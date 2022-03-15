@@ -31,22 +31,20 @@ def create_prob():
 def create_test_set_predictions():
     directory = os.path.join("data", "raw", "unzipped", "BACH_TEST", "ICIAR2018_BACH_Challenge_TestDataset", "Photos")
     with open("predictions.csv", "w") as f:
-        f.write("case,class")
+        f.write("case,class,P(Normal),P(Benign),P(In Situ),P(Invasive)")
         for img_id in tqdm(range(100)):
             img_path = os.path.join(directory, f"test{img_id}.tif")
-            prediction = None
+            prediction = 0
+            probs = torch.as_tensor([1.0, 0.0, 0.0, 0.0])
             try:
-                prediction = predict_cancer(img_path).squeeze().argmax()
-                # TO GET IN CORRECT FORMAT
-                if prediction == 3:
-                    prediction = 0
-                else:
-                    prediction += 1
+                probs = predict_cancer(img_path).squeeze()[[3, 0, 1, 2]]
+                prediction = probs.argmax()
+
             except Exception as e:
                 print(img_id)
                 print(e)
                 prediction = 0
-            f.write(f"\n{img_id},{prediction}")
+            f.write(f"\n{img_id},{prediction},{','.join(map(lambda x:str(x.item()),list(probs)))}")
 
 
 def test_explainability():

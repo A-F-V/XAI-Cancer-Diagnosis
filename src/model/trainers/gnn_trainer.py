@@ -64,6 +64,7 @@ class GNNTrainer(Base_Trainer):
             #    train_ind += list(random_ids[:int(100*0.75)])
             #    val_ind += list(random_ids[int(100*0.75):])
 
+        #train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
         train_set, val_set = BACH(src_folder, ids=train_ind,
                                   graph_augmentation=graph_aug_train, pred_mode=True), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred, pred_mode=True)

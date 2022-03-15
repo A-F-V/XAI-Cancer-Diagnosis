@@ -25,7 +25,7 @@ class PredGNN(pl.LightningModule):
         self.val_loader = val_loader
         self.layers = self.args["LAYERS"]
 
-        self.model = ModuleList([ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(),
+        self.model = ModuleList([ModuleDict({"pre_trans": Linear(4, 4), "pre_act": LeakyReLU(), "norm": BatchNorm1d(4),
                                 "conv": GCNConv(4 if i == 0 else self.args["WIDTH"], 4 if i == self.layers-1 else self.args["WIDTH"]), "post_act": Softmax(dim=1)}) for i in range(self.layers)])
         self.global_pool = global_max_pool if self.args["GLOBAL_POOL"] == "MAX" else global_mean_pool
         self.pool = TopKPooling(in_channels=self.args["WIDTH"], ratio=self.args["POOL_RATIO"])
@@ -43,14 +43,19 @@ class PredGNN(pl.LightningModule):
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
         for i in range(self.layers):
             #x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
+           # if i != 0:
+            #    x = self.model[i]['norm'](x)
             if self.args["RADIUS_FUNCTION"] == "NONE":
-                x = self.model[i]["conv"](x=x, edge_index=edge_index)
+                e = self.model[i]["conv"](x=x, edge_index=edge_index)
             else:
-                x = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
+                e = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
 
+            e = ReLU()(e)
+            x = x+e
             # if i % 5 == 4 and i != self.layers-1:
             #x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
-            #x = self.model[i]["post_act"](x)
+            #x = self.model[i]["post_act"](x+e)
+
         x_pool = self.global_pool(x, batch)
         soft = softmax(x_pool, dim=1)
         return soft
