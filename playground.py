@@ -35,10 +35,12 @@ def create_test_set_predictions():
         for img_id in tqdm(range(100)):
             img_path = os.path.join(directory, f"test{img_id}.tif")
             prediction = 0
-            probs = torch.as_tensor([1.0, 0.0, 0.0, 0.0])
+            probs = torch.as_tensor([0.3, 0.25, 0.25, 0.20])
             try:
-                probs = predict_cancer(img_path).squeeze()[[3, 0, 1, 2]]
-                prediction = probs.argmax()
+                probs = predict_cancer(img_path).squeeze()
+                probs_corrected = probs[[3, 0, 1, 2]]
+                prediction = probs_corrected.argmax()+1
+                assert prediction in [1, 2, 3, 4]
 
             except Exception as e:
                 print(img_id)
@@ -66,5 +68,5 @@ if __name__ == "__main__":
     # trainer.train()
 
     # create_prob()
-    create_test_set_predictions()
+    # create_test_set_predictions()
     # test_explainability()
