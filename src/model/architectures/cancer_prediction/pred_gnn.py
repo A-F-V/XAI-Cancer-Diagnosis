@@ -50,12 +50,12 @@ class PredGNN(pl.LightningModule):
             else:
                 e = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
 
-            e = ReLU()(e)
             x = x+e
+            x = LeakyReLU()(x)
             # if i % 5 == 4 and i != self.layers-1:
             #x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
             #x = self.model[i]["post_act"](x+e)
-
+        
         x_pool = self.global_pool(x, batch)
         soft = softmax(x_pool, dim=1)
         return soft

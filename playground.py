@@ -63,9 +63,9 @@ if __name__ == "__main__":
 
     #BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)
 
-    #trainer = GNNTrainer()
+    trainer = GNNTrainer()
     #trainer = CellAETrainer()
-    # trainer.train()
+    trainer.train()
 
     # create_prob()
     # create_test_set_predictions()
