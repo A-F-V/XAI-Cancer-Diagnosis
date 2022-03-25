@@ -1,6 +1,6 @@
 
 import pytorch_lightning as pl
-from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv, TopKPooling
+from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv, TopKPooling, MessagePassing
 from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter
 from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
 import torch
@@ -41,6 +41,7 @@ class PredGNN(pl.LightningModule):
             edge_attr = torch.ones_like(edge_attr.squeeze())
         # , edge_weight=edge_attr)
         # x = one_hot(x.argmax(dim=1), num_classes=4).float()
+        intermediate = []
         for i in range(self.layers):
             #x = self.model[i]["pre_act"](self.model[i]["pre_trans"](x))
            # if i != 0:
@@ -50,15 +51,14 @@ class PredGNN(pl.LightningModule):
             else:
                 e = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
 
-            x = x+e
-            x = LeakyReLU()(x)
+            x = Softmax(dim=1)(10*(x+e))
+            intermediate.append(x)
             # if i % 5 == 4 and i != self.layers-1:
             #x, edge_index, edge_attr, batch, _, _ = self.pool(x=x, edge_index=edge_index, edge_attr=edge_attr, batch=batch)
             #x = self.model[i]["post_act"](x+e)
-        
+
         x_pool = self.global_pool(x, batch)
-        soft = softmax(x_pool, dim=1)
-        return soft
+        return x_pool, intermediate
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
@@ -74,8 +74,12 @@ class PredGNN(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = train_batch.x, train_batch.edge_index, train_batch.edge_attr, train_batch.y, train_batch.batch
-        output = self.forward(x, edge_index, edge_attr, batch)
-        loss = nll_loss(torch.log(output), y)
+        output, intermediates = self.forward(x, edge_index, edge_attr, batch)
+        disimilarity = sum(map(lambda nodes: GraphDissimilarity()(
+            x=nodes, edge_index=edge_index, batch=batch).sum(), intermediates))/(len(intermediates)*(batch[-1]+1))
+        layer_precision = sum(map(lambda nodes: nll_loss(torch.log(global_mean_pool(nodes, batch)), y),
+                              intermediates))/(len(intermediates))  # already meaned across batches
+        loss = layer_precision + disimilarity
         pred_cat = output.argmax(dim=1)
 
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
@@ -86,13 +90,18 @@ class PredGNN(pl.LightningModule):
         self.log("train_loss", loss)
         self.log("train_acc", acc)
         self.log("train_canc_acc", canc_acc)
+        self.log("train_diss", disimilarity)
         # print(self.steepness.data)
         return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
     def validation_step(self, val_batch, batch_idx):
         x, edge_index, edge_attr, y, batch = val_batch.x, val_batch.edge_index, val_batch.edge_attr, val_batch.y, val_batch.batch
-        output = self.forward(x, edge_index, edge_attr, batch)
-        loss = nll_loss(torch.log(output), y)
+        output, intermediates = self.forward(x, edge_index, edge_attr, batch)
+        disimilarity = sum(map(lambda nodes: GraphDissimilarity()(
+            x=nodes, edge_index=edge_index, batch=batch).sum(), intermediates))/(len(intermediates)*(batch[-1]+1))
+        layer_precision = sum(map(lambda nodes: nll_loss(torch.log(global_mean_pool(nodes, batch)), y),
+                              intermediates))/(len(intermediates))
+        loss = layer_precision + disimilarity
         pred_cat = output.argmax(dim=1)
 
         canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
@@ -103,6 +112,7 @@ class PredGNN(pl.LightningModule):
         self.log("val_loss", loss)
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)
+        self.log("val_diss", disimilarity)
         return {'val_loss': loss, 'val_acc': acc, 'val_canc_acc': canc_acc}
 
     def train_epoch_end(self, outputs):
@@ -138,6 +148,20 @@ def create_linear_predictor(**config):
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
     layers.append(Softmax(dim=1))
     return Sequential(*layers)
+
+
+class GraphDissimilarity(MessagePassing):
+    def __init__(self):
+        super().__init__(aggr="mean")
+
+    def forward(self, x, edge_index, batch):
+        x = self.propagate(edge_index=edge_index, x=x)
+        pooled = global_mean_pool(x, batch)/2
+        return pooled
+
+    def message(self, x_i, x_j):
+        output = (ReLU()(x_i-x_j)+ReLU()(x_j-x_i)).sum(dim=1)
+        return output.unsqueeze(dim=1)
 
 
 class CellEncoder(nn.Module):  # todo make even more customizable
