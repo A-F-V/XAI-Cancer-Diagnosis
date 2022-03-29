@@ -1,6 +1,6 @@
 
 from gc import callbacks
-from src.model.metrics.hover_net_loss import HoVerNetLoss
+from src.model.evaluation.hover_net_loss import HoVerNetLoss
 from src.model.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
@@ -27,7 +27,7 @@ from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from src.datasets.train_val_split import train_val_split
 from src.transforms.graph_construction.hovernet_post_processing import instance_mask_prediction_hovernet
-from src.model.metrics.panoptic_quality import panoptic_quality
+from src.model.evaluation.panoptic_quality import panoptic_quality
 
 # todo
 """

@@ -1,4 +1,4 @@
-from src.model.metrics.hover_net_loss import HoVerNetLoss
+from src.model.evaluation.hover_net_loss import HoVerNetLoss
 from src.model.trainers.base_trainer import Base_Trainer
 
 from tqdm import tqdm
