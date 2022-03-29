@@ -12,13 +12,13 @@ from torchvision.transforms import ToTensor, ToPILImage
 import os
 from tqdm import tqdm
 import numpy as np
-
+from src.datasets.PanNuke import PanNuke
 
 from src.utilities.os_utilities import copy_dir, copy_file
 
 
 def setup():
-    data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST", "PanNuke"]
+    data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST", "PanNuke", "PanNuke_orig"]
 
     unzipped_folder = os.path.join(data_path_raw_folder, "unzipped")
 
@@ -75,12 +75,12 @@ def setup():
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
         create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
 
-    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
-        img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
-        img = Image.open(img_path)
-        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
-        img = ToPILImage()(img)
-        img.save(img_path)
+    # for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
+    #    img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
+    #    img = Image.open(img_path)
+    #    img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+    #    img = ToPILImage()(img)
+    #    img.save(img_path)
 
         ###############################################################################
         # Process MoNuSeg_TEST                                                            #
@@ -105,18 +105,18 @@ def setup():
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
         create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
 
-    for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
-        img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
-        img = Image.open(img_path)
-        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
-        img = ToPILImage()(img)
-        img.save(img_path)
+    # for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
+    #    img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
+    #    img = Image.open(img_path)
+    #    img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+    #    img = ToPILImage()(img)
+    #    img.save(img_path)
 
         ###############################################################################
     # Process PanNuke                                                             #
     ###############################################################################
 
-    copy_dir(os.path.join(unzipped_folder, "PanNuke"), os.path.join(data_path_folder, "PanNuke"))
+    PanNuke.prepare(os.path.join(unzip_dataset, 'PanNuke_orig'), os.path.join(data_path_folder, "PanNuke"))
 
     # NORM IMAGES - PanNuke
 
@@ -128,16 +128,18 @@ def setup():
         except:
             return img
 
-    norm_images = [safe_norm(img)
-                   for img in tqdm(images, desc="Normalizing Images - PanNuke")]
-    norm_images = np.stack(norm_images, axis=0)
-    if norm_images.max() <= 1:
-        norm_images *= 255
-    norm_images = norm_images.astype(np.uint8)
-    np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), norm_images)
+    # norm_images = [safe_norm(img)
+    #               for img in tqdm(images, desc="Normalizing Images - PanNuke")]
+    #norm_images = np.stack(norm_images, axis=0)
+    # if norm_images.max() <= 1:
+    #    norm_images *= 255
+    #norm_images = norm_images.astype(np.uint8)
+    np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), images)  # norm_images)
 
     # GENERATE HOVER MAPS
     masks = np.load(os.path.join(data_path_folder, "PanNuke", "masks.npy"))
-    hv_maps = [hover_map(mask.astype("int16")) for mask in tqdm(masks, desc="Generating HoVer Maps - PanNuke")]
+    # last dim is mask channels, last channel is instance mask
+    hv_maps = [hover_map(mask[:, :, -1].astype("int16"))
+               for mask in tqdm(masks, desc="Generating HoVer Maps - PanNuke")]
     hv_maps = torch.stack(hv_maps).numpy()
     np.save(os.path.join(data_path_folder, "PanNuke", "hover_maps.npy"), hv_maps)

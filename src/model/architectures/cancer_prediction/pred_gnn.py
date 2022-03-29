@@ -31,6 +31,7 @@ class PredGNN(pl.LightningModule):
         self.pool = TopKPooling(in_channels=self.args["WIDTH"], ratio=self.args["POOL_RATIO"])
 
     def forward(self, x, edge_index, edge_attr, batch):
+        # TODO BETTER FUNCTION HERE
         if self.args["RADIUS_FUNCTION"] == "INVSQUARE":
             edge_attr = (50**2)/(edge_attr.squeeze()**(2))
         if self.args["RADIUS_FUNCTION"] == "ID":
@@ -47,7 +48,7 @@ class PredGNN(pl.LightningModule):
            # if i != 0:
             #    x = self.model[i]['norm'](x)
             if self.args["RADIUS_FUNCTION"] == "NONE":
-                e = self.model[i]["conv"](x=x, edge_index=edge_index)
+                e = self.model[0]["conv"](x=x, edge_index=edge_index)  # TODO SET TO SAME LAYER TEST
             else:
                 e = self.model[i]["conv"](x=x, edge_index=edge_index, edge_weight=edge_attr)
 
@@ -91,6 +92,7 @@ class PredGNN(pl.LightningModule):
         self.log("train_acc", acc)
         self.log("train_canc_acc", canc_acc)
         self.log("train_diss", disimilarity)
+        self.log("train_layer_precision", layer_precision)
         # print(self.steepness.data)
         return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
@@ -113,6 +115,7 @@ class PredGNN(pl.LightningModule):
         self.log("val_acc", acc)
         self.log("val_canc_acc", canc_acc)
         self.log("val_diss", disimilarity)
+        self.log("val_layer_precision", layer_precision)
         return {'val_loss': loss, 'val_acc': acc, 'val_canc_acc': canc_acc}
 
     def train_epoch_end(self, outputs):
