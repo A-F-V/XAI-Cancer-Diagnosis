@@ -26,7 +26,7 @@ class HoVerNet(pl.LightningModule):
 
     """
 
-    def __init__(self, num_batches=0, train_loader=None, val_loader=None, **kwargs):
+    def __init__(self, num_batches=0, train_loader=None, val_loader=None, categories=False, **kwargs):
         super(HoVerNet, self).__init__()
         resnet_size = kwargs["RESNET_SIZE"] if "RESNET_SIZE" in kwargs else 50
         assert resnet_size in resnet_sizes
@@ -44,6 +44,9 @@ class HoVerNet(pl.LightningModule):
         self.train_loader = train_loader
         self.val_loader = val_loader
 
+        self.categories = categories
+        if categories:
+            self.category_branch = nn.Sequential(HoVerNetDecoder(decodersize), HoVerNetBranchHead("nc"))
    # def setup(self, stage=None):
    #     self.logger.experiment.log_params(self.args)
 
@@ -51,6 +54,9 @@ class HoVerNet(pl.LightningModule):
         latent = self.encoder(sample)
         semantic_mask = self.np_branch(latent)
         hover_maps = self.hover_branch(latent)
+        if self.categories:
+            categories = self.category_branch(latent)
+            return semantic_mask, hover_maps, categories
         return semantic_mask, hover_maps
 
     def configure_optimizers(self):
@@ -67,11 +73,13 @@ class HoVerNet(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         i, sm, hv = train_batch['image'].float(), train_batch['semantic_mask'].float(), train_batch['hover_map'].float()
-
-        y = (sm, hv)
+        if self.categories:
+            c = train_batch['category'].float()
+        y = (sm, hv, c) if self.categories else (sm, hv)
         y_hat = self(i)
 
         loss = HoVerNetLoss()(y_hat, y)
+
         self.log("train_loss", loss)
         self.log("train_ce_loss", binary_cross_entropy(y_hat[0], y[0]))
 
@@ -87,7 +95,9 @@ class HoVerNet(pl.LightningModule):
         ), val_batch['hover_map'].float(), val_batch['instance_mask']
         batch_size = i.shape[0]
 
-        y = (sm, hv)
+        if self.categories:
+            c = vaL_batch['category'].float()
+        y = (sm, hv, c) if self.categories else (sm, hv)
         y_hat = self(i)
 
         pq_sum = 0
@@ -238,7 +248,7 @@ class HoVerNetDecoder(pl.LightningModule):
 class HoVerNetBranchHead(pl.LightningModule):
     def __init__(self, branch):
         super(HoVerNetBranchHead, self).__init__()
-        assert branch in ["np", "hover"]
+        assert branch in ["np", "hover", "nc"]
 
         self.activate = nn.Sequential(
             nn.BatchNorm2d(64),
@@ -248,7 +258,11 @@ class HoVerNetBranchHead(pl.LightningModule):
             self.head = nn.Sequential(
                 nn.Conv2d(64, 1, kernel_size=1, padding=0, bias=True),
                 nn.Sigmoid())
-        else:  # todo is there a better activation function?
+        elif branch == "nc":
+            self.head = nn.Sequential(
+                nn.Conv2d(64, 5, kernel_size=1, padding=0, bias=True),
+                nn.Softmax(dim=0))
+        else:  # todo is there a better activation function then nothing?
             self.head = nn.Sequential(
                 nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
                 # ,nn.Tanh()

@@ -116,7 +116,7 @@ def setup():
     # Process PanNuke                                                             #
     ###############################################################################
 
-    PanNuke.prepare(os.path.join(unzip_dataset, 'PanNuke_orig'), os.path.join(data_path_folder, "PanNuke"))
+    PanNuke.prepare(os.path.join(unzipped_folder, 'PanNuke_orig'), os.path.join(data_path_folder, "PanNuke"))
 
     # NORM IMAGES - PanNuke
 

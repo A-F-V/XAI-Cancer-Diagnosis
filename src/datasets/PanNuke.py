@@ -31,7 +31,7 @@ def aggregate_masks(mask):
 
 def collect_images(src_folder):
     f1, f2, f3 = os.path.join(src_folder, "Fold 1", "images", "fold1", "images.npy"), os.path.join(
-        fold_path, "Fold 2", "images", "fold2", "images.npy"), os.path.join(fold_path, "Fold 3", "images", "fold3", "images.npy")
+        src_folder, "Fold 2", "images", "fold2", "images.npy"), os.path.join(src_folder, "Fold 3", "images", "fold3", "images.npy")
     a1 = np.load(f1).astype(np.uint8)
     a2 = np.load(f2).astype(np.uint8)
     a3 = np.load(f3).astype(np.uint8)
@@ -41,18 +41,17 @@ def collect_images(src_folder):
 
 def collect_masks(src_folder):
     f1, f2, f3 = os.path.join(src_folder, "Fold 1", "masks", "fold1", "masks.npy"), os.path.join(
-        fold_path, "Fold 2", "masks", "fold2", "masks.npy"), os.path.join(fold_path, "Fold 3", "masks", "fold3", "masks.npy")
+        src_folder, "Fold 2", "masks", "fold2", "masks.npy"), os.path.join(src_folder, "Fold 3", "masks", "fold3", "masks.npy")
     a1 = np.load(f1).astype(np.uint8)
     a2 = np.load(f2).astype(np.uint8)
     a3 = np.load(f3).astype(np.uint8)
     arr = np.concatenate([a3, a2, a1], axis=0)
     print(arr.shape)
+    category_mask = (arr[:, :, :, :5] != 0).astype(np.uint8)
     instance_mask = np.array([aggregate_masks(img) for img in tqdm(
         arr, desc="Generating Instance Masks for PanNuke")], dtype=np.uint16)
     instance_mask = np.expand_dims(instance_mask, axis=3)
-    semantic_mask = np.expand_dims(arr[:, :, :, 5], axis=3)
-    category_mask = (arr[:, :, :, :5] != 0).astype(np.uint8)
-    final = np.concatenate([category_mask, semantic_mask, instance_mask], axis=3)
+    final = np.concatenate([category_mask, instance_mask], axis=3)
     return final
 
 
@@ -77,8 +76,9 @@ class PanNuke(Dataset):
 
         img, mask = img_data[index].copy(), mask_data[index].copy()
         item = {"image": numpy_to_tensor(img),
-                "instance_mask": torch.as_tensor(mask.astype("int16")).int().unsqueeze(0),
-                "semantic_mask": (torch.as_tensor(mask.astype("int16")) != 0).int().unsqueeze(0)}
+                "instance_mask": torch.as_tensor(mask[:, :, -1].astype("int16")).int().unsqueeze(0),
+                "semantic_mask": (torch.as_tensor(mask[:, :, -1].astype("int16")) != 0).int().unsqueeze(0),
+                "category_mask": torch.as_tensor(mask[:, :, :5].astype("int16")).int().unsqueeze(0)}
         item['image_original'] = item['image'].clone()
         assert item['semantic_mask'].max() <= 1
         item = self.transform(item)

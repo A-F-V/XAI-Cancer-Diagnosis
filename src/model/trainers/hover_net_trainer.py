@@ -35,7 +35,7 @@ Instead of using random_split, you could create two datasets, one training datas
 Once you have created both datasets, you could randomly split the data indices e.g. using sklearn.model_selection.train_test_split. These indices can then be passed to torch.utils.data.Subset together with their datasets in order to create the final training and validation dataset.
 """
 scale_modes = {"image": InterpolationMode.BILINEAR,
-               "semantic_mask": InterpolationMode.NEAREST, "instance_map": InterpolationMode.NEAREST}
+               "semantic_mask": InterpolationMode.NEAREST, "instance_mask": InterpolationMode.NEAREST, "category_mask": InterpolationMode.NEAREST}
 transforms_training = Compose([
     Compose([
         RandomChoice([
@@ -111,11 +111,12 @@ class HoverNetTrainer(Base_Trainer):
             print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
             checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
-                checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
+                checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, categories=(args["DATASET"] == "PanNuke"), ** args)
 
             # model.encoder.freeze()
         else:
-            model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader, ** args)
+            model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader,
+                             categories=(args["DATASET"] == "PanNuke"), ** args)
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
         lr_monitor = LearningRateMonitor(logging_interval='step')
