@@ -17,6 +17,9 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=10, debug=Fal
         Implemets the Macenko et al. (2016) method for stain normalization.
     Args:
         img (tensor): The RGB H&E image
+
+    Returns:
+        h,e (tuple): The H&E stain vectors in OD Space
     """
     ##########
     # FUNCTION FOR DEBUGGING
@@ -177,16 +180,31 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=10, debug=Fal
     return torch.stack([stain_v1, stain_v2])
 
 
-def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
+def singularly_stained_image(v1, v2):
+    standard_v1, standard_v2 = Tensor([0.5850, 0.7193, 0.3748]), Tensor([0.2065, 0.8423, 0.4978])
+    close1 = torch.dot(v1, standard_v1) > torch.dot(v1, standard_v2)
+    close2 = torch.dot(v2, standard_v1) > torch.dot(v2, standard_v2)
+    if close1 ^ close2:
+        return False
+    else:
+        return True
+
+
+def normalize_he_image(img: Tensor, alpha=1, beta=0.15):  # todo change algorithm - get closer to blue to stay blue
     """Normalizes an H&E image in RGB so that H and E are same as in other experiments
     Args:
         img (tensor): The RGB H&E image
     """
-    v1, v2 = get_stain_vectors(img, alpha=0.01)
-    if abs(v1[0].item()-v2[0].item()) < 0.3 or min(v1[0].item(), v2[0].item()) > 0.3:
+    v1, v2 = get_stain_vectors(img, alpha=alpha, beta=beta)
+    # if abs(v1[0].item()-v2[0].item()) < 0.3 or min(v1[0].item(), v2[0].item()) > 0.3:
+    #    print("Singular")
+    #    return img  # This is for what I call singularly stained images
+
+    if singularly_stained_image(v1, v2):
         print("Singular")
-        return img  # This is for what I call singularly stained images
-    standard_v1, standard_v2 = Tensor([0.7247, 0.6274, 0.2849]), Tensor([0.0624, 0.8357, 0.5456])
+        return img
+    # standard_v1, standard_v2 = Tensor([0.5850, 0.7193, 0.3748]), Tensor([0.2065, 0.8423, 0.4978])  # (#42306C,#9E2550)
+    standard_v1, standard_v2 = Tensor([0.7247, 0.6274, 0.2849]), Tensor([0.0624, 0.8357, 0.5456])  # (#303c84, #DC2548)
 
     old_basis = torch.stack([v1, v2], dim=0).T
     new_basis = torch.stack([standard_v1, standard_v2], dim=0).T
@@ -204,3 +222,33 @@ def normalize_he_image(img: Tensor, alpha=0.01, beta=0.15):  # todo create TESTS
     mask = mask.unsqueeze(0).repeat(3, 1, 1)
     rgb = rgb*mask
     return rgb
+
+
+def deconvolve_he_image(img: Tensor, alpha=1, beta=0.15):
+    """Splits H&E image into two image, one for each of the stains.
+
+    Args:
+        img (Tensor): Original Image
+    """
+    v1, v2 = get_stain_vectors(img, alpha=alpha, beta=beta)
+
+    old_basis = torch.stack([v1, v2], dim=0).T
+    h_space = torch.stack([v1, torch.zeros(3)], dim=0).T
+    e_space = torch.stack([torch.zeros(3), v2], dim=0).T
+
+    flat_img = img.flatten(1, 2)
+    od = (-torch.log10(flat_img)).clip(0, 100)
+
+    h_od = h_space @ torch.linalg.pinv(old_basis) @ od
+    e_od = e_space @ torch.linalg.pinv(old_basis) @ od
+
+    h_od = h_od.unflatten(1, (img.shape[1], img.shape[2])).clip(0, 10)
+    e_od = e_od.unflatten(1, (img.shape[1], img.shape[2])).clip(0, 10)
+
+    h_rgb = torch.pow(10, -h_od).clip(0, 1)
+    e_rgb = torch.pow(10, -e_od).clip(0, 1)
+
+    return h_rgb, e_rgb
+
+# TODO:
+# [ ] Fully document code

@@ -48,8 +48,7 @@ def setup():
             img_path = os.path.join(folder_path, image_name)
             if ".tif" not in img_path:
                 os.remove(img_path)
-            else:
-                continue  # NO STAIN NORMING
+            else:  # NO STAIN NORMING
                 img = Image.open(img_path)
                 img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
                 img = ToPILImage()(img)
@@ -75,12 +74,12 @@ def setup():
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
         create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
 
-    # for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
-    #    img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
-    #    img = Image.open(img_path)
-    #    img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
-    #    img = ToPILImage()(img)
-    #    img.save(img_path)
+    for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
+        img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
+        img = Image.open(img_path)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+        img = ToPILImage()(img)
+        img.save(img_path)
 
         ###############################################################################
         # Process MoNuSeg_TEST                                                            #
@@ -105,12 +104,12 @@ def setup():
         create_semantic_segmentation_mask(anno_path, img_path, dst_folder_sm)
         create_instance_segmentation_mask(anno_path, img_path, dst_folder_im)
 
-    # for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
-    #    img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
-    #    img = Image.open(img_path)
-    #    img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
-    #    img = ToPILImage()(img)
-    #    img.save(img_path)
+    for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
+        img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
+        img = Image.open(img_path)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+        img = ToPILImage()(img)
+        img.save(img_path)
 
         ###############################################################################
     # Process PanNuke                                                             #
@@ -128,12 +127,12 @@ def setup():
         except:
             return img
 
-    # norm_images = [safe_norm(img)
-    #               for img in tqdm(images, desc="Normalizing Images - PanNuke")]
-    #norm_images = np.stack(norm_images, axis=0)
-    # if norm_images.max() <= 1:
-    #    norm_images *= 255
-    #norm_images = norm_images.astype(np.uint8)
+    norm_images = [safe_norm(img)
+                   for img in tqdm(images, desc="Normalizing Images - PanNuke")]
+    norm_images = np.stack(norm_images, axis=0)
+    if norm_images.max() <= 1:
+        norm_images *= 255
+    norm_images = norm_images.astype(np.uint8)
     np.save(os.path.join(data_path_folder, "PanNuke", "images.npy"), images)  # norm_images)
 
     # GENERATE HOVER MAPS

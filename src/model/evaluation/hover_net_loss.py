@@ -1,5 +1,5 @@
 from torch import nn, Tensor
-
+import torch
 from src.model.evaluation.dice_loss import DiceLoss
 from src.model.evaluation.msegradloss import MSEGradLoss
 
@@ -30,7 +30,7 @@ class HoVerNetLoss(nn.Module):
         Ld = DiceLoss()(pred[0].squeeze(), target[0].float().squeeze())
         np_hv_loss = co[0]*La + co[1]*Lb + co[2]*Lc + co[3]*Ld
         if len(pred) == 3:  # !TODO NOT RIGHT! NEED TO CORRECT FOR BACKGROUND AS WELL (ADD THAT DIMENSION IN)
-            Le = nn.CrossEntropyLoss()(pred[2].squeeze(), target[2].float().squeeze())
+            Le = -(target[2].float() * torch.log(pred[2])).mean()  # CROSS ENTROPY LOSS
             Lf = DiceLoss()(pred[2].squeeze(), target[2].float().squeeze())
             return np_hv_loss + co[4]*Le + co[5]*Lf
         return np_hv_loss

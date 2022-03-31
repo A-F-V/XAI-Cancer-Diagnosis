@@ -64,7 +64,7 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
             cropped_hv_x_gt = ground_hv[0]
             cropped_hv_y_gt = ground_hv[1]
 
-            sm_pred, hv_map_pred = model(cropped_image_trans.unsqueeze(0).cuda())
+            sm_pred, hv_map_pred = model(cropped_image_trans.unsqueeze(0).cuda())[:2]
             ins_pred = hovernet_post_process(sm_pred.detach().cpu().squeeze(), hv_map_pred.detach().cpu().squeeze())
 
             ax[0, 0].imshow(tensor_to_numpy(cropped_image_orig.squeeze().detach().cpu()))

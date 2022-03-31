@@ -12,6 +12,7 @@ from src.transforms.image_processing.augmentation import *
 import mlflow
 import matplotlib.pyplot as plt
 import io
+import json
 from PIL import Image
 from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_example, generate_mask_diagram
 from src.datasets.PanNuke import PanNuke
@@ -56,8 +57,8 @@ transforms_training = Compose([
             # RandomRotate(), - not working #todo! fix
             RandomFlip(),
             AddGaussianNoise(0.01, fields=["image"]),
-            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.01), fields=["image"]),
-            GaussianBlur(fields=["image"])
+            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.04), fields=["image"]),
+            # GaussianBlur(fields=["image"])
         ],
 
         p=0.5),
@@ -75,8 +76,10 @@ transforms_val = Compose([
 
 
 class HoverNetTrainer(Base_Trainer):
-    def __init__(self, args):
+    def __init__(self, args=None):
         super(Base_Trainer, self).__init__()
+        if args == None:
+            args = json.load(open(os.path.join("experiments", "args", "default.json")))
         self.args = args
 
     def train(self):
@@ -100,9 +103,9 @@ class HoverNetTrainer(Base_Trainer):
             #    dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
+                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=args["NUM_WORKERS"] >= 1)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
+                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=args["NUM_WORKERS"] >= 1)
 
         num_training_batches = len(train_loader)*args["EPOCHS"]
 

@@ -10,8 +10,8 @@ class DiceLoss(nn.Module):
         """Calculates the Dice Loss.
 
         Args:
-            pred (Tensor): Predicted semantic mask.
-            target (Tensor): Target semantic mask
+            pred (Tensor): Predicted semantic mask. Yi
+            target (Tensor): Target semantic mask   Xi
 
         Returns:
             [float]: The loss value.

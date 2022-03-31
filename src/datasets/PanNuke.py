@@ -64,7 +64,7 @@ class PanNuke(Dataset):
             transform : A transformation that will be performed on both the image and masks. Defaults to None.
         """
         self.src_folder = src_folder if src_folder else os.path.join(os.getcwd(), 'data', 'processed', 'PanNuke')
-        self.transform = transform if transform else ToTensor()
+        self.transform = transform if transform else None
         self.dir_length = 7901
         self.ids = ids
 
@@ -77,12 +77,15 @@ class PanNuke(Dataset):
         img, mask = img_data[index].copy(), mask_data[index].copy()
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask[:, :, -1].astype("int16")).int().unsqueeze(0),
-                "semantic_mask": (torch.as_tensor(mask[:, :, -1].astype("int16")) != 0).int().unsqueeze(0),
-                "category_mask": torch.as_tensor(mask[:, :, :5].astype("int16")).int().unsqueeze(0)}
+                "semantic_mask": (torch.as_tensor(mask[:, :, -1].astype("int16")) != 0).float().unsqueeze(0),
+                "category_mask": torch.as_tensor(mask[:, :, :5].astype("int16")).float().permute(2, 0, 1)}
+        item["category_mask"] = torch.cat(
+            [item["category_mask"], 1-item["semantic_mask"]], dim=0)  # last is background mask
         item['image_original'] = item['image'].clone()
         assert item['semantic_mask'].max() <= 1
-        item = self.transform(item)
-        item["hover_map"] = hover_map(item["instance_mask"].squeeze())
+        if self.transform:
+            item = self.transform(item)
+        item["hover_map"] = hover_map(item["instance_mask"].squeeze()).float()
         return item
 
     def __len__(self):

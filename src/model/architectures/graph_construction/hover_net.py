@@ -74,7 +74,7 @@ class HoVerNet(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         i, sm, hv = train_batch['image'].float(), train_batch['semantic_mask'].float(), train_batch['hover_map'].float()
         if self.categories:
-            c = train_batch['category'].float()
+            c = train_batch['category_mask'].float()
         y = (sm, hv, c) if self.categories else (sm, hv)
         y_hat = self(i)
 
@@ -96,7 +96,7 @@ class HoVerNet(pl.LightningModule):
         batch_size = i.shape[0]
 
         if self.categories:
-            c = vaL_batch['category'].float()
+            c = val_batch['category_mask'].float()
         y = (sm, hv, c) if self.categories else (sm, hv)
         y_hat = self(i)
 
@@ -260,8 +260,9 @@ class HoVerNetBranchHead(pl.LightningModule):
                 nn.Sigmoid())
         elif branch == "nc":
             self.head = nn.Sequential(
-                nn.Conv2d(64, 5, kernel_size=1, padding=0, bias=True),
-                nn.Softmax(dim=0))
+                # 5 classes and 1 background. All but one encoding
+                nn.Conv2d(64, 6, kernel_size=1, padding=0, bias=True),
+                nn.Softmax(dim=1))  # First dim is batch
         else:  # todo is there a better activation function then nothing?
             self.head = nn.Sequential(
                 nn.Conv2d(64, 2, kernel_size=1, padding=0, bias=True)
