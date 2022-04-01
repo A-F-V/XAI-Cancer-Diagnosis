@@ -62,7 +62,7 @@ if __name__ == "__main__":
     torch.multiprocessing.freeze_support()
     torch.autograd.set_detect_anomaly(True)
 
-    #BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)
+    # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)'
 
     #trainer = GNNTrainer()
     #trainer = CellAETrainer()

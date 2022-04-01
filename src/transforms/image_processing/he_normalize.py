@@ -52,9 +52,14 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=10, debug=Fal
     # todo maybe an online method?
     # 3) Get SVD (actually Eigen decomposition of Covariance)
 
-    covmatrix = torch.cov(od)
-    e, v = torch.linalg.eigh(covmatrix)
-    v1, v2 = not_neg(normalize_vec(v[:, 2]).float()), not_neg(normalize_vec(v[:, 1]).float())
+    # COV MATRIX APPROACH - Incorrect - need to subtract means beforeS
+    #covmatrix = torch.cov(od)
+    #e, v = torch.linalg.eigh(covmatrix)
+    # v1, v2 = not_neg(normalize_vec(v[:,2]).float()), not_neg(normalize_vec(v[:,1]).float()) # because v[:,2] is the largest eigenvalue
+
+    # SVD APPROACH
+    U, Sig, Vh = torch.linalg.svd(od.permute(1, 0), full_matrices=False)
+    v1, v2 = not_neg(normalize_vec(Vh[0]).float()), not_neg(normalize_vec(Vh[1]).float())
 
     assert abs(v1.norm(p=2).item()-1) < 1e-5
     assert abs(v2.norm(p=2).item() - 1) < 1e-5
