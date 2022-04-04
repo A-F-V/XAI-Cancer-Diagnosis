@@ -16,6 +16,8 @@ from src.datasets.PanNuke import PanNuke
 
 from src.utilities.os_utilities import copy_dir, copy_file
 
+singular_norm_check = True
+
 
 def setup():
     data_sets = ["MoNuSeg_TRAIN", "BACH_TRAIN", "BACH_TEST", "MoNuSeg_TEST", "PanNuke", "PanNuke_orig"]
@@ -50,7 +52,7 @@ def setup():
                 os.remove(img_path)
             else:  # NO STAIN NORMING
                 img = Image.open(img_path)
-                img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+                img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15, check=singular_norm_check)
                 img = ToPILImage()(img)
                 img.save(img_path)
 
@@ -77,7 +79,7 @@ def setup():
     for image_name in tqdm(os.listdir(os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images")), desc="Normalizing Images - MoNuSeg_TRAIN"):
         img_path = os.path.join(data_path_folder, "MoNuSeg_TRAIN", "images", image_name)
         img = Image.open(img_path)
-        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15, check=singular_norm_check)
         img = ToPILImage()(img)
         img.save(img_path)
 
@@ -107,7 +109,7 @@ def setup():
     for image_name in tqdm(os.listdir(os.path.join(MoNuSeg_test_final, "images")), desc="Normalizing Images - MoNuSeg_TEST"):
         img_path = os.path.join(MoNuSeg_test_final, "images", image_name)
         img = Image.open(img_path)
-        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15, check=singular_norm_check)
         img = ToPILImage()(img)
         img.save(img_path)
 
@@ -123,7 +125,7 @@ def setup():
 
     def safe_norm(img):
         try:
-            return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img), alpha=1, beta=0.15))
+            return tensor_to_numpy(normalize_he_image(numpy_to_tensor(img), alpha=1, beta=0.15, check=singular_norm_check))
         except:
             return img
 

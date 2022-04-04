@@ -186,7 +186,7 @@ def get_stain_vectors(img: Tensor, alpha=0.01, beta=0.15, clipping=10, debug=Fal
 
 
 def singularly_stained_image(v1, v2):
-    standard_v1, standard_v2 = Tensor([0.5850, 0.7193, 0.3748]), Tensor([0.2065, 0.8423, 0.4978])
+    standard_v1, standard_v2 = Tensor([0.7247, 0.6274, 0.2849]), Tensor([0.0624, 0.8357, 0.5456])
     close1 = torch.dot(v1, standard_v1) > torch.dot(v1, standard_v2)
     close2 = torch.dot(v2, standard_v1) > torch.dot(v2, standard_v2)
     if close1 ^ close2:
@@ -195,7 +195,8 @@ def singularly_stained_image(v1, v2):
         return True
 
 
-def normalize_he_image(img: Tensor, alpha=1, beta=0.15):  # todo change algorithm - get closer to blue to stay blue
+# todo change algorithm - get closer to blue to stay blue
+def normalize_he_image(img: Tensor, alpha=1, beta=0.15, check=True):
     """Normalizes an H&E image in RGB so that H and E are same as in other experiments
     Args:
         img (tensor): The RGB H&E image
@@ -205,7 +206,7 @@ def normalize_he_image(img: Tensor, alpha=1, beta=0.15):  # todo change algorith
     #    print("Singular")
     #    return img  # This is for what I call singularly stained images
 
-    if singularly_stained_image(v1, v2):
+    if check and singularly_stained_image(v1, v2):
         print("Singular")
         return img
     # standard_v1, standard_v2 = Tensor([0.5850, 0.7193, 0.3748]), Tensor([0.2065, 0.8423, 0.4978])  # (#42306C,#9E2550)
