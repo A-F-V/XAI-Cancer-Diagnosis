@@ -30,7 +30,7 @@ class HoVerNetLoss(nn.Module):
         Ld = DiceLoss()(pred[0].squeeze(), target[0].float().squeeze())
         np_hv_loss = co[0]*La + co[1]*Lb + co[2]*Lc + co[3]*Ld
         if len(pred) == 3:  # !TODO NOT RIGHT! NEED TO CORRECT FOR BACKGROUND AS WELL (ADD THAT DIMENSION IN)
-            Le = -(target[2].float() * torch.log(pred[2])).mean()  # CROSS ENTROPY LOSS
+            Le = -6*(target[2].float() * torch.log(pred[2])).mean()  # CROSS ENTROPY LOSS
             Lf = DiceLoss()(pred[2].squeeze(), target[2].float().squeeze())
             return np_hv_loss + co[4]*Le + co[5]*Lf
         return np_hv_loss

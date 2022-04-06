@@ -107,18 +107,20 @@ class HoverNetTrainer(Base_Trainer):
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=args["NUM_WORKERS"] >= 1)
 
-        num_training_batches = len(train_loader)*args["EPOCHS"]
+        #num_training_batches = len(train_loader)*args["EPOCHS"]
+        accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
+        num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
         model = None
         if args["START_CHECKPOINT"]:
             print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
             checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
-                checkpoint_path, num_batches=num_training_batches, train_loader=train_loader, val_loader=val_loader, categories=(args["DATASET"] == "PanNuke"), ** args)
+                checkpoint_path, num_batches=num_steps, train_loader=train_loader, val_loader=val_loader, categories=(args["DATASET"] == "PanNuke"), ** args)
 
             # model.encoder.freeze()
         else:
-            model = HoVerNet(num_training_batches, train_loader=train_loader, val_loader=val_loader,
+            model = HoVerNet(num_steps, train_loader=train_loader, val_loader=val_loader,
                              categories=(args["DATASET"] == "PanNuke"), ** args)
         mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
@@ -133,7 +135,7 @@ class HoverNetTrainer(Base_Trainer):
                              max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                              enable_checkpointing=True, default_root_dir=os.path.join("experiments", "checkpoints"),
                              profiler="simple",
-                             accumulate_grad_batches=64//args["BATCH_SIZE_TRAIN"],)
+                             accumulate_grad_batches=accum_batch,)
 
         ###########
         # EXTRAS  #

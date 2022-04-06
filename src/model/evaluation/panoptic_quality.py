@@ -2,6 +2,7 @@ from torch import Tensor
 from src.utilities.tensor_utilties import reset_ids
 import numpy as np
 from scipy.stats import mode
+from scipy.optimize import linear_sum_assignment
 
 
 def IoU(img_1: np.ndarray, img_2: np.ndarray):
@@ -53,13 +54,25 @@ def panoptic_quality(pred: Tensor, gt: Tensor):
     options_ranked = sorted(assignment_options, key=lambda triple: triple[2], reverse=True)
 
     # 2) Assign based on highest IoU (or just overlap?)
+    # OLD ALGORITHM WHICH IS GREEDY BUT NOT OPTIMAL
+    #  for gt_id, pred_id, iou in options_ranked:
+    #     if not(gt_id in gt_matched or pred_id in pred_matched):
+    #         TP.add((gt_id, pred_id, iou))
+    #         gt_matched.add(gt_id)
+    #         pred_matched.add(pred_id)
 
+    # USES Munkres Algorithm
+
+    # 2a) Generate a cost matrix for assignment
+    cost_matrix = np.zeros((num_gt_cells, num_pred_cells))
     for gt_id, pred_id, iou in options_ranked:
-        if not(gt_id in gt_matched or pred_id in pred_matched):
-            TP.add((gt_id, pred_id, iou))
-            gt_matched.add(gt_id)
-            pred_matched.add(pred_id)
-
+        cost_matrix[gt_id-1, pred_id-1] = iou  # id == 0 is background
+    # 2b) Use Munkres Algorithm to find the optimal assignment and store it in TP
+    paired_gt, paired_pred = linear_sum_assignment(cost_matrix, maximize=True)
+    for gt, pred, iou in zip(paired_gt, paired_pred, cost_matrix[paired_gt, paired_pred]):
+        TP.add((gt+1, pred+1, iou))
+        gt_matched.add(gt+1)
+        pred_matched.add(pred+1)
     # 3) Collate into matched, unmatched gt, unmatched pred
 
     FP = set([i for i in range(1, num_pred_cells+1) if i not in pred_matched])
