@@ -1,5 +1,6 @@
 from PIL import ImageFilter
 from numpy import dtype, tile
+import numpy as np
 from torchvision.transforms import ToPILImage
 from torch.nn.functional import conv2d
 from torch import Tensor
@@ -111,7 +112,9 @@ def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=5
     markersv2 = (energy > k).numpy()
     markersv2 = binary_fill_holes(markersv2)
     markersv2 = label(markersv2)[0]
-    return torch.as_tensor(watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy()), dtype=torch.int)
+    final = watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy())
+    final = reset_ids(final)
+    return torch.as_tensor(final, dt=torch.int16)
 
 # times 2, ensures that an whole number of tiles fit in the image
 
@@ -125,7 +128,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
         tile_size (int, optional): The size of the smaller tiles. Defaults to 32.
 
     Returns:
-        tuple: The semantic mask and hover maps for the entire image, slightly smaller than the original image (due to whole number of tiles used)
+        tuple: The semantic mask, hover maps, and cell type for the entire image, slightly smaller than the original image (due to whole number of tiles used)
     """
     model.eval()
     model.cuda()
@@ -137,7 +140,8 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     dim[1] = dim[1]//tile_size*tile_size
     img = img[:, :dim[0], :dim[1]]
 
-    final_sm = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+    final_sm = torch.zeros(6, dim[0]-tile_size, dim[1]-tile_size)
+    final_cat = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
     final_hv_x = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
     final_hv_y = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
 
@@ -147,10 +151,13 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
 
     def add_tiles(batch, batch_loc):
         with torch.no_grad():
-            (sm, hv) = model(batch.cuda())
-            sm_b, hv_b = sm.cpu(), hv.cpu()
-            for (r, c), sm, hv in zip(batch_loc, sm_b, hv_b):
+            (sm, hv, cat) = model(batch.cuda())
+            sm_b, hv_b, cat_b = sm.cpu(), hv.cpu(), cat.vpu()
+            for (r, c), sm, hv, cat in zip(batch_loc, sm_b, hv_b, cat_b):
                 sm = sm.squeeze()
+                cat = cat.squeeze()
+
+                assert len(cat.shape) == 3
                 assert len(sm.shape) == 2
                 assert len(hv.shape) == 3
                 # mask = torch.ones_like(sm)
@@ -170,6 +177,8 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
                                                                tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
                 final_hv_y[r:r+tile_size, c:c+tile_size] += hv[1,
                                                                tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
+                final_cat[:, r:r+tile_size, c:c+tile_size] += cat[:,
+                                                                  tile_size//2:-tile_size//2, tile_size//2:-tile_size//2]
 
     for row in range(0, dim[0]-tile_size, tile_size):
         for col in range(0, dim[1]-tile_size, tile_size):
@@ -189,7 +198,16 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
         add_tiles(batch, batch_loc)
         del batch
         torch.cuda.empty_cache()
-    return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0)
+    return final_sm, torch.stack([final_hv_x.squeeze(0), final_hv_y.squeeze(0)], dim=0), final_cat
+
+
+def assign_instance_class_label(instance_map: Tensor, nucleus_prediction: Tensor):
+    predictions = [5]
+    for nucleus_id in range(1, instance_map.max()+1):
+        mask = instance_map == nucleus_id
+        nucleus_category_mask = mask*nucleus_prediction
+        predictions.append(nucleus_category_mask.sum(dim=(1, 2))[:5].argmax().item())   # add prediction to predictions
+    return np.asarray(predictions)
 
 
 @torch.no_grad()
@@ -201,9 +219,10 @@ def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=
             {"image": [0.6441, 0.4474, 0.6039]},
             {"image": [0.1892, 0.1922, 0.1535]})
         t_img = normalizer({"image": img.clone()})["image"]
-    sm_pred, hv_pred = tiled_hovernet_prediction(model, t_img, tile_size)
+    sm_pred, hv_pred, cat_pred = tiled_hovernet_prediction(model, t_img, tile_size)
     ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
-    return ins_pred
+    cell_cat_pred = assign_instance_class_label(ins_pred, cat_pred)
+    return ins_pred, cell_cat_pred
 
 
 def cut_img_from_tile(img, tile_size=32):

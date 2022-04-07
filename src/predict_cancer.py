@@ -53,7 +53,7 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
         image = ToTensor()(Image.open(img_loc))
 
         # Create Instance Mask for cells
-        instance_mask = instance_mask_prediction_hovernet(hover_net, image)
+        instance_mask, category_mask = instance_mask_prediction_hovernet(hover_net, image)
         image_cropped = cut_img_from_tile(image, 128)
 
         del hover_net

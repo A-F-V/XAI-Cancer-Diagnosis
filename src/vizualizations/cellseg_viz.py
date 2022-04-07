@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 
 import imageio
@@ -9,8 +10,8 @@ from src.transforms.graph_construction.hover_maps import hover_map
 from tqdm import tqdm
 import os
 from numpy.ma import masked_where
-from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
 from src.transforms.graph_construction.percolation import hollow
+from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
 
 
 def generate_mask_diagram(model, dataloader, mask_name="semantic_mask", args=None):
@@ -98,17 +99,33 @@ def cell_segmentation_sliding_window_gif_example(model, sample, location, amplic
             writer.append_data(plt_img)
 
 
-def instance_segmentation_vizualised(img, instance_seg, figsize=(20, 20)):
+def create_coloured_mask(mask: np.ndarray, colour):
+    if len(mask.shape) == 2:
+        mask = np.expand_dims(mask, axis=2).repeat(3, axis=2)  # introduce new axis and then fill with repeat
+    colour = np.asarray(colour)
+    coloured_mask = np.zeros_like(mask)+colour
+    return coloured_mask*mask
+
+
+def instance_segmentation_vizualised(img, instance_seg, cat_pred: np.ndarray, figsize=(20, 20)):
     """Plots image and the segmentation overlayed on top
 
     Args:
         img (Tensor): Original Image (3,H,W)
         instance_seg (Tensor): Instance Segmentation of Image (same size) (H,W)
+        cat_pred (np.ndarray): List of cell type predictions. cat_pred[i] is cell i's prediction
     """
     assert img.shape[1:] == instance_seg.shape[:], "Image and instance segmentation must be same size"
 
-    hl = hollow(instance_seg)
+    # neo - red, non-neo - orange, inflam - green, conn - blue, dead - yell
+    colour_scheme = [[1., 0., 0.], [1.0, 0.5, 0.], [0., 1., 0.], [0., 0., 1.], [1.0, 1.0, 0.]]
+    hl = tensor_to_numpy(hollow(instance_seg))
+
+    hollow_masks = [np.isin(hl, np.nonzero(cat_pred == cell_type)) for cell_type in range(0, 5)]
+    masks = [create_coloured_mask(hm, colour) for i, colour, hm in zip(range(5), colour_scheme, hollow_masks)]
+    final_mask = np.sum(masks, axis=0)
+
     plt.figure(figsize=figsize)
     plt.imshow(tensor_to_numpy(img))
-    plt.imshow(masked_where(hl != 0, hl), cmap="nipy_spectral", alpha=0.7)
+    plt.imshow(final_mask, alpha=0.7)
     plt.axis("off")
