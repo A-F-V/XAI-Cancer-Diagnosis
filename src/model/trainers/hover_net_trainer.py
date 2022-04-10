@@ -47,18 +47,18 @@ transforms_training = Compose([
             RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
                         modes=scale_modes),
 
-        ], p=(0.0, 0.0, 1.0)),
-        RandomCrop(size=(128, 128))  # 64 for PanNuke,128 for MoNuSeg
+        ], p=(0.05, 0.05, 0.9)),
+        RandomCrop(size=(256, 256))  # 256 is size of the whole image
     ]),
     # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
 
     RandomApply(
         [
-            # RandomRotate(), - not working #todo! fix
+            RandomRotate(max_angle=15),  # - not working #todo! fix
             RandomFlip(),
             AddGaussianNoise(0.01, fields=["image"]),
-            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.04), fields=["image"]),
-            # GaussianBlur(fields=["image"])
+            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
+            GaussianBlur(fields=["image"])
         ],
 
         p=0.5),
@@ -68,7 +68,6 @@ transforms_training = Compose([
 ])
 
 transforms_val = Compose([
-    RandomCrop(size=(128, 128)),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -98,7 +97,7 @@ class HoverNetTrainer(Base_Trainer):
             src_folder = os.path.join("data", "processed",
                                       "PanNuke")
             train_set, val_set = train_val_split(PanNuke, src_folder, 0.8, transforms_training, transforms_val)
-            #dataset = PanNuke(transform=transforms_training)
+            # dataset = PanNuke(transform=transforms_training)
             # train_set, val_set = random_split(
             #    dataset, [int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset))])
 
@@ -107,8 +106,8 @@ class HoverNetTrainer(Base_Trainer):
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=args["NUM_WORKERS"] >= 1)
 
-        #num_training_batches = len(train_loader)*args["EPOCHS"]
-        accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
+        # num_training_batches = len(train_loader)*args["EPOCHS"]
+        accum_batch = max(1, 128//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
         model = None
@@ -153,15 +152,16 @@ class HoverNetTrainer(Base_Trainer):
         else:
             print("Training Started")
             trainer.fit(model)
-            #print("Training Over\nEvaluating")
+            # print("Training Over\nEvaluating")
             # trainer.validate(model)
             ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
             ckpt_path = make_checkpoint_path(ckpt_file)
             trainer.save_checkpoint(ckpt_path)
+            self.run(ckpt_path)
 
     def run(self, checkpoint):
         args = self.args
-        model = HoVerNet.load_from_checkpoint(checkpoint, **args)
+        model = HoVerNet.load_from_checkpoint(checkpoint, categories=(args["DATASET"] == "PanNuke"), **args)
         model.eval()
         model.cpu()
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",

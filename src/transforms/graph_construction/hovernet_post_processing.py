@@ -114,7 +114,7 @@ def hovernet_post_process(sm: Tensor, hv_map: Tensor, h=0.5, k=0.5, smooth_amt=5
     markersv2 = label(markersv2)[0]
     final = watershed(-energy.numpy(), markers=markersv2, mask=thresh_q.numpy())
     final = reset_ids(final)
-    return torch.as_tensor(final, dt=torch.int16)
+    return torch.as_tensor(final, dtype=torch.int)
 
 # times 2, ensures that an whole number of tiles fit in the image
 
@@ -140,8 +140,8 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     dim[1] = dim[1]//tile_size*tile_size
     img = img[:, :dim[0], :dim[1]]
 
-    final_sm = torch.zeros(6, dim[0]-tile_size, dim[1]-tile_size)
-    final_cat = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+    final_sm = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
+    final_cat = torch.zeros(6, dim[0]-tile_size, dim[1]-tile_size)
     final_hv_x = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
     final_hv_y = torch.zeros(dim[0]-tile_size, dim[1]-tile_size)
 
@@ -152,7 +152,7 @@ def tiled_hovernet_prediction(model, img, tile_size=32):
     def add_tiles(batch, batch_loc):
         with torch.no_grad():
             (sm, hv, cat) = model(batch.cuda())
-            sm_b, hv_b, cat_b = sm.cpu(), hv.cpu(), cat.vpu()
+            sm_b, hv_b, cat_b = sm.cpu(), hv.cpu(), cat.cpu()
             for (r, c), sm, hv, cat in zip(batch_loc, sm_b, hv_b, cat_b):
                 sm = sm.squeeze()
                 cat = cat.squeeze()

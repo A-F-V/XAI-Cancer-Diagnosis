@@ -3,6 +3,8 @@ from torchvision.transforms import Normalize as N
 from torchvision.transforms import ToTensor as T
 from torchvision.transforms.functional import crop, rotate, vflip, hflip, resize, gaussian_blur
 from torchvision.transforms import InterpolationMode, ColorJitter
+from src.transforms.image_processing.imported_augmentation import *
+from src.utilities.img_utilities import tensor_to_numpy
 from random import random
 # Todo this this the way to do it? Is it bad to use dictionaries
 
@@ -68,9 +70,9 @@ class RandomRotate(torch.nn.Module):
         self.max_angle = max_angle
         self.fields = fields
 
-    def forward(self, sample):  # todo also zoom in!
+    def forward(self, sample):
         angle = int(random()*self.max_angle)
-        output = {prop: rotate(sample[prop], angle, interpolation=InterpolationMode.BILINEAR) if (
+        output = {prop: rotate(sample[prop], angle, interpolation=(InterpolationMode.BILINEAR if prop == "image" else InterpolationMode.NEAREST)) if (
             self.fields == None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
@@ -117,6 +119,19 @@ class ColourJitter(torch.nn.Module):
     def forward(self, sample):
         output = {prop: ColorJitter(*self.bcsh)(sample[prop]).clip(0, 1) if (self.fields ==
                                                                              None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class StainJitter(torch.nn.Module):
+    def __init__(self, theta=0, fields=None):  # HED_light: theta=0.05; HED_strong: theta=0.2
+        super().__init__()
+        self.fields = fields
+        self.theta = theta
+        self.jitterer = HEDJitter(theta=self.theta)
+
+    def forward(self, sample):
+        output = {prop: T()(self.jitterer(tensor_to_numpy(sample[prop]))) if (self.fields ==
+                                                                              None or prop in self.fields) else sample[prop] for prop in sample}
         return output
 
 

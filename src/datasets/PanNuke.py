@@ -55,6 +55,9 @@ def collect_masks(src_folder):
     return final
 
 
+# The ordering of the channels from index 0 to 4 is neoplastic, inflammatory, connective tissue, dead and non-neoplastic epithelial.
+
+
 class PanNuke(Dataset):
     def __init__(self, src_folder=None, transform=None, ids=None):
         """Creates a Dataset object for the PanNuke dataset.
@@ -77,6 +80,7 @@ class PanNuke(Dataset):
         img, mask = img_data[index].copy(), mask_data[index].copy()
         item = {"image": numpy_to_tensor(img),
                 "instance_mask": torch.as_tensor(mask[:, :, -1].astype("int16")).int().unsqueeze(0),
+                # can be derived from instance mask so don't bother saving explicitly
                 "semantic_mask": (torch.as_tensor(mask[:, :, -1].astype("int16")) != 0).float().unsqueeze(0),
                 "category_mask": torch.as_tensor(mask[:, :, :5].astype("int16")).float().permute(2, 0, 1)}
         item["category_mask"] = torch.cat(

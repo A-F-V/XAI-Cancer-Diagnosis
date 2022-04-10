@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import torch
 import imageio
 import io
 import matplotlib.pyplot as plt
@@ -107,19 +107,19 @@ def create_coloured_mask(mask: np.ndarray, colour):
     return coloured_mask*mask
 
 
-def instance_segmentation_vizualised(img, instance_seg, cat_pred: np.ndarray, figsize=(20, 20)):
+def instance_segmentation_vizualised(img: np.ndarray, instance_seg: np.ndarray, cat_pred: np.ndarray, figsize=(20, 20)):
     """Plots image and the segmentation overlayed on top
 
     Args:
-        img (Tensor): Original Image (3,H,W)
-        instance_seg (Tensor): Instance Segmentation of Image (same size) (H,W)
+        img (np.ndarray): Original Image (H,W,3)
+        instance_seg (np.ndarray): Instance Segmentation of Image (same size) (H,W)
         cat_pred (np.ndarray): List of cell type predictions. cat_pred[i] is cell i's prediction
     """
-    assert img.shape[1:] == instance_seg.shape[:], "Image and instance segmentation must be same size"
+    assert img.shape[:2] == instance_seg.shape[:], "Image and instance segmentation must be same size"
 
-    # neo - red, non-neo - orange, inflam - green, conn - blue, dead - yell
-    colour_scheme = [[1., 0., 0.], [1.0, 0.5, 0.], [0., 1., 0.], [0., 0., 1.], [1.0, 1.0, 0.]]
-    hl = tensor_to_numpy(hollow(instance_seg))
+    # neo - red, inflam - green, conn - blue, dead - yell, non-neo - orange,
+    colour_scheme = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1.0, 1.0, 0.], [1.0, 0.5, 0.]]
+    hl = tensor_to_numpy(hollow(torch.tensor(instance_seg)))
 
     hollow_masks = [np.isin(hl, np.nonzero(cat_pred == cell_type)) for cell_type in range(0, 5)]
     masks = [create_coloured_mask(hm, colour) for i, colour, hm in zip(range(5), colour_scheme, hollow_masks)]
