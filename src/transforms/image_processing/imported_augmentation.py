@@ -1,19 +1,22 @@
 ################################
-# by @gatsby2016 from https://github.com/gatsby2016/Augmentation-PyTorch-Transforms
+# by @gatsby2016 from https://github.com/gatsby2016/Augmentation-PyTorch-Transforms, with modifications by myself
 ################################
 
 
 from __future__ import division
+from typing import List
+
 
 import numpy as np
 import numbers
-
-
+from torchvision.transforms import ToTensor as T
+from torch import Tensor
 from PIL import Image, ImageFilter
 from skimage import color
 import cv2
 from scipy.ndimage.interpolation import map_coordinates
 from scipy.ndimage.filters import gaussian_filter
+from src.utilities.img_utilities import tensor_to_numpy, numpy_to_tensor
 
 
 class HEDJitter(object):
@@ -31,8 +34,6 @@ class HEDJitter(object):
     def __init__(self, theta=0.):
         assert isinstance(theta, numbers.Number), "theta should be a single number."
         self.theta = theta
-        self.alpha = np.random.uniform(1-theta, 1+theta, (1, 3))
-        self.betti = np.random.uniform(-theta, theta, (1, 3))
 
     @staticmethod
     def adjust_HED(img, alpha, betti):
@@ -45,11 +46,15 @@ class HEDJitter(object):
         imin = nimg.min()
         imax = nimg.max()
         rsimg = (255 * (nimg - imin) / (imax - imin)).astype('uint8')  # rescale to [0,255]
-        # transfer to PIL image
-        return Image.fromarray(rsimg)
+        # transfer to Tensor image
+        return T()(Image.fromarray(rsimg))
 
-    def __call__(self, img):
-        return self.adjust_HED(img, self.alpha, self.betti)
+    def __call__(self, img: Tensor):
+        theta = self.theta
+        img_t = tensor_to_numpy(img)
+        self.alpha = np.random.uniform(1-theta, 1+theta, (1, 3))
+        self.betti = np.random.uniform(-theta, theta, (1, 3))
+        return self.adjust_HED(img_t, self.alpha, self.betti)
 
     def __repr__(self):
         format_string = self.__class__.__name__ + '('
@@ -105,12 +110,12 @@ class RandomElastic(object):
         # https://blog.csdn.net/maliang_1993/article/details/82020596
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.map_coordinates.html#scipy.ndimage.map_coordinates
     Args:
+        layers (List of Tensors): A list containing each of the image and mask layers
         alpha (float): alpha value for Elastic transformation, factor
         if alpha is 0, output is original whatever the sigma;
         if alpha is 1, output only depends on sigma parameter;
         if alpha < 1 or > 1, it zoom in or out the sigma's Relevant dx, dy.
         sigma (float): sigma value for Elastic transformation, should be \ in (0.05,0.1)
-        masks (np.ndarray), all the masks concatenated
     """
 
     def __init__(self, alpha, sigma):
@@ -122,30 +127,30 @@ class RandomElastic(object):
         self.sigma = sigma
 
     @staticmethod
-    def RandomElasticCV2(img, alpha, sigma, masks=None):
-        alpha = img.shape[1] * alpha
-        sigma = img.shape[1] * sigma
-        if masks is not None:
-            masks = np.array(masks).astype(np.uint8)
-            img = np.concatenate((img, masks[..., None]), axis=2)
+    def RandomElasticCV2(layers: List, alpha, sigma):
+        shape = layers[0].shape
+        img_size = shape[:2]
+        alpha = shape[1] * alpha
+        sigma = shape[1] * sigma
 
-        shape = img.shape
+        dx = gaussian_filter((np.random.rand(*img_size) * 2 - 1), sigma) * alpha
+        dy = gaussian_filter((np.random.rand(*img_size) * 2 - 1), sigma) * alpha
 
-        dx = gaussian_filter((np.random.rand(*shape) * 2 - 1), sigma) * alpha
-        dy = gaussian_filter((np.random.rand(*shape) * 2 - 1), sigma) * alpha
-        # dz = np.zeros_like(dx)
+        x, y = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]))
+        indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1))
 
-        x, y, z = np.meshgrid(np.arange(shape[1]), np.arange(shape[0]), np.arange(shape[2]))
-        indices = np.reshape(y + dy, (-1, 1)), np.reshape(x + dx, (-1, 1)), np.reshape(z, (-1, 1))
+        def morph(layer):
+            cuts = [map_coordinates(layer[:, :, i], indices, order=0,
+                                    mode='reflect').reshape((*shape[:2], 1)) for i in range(layer.shape[2])]
+            return np.concatenate(cuts, axis=2)
+        trans_layers = [numpy_to_tensor(morph(layer)) for layer in layers]
 
-        img = map_coordinates(img, indices, order=0, mode='reflect').reshape(shape)
-        if masks is not None:
-            return Image.fromarray(img[..., :3]), Image.fromarray(img[..., 3:])
-        else:
-            return Image.fromarray(img)
+        return trans_layers
 
-    def __call__(self, img, mask=None):
-        return self.RandomElasticCV2(np.array(img), self.alpha, self.sigma, mask)
+    def __call__(self, layers: List):
+
+        n_layers = [layer.permute((1, 2, 0)).numpy() for layer in layers]
+        return self.RandomElasticCV2(n_layers, self.alpha, self.sigma)
 
     def __repr__(self):
         format_string = self.__class__.__name__ + '(alpha value={0})'.format(self.alpha)

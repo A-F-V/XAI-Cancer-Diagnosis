@@ -130,8 +130,31 @@ class StainJitter(torch.nn.Module):
         self.jitterer = HEDJitter(theta=self.theta)
 
     def forward(self, sample):
-        output = {prop: T()(self.jitterer(tensor_to_numpy(sample[prop]))) if (self.fields ==
-                                                                              None or prop in self.fields) else sample[prop] for prop in sample}
+        output = {prop: self.jitterer(sample[prop]) if (self.fields ==
+                                                        None or prop in self.fields) else sample[prop] for prop in sample}
+        return output
+
+
+class RandomElasticDeformation(torch.nn.Module):
+    def __init__(self, alpha, sigma, fields=None):  # HED_light: theta=0.05; HED_strong: theta=0.2
+        super().__init__()
+        self.fields = fields
+        self.alpha = alpha
+        self.sigma = sigma
+        self.deformer = RandomElastic(alpha=self.alpha, sigma=self.sigma)
+
+
+#masks = np.array(masks).astype(np.uint8)
+#img = np.concatenate((img, masks[..., None]), axis=2)
+
+
+    def forward(self, sample):
+        fields = self.fields if self.fields is not None else sample.keys()
+        img__mask_layers = [sample[prop] for prop in fields]
+
+        elastic_layers = self.deformer(img__mask_layers)
+        named_layers = {prop: layer for prop, layer in zip(fields, elastic_layers)}
+        output = {prop: named_layers[prop] if (prop in fields) else sample[prop] for prop in sample}
         return output
 
 
