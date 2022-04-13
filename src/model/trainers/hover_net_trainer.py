@@ -35,39 +35,46 @@ from src.model.evaluation.panoptic_quality import panoptic_quality
 Instead of using random_split, you could create two datasets, one training dataset with the random transformations, and another validation set with its corresponding transformations.
 Once you have created both datasets, you could randomly split the data indices e.g. using sklearn.model_selection.train_test_split. These indices can then be passed to torch.utils.data.Subset together with their datasets in order to create the final training and validation dataset.
 """
+batch_size = 4
+cropsize = (256, 256)
+
 scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_mask": InterpolationMode.NEAREST, "category_mask": InterpolationMode.NEAREST}
 transforms_training = Compose([
-    Compose([
-        RandomChoice([
-            RandomScale(x_fact_range=(0.5, 0.55), y_fact_range=(0.5, 0.55),
-                        modes=scale_modes),
-            RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
-                        modes=scale_modes),
-            RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
-                        modes=scale_modes),
 
-        ], p=(0.05, 0.05, 0.9)),
-        RandomCrop(size=(256, 256))  # 256 is size of the whole image
-    ]),
-    # RandomCrop((64, 64)),  # does not work in random apply as will cause batch to have different sized pictures
+    RandomChoice([
+        RandomScale(x_fact_range=(0.5, 0.55), y_fact_range=(0.5, 0.55),
+                    modes=scale_modes),
+        RandomScale(x_fact_range=(0.65, 0.75), y_fact_range=(0.65, 0.75),
+                    modes=scale_modes),
+        RandomScale(x_fact_range=(0.95, 1.05), y_fact_range=(0.95, 1.05),
+                    modes=scale_modes),
 
+    ], p=(0.00, 0.00, 1)),
+    RandomCrop(size=cropsize),  # 256 is size of the whole image
+
+
+
+    RandomFlip(),
     RandomApply(
         [
-            RandomRotate(max_angle=15),  # - not working #todo! fix
-            RandomFlip(),
-            AddGaussianNoise(0.01, fields=["image"]),
-            ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
-            GaussianBlur(fields=["image"])
+            StainJitter(theta=0.02, fields=["image"]),
+            RandomChoice([
+                AddGaussianNoise(0.01, fields=["image"]),
+                GaussianBlur(fields=["image"])]),
+            # RandomElasticDeformation(alpha=1.7, sigma=0.08)
+
+            #ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
         ],
 
-        p=0.5),
+        p=0.8),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
 transforms_val = Compose([
+    RandomCrop(size=cropsize),
     Normalize(
         {"image": [0.6441, 0.4474, 0.6039]},
         {"image": [0.1892, 0.1922, 0.1535]})
@@ -107,7 +114,7 @@ class HoverNetTrainer(Base_Trainer):
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=args["NUM_WORKERS"] >= 1)
 
         # num_training_batches = len(train_loader)*args["EPOCHS"]
-        accum_batch = max(1, 128//args["BATCH_SIZE_TRAIN"])
+        accum_batch = max(1, batch_size//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
         model = None
@@ -173,7 +180,7 @@ class HoverNetTrainer(Base_Trainer):
                 img = sample["image"].unsqueeze(0)
                 sm = sample["semantic_mask"]
                 imgs.append(sm.squeeze().detach())
-                sm_hat, _ = model(img)
+                sm_hat, _, _ = model(img)
                 imgs.append(sm_hat.squeeze().detach())
                 imgs.append((sm_hat > 0.5).squeeze().detach())
             plot_images(imgs, (10, 3), cmap="gray")
@@ -189,7 +196,7 @@ class HoverNetTrainer(Base_Trainer):
             pq_tot = 0
             for i in tqdm(range(10), desc="Calculating Mean Panoptic Quality"):
                 sample = dataset[i]
-                ins_pred = instance_mask_prediction_hovernet(model, sample['image'], tile_size=128)
+                ins_pred, _ = instance_mask_prediction_hovernet(model, sample['image'], tile_size=128)
                 pq = panoptic_quality(ins_pred.squeeze(), sample['instance_mask'].squeeze()[64:768+64, 64:768+64])
                 pq_tot += pq
             pq_tot /= 10

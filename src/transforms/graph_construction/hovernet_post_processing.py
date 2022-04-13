@@ -211,7 +211,7 @@ def assign_instance_class_label(instance_map: Tensor, nucleus_prediction: Tensor
 
 
 @torch.no_grad()
-def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=False):
+def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=False, all_channels=False, h=0.5, k=0.5):
     if pre_normalized:
         t_img = img
     else:
@@ -220,9 +220,9 @@ def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=
             {"image": [0.1892, 0.1922, 0.1535]})
         t_img = normalizer({"image": img.clone()})["image"]
     sm_pred, hv_pred, cat_pred = tiled_hovernet_prediction(model, t_img, tile_size)
-    ins_pred = hovernet_post_process(sm_pred, hv_pred, 0.5, 0.5)
+    ins_pred = hovernet_post_process(sm_pred, hv_pred, h=h, k=k)
     cell_cat_pred = assign_instance_class_label(ins_pred, cat_pred)
-    return ins_pred, cell_cat_pred
+    return (ins_pred, cell_cat_pred) if not all_channels else (ins_pred, cat_pred, sm_pred, hv_pred)
 
 
 def cut_img_from_tile(img, tile_size=32):

@@ -4,6 +4,9 @@ from src.model.evaluation.dice_loss import DiceLoss
 from src.model.evaluation.msegradloss import MSEGradLoss
 
 
+W = torch.as_tensor([9,   47,   22, 1207,   33,    1])  # PanNuke Weights
+
+
 class HoVerNetLoss(nn.Module):
     def __init__(self, lambdas=(1, 2, 1, 1, 1, 1)):  # default is as stipulated in paper
         super().__init__()
@@ -29,8 +32,9 @@ class HoVerNetLoss(nn.Module):
         Lc = nn.BCELoss()(pred[0].squeeze(), target[0].float().squeeze())
         Ld = DiceLoss()(pred[0].squeeze(), target[0].float().squeeze())
         np_hv_loss = co[0]*La + co[1]*Lb + co[2]*Lc + co[3]*Ld
-        if len(pred) == 3:  # !TODO NOT RIGHT! NEED TO CORRECT FOR BACKGROUND AS WELL (ADD THAT DIMENSION IN)
-            Le = -6*(target[2].float() * torch.log(pred[2])).mean()  # CROSS ENTROPY LOSS
+        if len(pred) == 3:
+            Le = -(W*target[2].float() * torch.log(pred[2])).mean()  # CROSS ENTROPY LOSS
+            assert Le >= 0
             Lf = DiceLoss()(pred[2].squeeze(), target[2].float().squeeze())
             return np_hv_loss + co[4]*Le + co[5]*Lf
         return np_hv_loss
