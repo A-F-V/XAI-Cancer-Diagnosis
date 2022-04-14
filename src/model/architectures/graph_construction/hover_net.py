@@ -73,9 +73,10 @@ class HoVerNet(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         i, sm, hv = train_batch['image'].float(), train_batch['semantic_mask'].float(), train_batch['hover_map'].float()
-        if self.categories:
+        y = (sm, hv)
+        if self.categories and 'category_mask' in train_batch:
             c = train_batch['category_mask'].float()
-        y = (sm, hv, c) if self.categories else (sm, hv)
+            y = (sm, hv, c)
         y_hat = self(i)
 
         loss = HoVerNetLoss()(y_hat, y)
@@ -95,9 +96,11 @@ class HoVerNet(pl.LightningModule):
         ), val_batch['hover_map'].float(), val_batch['instance_mask']
         batch_size = i.shape[0]
 
-        if self.categories:
+        y = (sm, hv)
+        if self.categories and 'category_mask' in val_batch:
             c = val_batch['category_mask'].float()
-        y = (sm, hv, c) if self.categories else (sm, hv)
+            y = (sm, hv, c)
+
         y_hat = self(i)
 
         pq_sum = 0

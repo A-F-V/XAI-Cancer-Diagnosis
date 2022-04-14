@@ -35,8 +35,8 @@ from src.model.evaluation.panoptic_quality import panoptic_quality
 Instead of using random_split, you could create two datasets, one training dataset with the random transformations, and another validation set with its corresponding transformations.
 Once you have created both datasets, you could randomly split the data indices e.g. using sklearn.model_selection.train_test_split. These indices can then be passed to torch.utils.data.Subset together with their datasets in order to create the final training and validation dataset.
 """
-batch_size = 4
-cropsize = (256, 256)
+batch_size = 16
+cropsize = (128, 128)
 
 scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_mask": InterpolationMode.NEAREST, "category_mask": InterpolationMode.NEAREST}
@@ -58,13 +58,13 @@ transforms_training = Compose([
     RandomFlip(),
     RandomApply(
         [
-            StainJitter(theta=0.02, fields=["image"]),
+            StainJitter(theta=0.025, fields=["image"]),
             RandomChoice([
                 AddGaussianNoise(0.01, fields=["image"]),
                 GaussianBlur(fields=["image"])]),
-            # RandomElasticDeformation(alpha=1.7, sigma=0.08)
+            RandomElasticDeformation(alpha=1.7, sigma=0.08)
 
-            #ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
+            # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
         ],
 
         p=0.8),
@@ -122,7 +122,7 @@ class HoverNetTrainer(Base_Trainer):
             print(f"Model is being loaded from checkpoint {args['START_CHECKPOINT']}")
             checkpoint_path = make_checkpoint_path(args["START_CHECKPOINT"])
             model = HoVerNet.load_from_checkpoint(
-                checkpoint_path, num_batches=num_steps, train_loader=train_loader, val_loader=val_loader, categories=(args["DATASET"] == "PanNuke"), ** args)
+                checkpoint_path, num_batches=num_steps, train_loader=train_loader, val_loader=val_loader, categories=True, ** args)
 
             # model.encoder.freeze()
         else:
@@ -146,7 +146,6 @@ class HoverNetTrainer(Base_Trainer):
         ###########
         # EXTRAS  #
         ###########
-        model.encoder.unfreeze()
 
         ###########
 
@@ -164,7 +163,6 @@ class HoverNetTrainer(Base_Trainer):
             ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
             ckpt_path = make_checkpoint_path(ckpt_file)
             trainer.save_checkpoint(ckpt_path)
-            self.run(ckpt_path)
 
     def run(self, checkpoint):
         args = self.args
@@ -172,7 +170,7 @@ class HoverNetTrainer(Base_Trainer):
         model.eval()
         model.cpu()
         dataset = MoNuSeg(src_folder=os.path.join("data", "processed",
-                                                  "MoNuSeg_TRAIN"), transform=transforms_val)
+                                                  "MoNuSeg_TEST"), transform=transforms_val)
         imgs = []
         with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=f"DIAG_{os.path.basename(checkpoint)}") as run:
             for i in range(10):
