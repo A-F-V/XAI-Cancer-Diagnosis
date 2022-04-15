@@ -19,7 +19,7 @@ def IoU(img_1: np.ndarray, img_2: np.ndarray):
     return p/(s-p)
 
 
-def assign_predicted_to_ground_instance_mask(pred: Tensor, ground: Tensor):
+def assign_predicted_to_ground_instance_mask(gt: Tensor, pred: Tensor):
     pred = reset_ids(pred.numpy())
     gt = reset_ids(gt.numpy())
     num_gt_cells = gt.max()

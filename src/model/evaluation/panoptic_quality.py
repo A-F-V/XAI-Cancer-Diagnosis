@@ -6,9 +6,6 @@ from scipy.optimize import linear_sum_assignment
 from src.algorithm.pair_mask_assignment import assign_predicted_to_ground_instance_mask
 
 
-
-
-
 def panoptic_quality(pred: Tensor, gt: Tensor):
     """Calculates the panoptic quality of the prediction, as defined in the HoVerNet Paper.
 
@@ -23,7 +20,7 @@ def panoptic_quality(pred: Tensor, gt: Tensor):
     pred = reset_ids(pred.numpy())
     gt = reset_ids(gt.numpy())
 
-    TP = assign_predicted_to_ground_instance_mask(pred, gt)
+    TP = assign_predicted_to_ground_instance_mask(gt, pred)
 
     FP = set([i for i in range(1, pred.max()+1) if i not in set(map(lambda m: m[0], TP))])
     FN = set([i for i in range(1, gt.max()+1) if i not in set(map(lambda m: m[1], TP))])

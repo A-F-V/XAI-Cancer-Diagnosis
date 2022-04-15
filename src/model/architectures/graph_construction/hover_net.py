@@ -118,13 +118,13 @@ class HoVerNet(pl.LightningModule):
                 instance_ground = hovernet_post_process(sm_gt, hv_gt, h=0.5, k=0.7)
                 cell_cat_pred = torch.as_tensor(assign_instance_class_label(instance_pred, c_pred))
                 cell_cat_ground = torch.as_tensor(assign_instance_class_label(instance_ground, c_gt))
-                matches = list(assign_predicted_to_ground_instance_mask(instance_pred, instance_ground))
+                matches = list(assign_predicted_to_ground_instance_mask(instance_ground, instance_pred))
                 gt_id, pred_id = list(map(lambda x: x[0], matches)), list(map(lambda x: x[1], matches))
                 cf += confusion_matrix(cell_cat_ground[gt_id], cell_cat_pred[pred_id], 5)
-        self.log("confusion matrix", cf)
+
         loss = HoVerNetLoss()(y_hat, y)
         self.log("val_loss", loss)
-        return loss
+        return {'loss': loss, 'confusion_matrix': cf}
 
     def train_dataloader(self):
         return self.train_loader
@@ -140,6 +140,11 @@ class HoVerNet(pl.LightningModule):
         #                          self.train_sample["hover_map_pred"])
         # create_diagnosis((sm.detach().cpu(), hv.detach().cpu()),
         #                 (sm_hat.detach().cpu(), hv_hat.detach().cpu()), self.#current_epoch)
+
+    def validation_epoch_end(self, outputs):
+        cf = torch.stack(list(map(lambda x: x['confusion_matrix'], outputs))).sum(dim=0)
+        assert cf.shape == (5, 5)
+        self.log("val_confusion matrix", cf)
 
     def on_validation_epoch_end(self):
         if self.current_epoch != 0:
