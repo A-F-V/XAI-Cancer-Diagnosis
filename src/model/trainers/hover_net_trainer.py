@@ -38,6 +38,8 @@ Once you have created both datasets, you could randomly split the data indices e
 batch_size = 16
 cropsize = (128, 128)
 
+
+# Normalize({"image": [0.6441, 0.4474, 0.6039]},{"image": [0.1892, 0.1922, 0.1535]})   # for image not optical
 scale_modes = {"image": InterpolationMode.BILINEAR,
                "semantic_mask": InterpolationMode.NEAREST, "instance_mask": InterpolationMode.NEAREST, "category_mask": InterpolationMode.NEAREST}
 transforms_training = Compose([
@@ -51,14 +53,14 @@ transforms_training = Compose([
                     modes=scale_modes),
 
     ], p=(0.00, 0.00, 1)),
-    RandomCrop(size=cropsize),  # 256 is size of the whole image
+
 
 
 
     RandomFlip(),
     RandomApply(
         [
-            StainJitter(theta=0.025, fields=["image"]),
+            StainJitter(theta=0.03, fields=["image"]),
             RandomChoice([
                 AddGaussianNoise(0.01, fields=["image"]),
                 GaussianBlur(fields=["image"])]),
@@ -68,16 +70,17 @@ transforms_training = Compose([
         ],
 
         p=0.8),
-    Normalize(
-        {"image": [0.6441, 0.4474, 0.6039]},
-        {"image": [0.1892, 0.1922, 0.1535]})
+    # ToOpticalDensity(fields=["image"]),
+    #Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
+    RandomCrop(size=cropsize),  # 256 is size of the whole image
+    Normalize({"image": [0.6441, 0.4474, 0.6039]}, {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
 transforms_val = Compose([
     RandomCrop(size=cropsize),
-    Normalize(
-        {"image": [0.6441, 0.4474, 0.6039]},
-        {"image": [0.1892, 0.1922, 0.1535]})
+    # ToOpticalDensity(fields=["image"]),
+    #Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
+    Normalize({"image": [0.6441, 0.4474, 0.6039]}, {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
 

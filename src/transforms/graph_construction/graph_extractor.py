@@ -9,9 +9,11 @@ import networkx.algorithms as nx
 # todo remove small islands
 
 
-def extract_graph(img: Tensor, ins_seg: Tensor, window_size=64, k=6, dmin=150, min_nodes=10, downsample=1, img_trans=None):
+def extract_graph(img: Tensor, ins_seg: Tensor, cell_categories: Tensor, window_size=64, k=6, dmin=150, min_nodes=10, downsample=1, img_trans=None):
+    # cell_categories 0 = background, 1 = first cell
     nuclei = ins_seg.max()
     centres = []
+    selected_nuclei = []
 
     def out_of_view(x, y):  # possible off by one error
         return (x <= window_size//2 or y <= window_size//2 or x >= ins_seg.shape[1]-window_size//2 or y >= ins_seg.shape[0]-window_size//2)
@@ -21,6 +23,7 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=64, k=6, dmin=150, m
         x, y = find_centre_of_mass(ins_seg, i)
         if(not out_of_view(x, y)):
             centres.append((x, y))
+            selected_nuclei.append(i)
 
     # Perform KNN search
     def euclidean_dist(p1, p2):
@@ -55,13 +58,18 @@ def extract_graph(img: Tensor, ins_seg: Tensor, window_size=64, k=6, dmin=150, m
 
         feature_matrix_x = torch.cat((feature_matrix_x, feature.unsqueeze(0)), dim=0)
         position_matrix = torch.cat((position_matrix, torch.tensor([[x, y]])), dim=0)
-    output = Data(x=feature_matrix_x, edge_index=edges_index, edge_attr=edge_attr, pos=position_matrix)
+    nuclei_categories = cell_categories[selected_nuclei]
 
-    G = to_networkx(output, to_undirected=True, node_attrs=['x', 'pos'], edge_attrs=['edge_attr'])
+    output = Data(x=feature_matrix_x, edge_index=edges_index, edge_attr=edge_attr,
+                  pos=position_matrix, categories=nuclei_categories)
+
+    G = to_networkx(output, to_undirected=True, node_attrs=['x', 'pos', 'categories'], edge_attrs=['edge_attr'])
     Gp = nx.operators.compose_all([G.subgraph(g) for g in nx.components.connected_components(G) if len(g) >= min_nodes])
-    output = from_networkx(Gp, group_node_attrs=['x', 'pos'], group_edge_attrs=['edge_attr'])
-    output.pos = output.x[:, -2:]
-    output.x = output.x[:, :-2]
+    output = from_networkx(Gp, group_node_attrs=['x', 'pos', 'categories'], group_edge_attrs=['edge_attr'])
+    # output.x = [x|pos|category] = [start- -3:-3 - -1:-1 - end]
+    output.pos = output.x[:, -3:-1]
+    output.categories = output.x[:, -1]
+    output.x = output.x[:, :-3]
     return output
 
 

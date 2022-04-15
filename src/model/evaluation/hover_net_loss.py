@@ -37,7 +37,7 @@ class HoVerNetLoss(nn.Module):
         Ld = DiceLoss()(pred[0], target[0].float())
         np_hv_loss = co[0]*La + co[1]*Lb + co[2]*Lc + co[3]*Ld
         if len(pred) == len(target) == 3:
-            Le = -(target[2].float() * torch.log(pred[2])).mean(dim=(0, 2, 3))  # CROSS ENTROPY LOSS
+            Le = -(target[2].float() * torch.log(pred[2]+1e-8)).mean(dim=(0, 2, 3))  # CROSS ENTROPY LOSS
             assert Le.shape == (6,)
             Le = (W.to(Le.device) * Le).sum()
             assert Le >= 0

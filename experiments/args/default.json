@@ -1,8 +1,8 @@
 {
   "DEVICE": "cuda",
-  "DATASET": "MoNuSeg",
+  "DATASET": "PanNuke",
   "RESNET_SIZE": 50,
-  "RUN_NAME": "Mon",
+  "RUN_NAME": "Final",
   "EXPERIMENT_ID": 2,
   "EXPERIMENT_NAME": "HoVerNet",
   "EPOCHS": 20,

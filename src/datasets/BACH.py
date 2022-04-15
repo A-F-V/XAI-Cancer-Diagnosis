@@ -25,7 +25,7 @@ class GraphExtractor(Thread):
         path = self.instance_seg_path
         data = torch.load(path)
         # try:
-        graph = extract_graph(data['original_image'], data['instance_mask'], **self.kwargs)
+        graph = extract_graph(data['original_image'], data['instance_mask'], data['cell_categories'], **self.kwargs)
         # except:
         #   print(f"Failed to extract anything of value from {path}")
         #    return
@@ -33,13 +33,13 @@ class GraphExtractor(Thread):
 
         label = os.path.basename(path)
         if label[0] == 'b':
-            y[0] = 1
-        elif label[0:2] == 'is':
             y[1] = 1
-        elif label[0:2] == 'iv':
+        elif label[0:2] == 'is':
             y[2] = 1
-        elif label[0] == 'n':
+        elif label[0:2] == 'iv':
             y[3] = 1
+        elif label[0] == 'n':
+            y[0] = 1
         graph.y = y
         graph_path = os.path.join(self.output_folder, os.path.basename(path))
         if min(graph.x.shape) > 0:
