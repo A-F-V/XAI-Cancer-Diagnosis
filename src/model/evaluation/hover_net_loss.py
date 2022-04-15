@@ -6,7 +6,7 @@ from src.model.evaluation.msegradloss import MSEGradLoss
 
 W = torch.as_tensor([9,   47,   22, 50,   33,    1])  # PanNuke Weights
 W = W/W.sum()
-W = torch.ones(6)
+#W = torch.ones(6)
 
 
 class HoVerNetLoss(nn.Module):

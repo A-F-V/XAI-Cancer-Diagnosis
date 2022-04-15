@@ -1,20 +1,24 @@
 from torch import nn, optim, Tensor
+import torch
 import numpy as np
 from src.model.architectures.components.residual_unit import ResidualUnit
 from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
 import pytorch_lightning as pl
+from src.model.evaluation.confusion_matrix import confusion_matrix
 from src.model.evaluation.hover_net_loss import HoVerNetLoss
 import matplotlib.pyplot as plt
 from PIL import Image
 import io
 import mlflow
+from src.utilities.tensor_utilties import reset_ids
 from src.vizualizations.image_viz import plot_images
 from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_example
 from src.utilities.img_utilities import tensor_to_numpy
 from torch.nn.functional import binary_cross_entropy
 import os
 from src.model.evaluation.panoptic_quality import panoptic_quality
-from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
+from src.transforms.graph_construction.hovernet_post_processing import assign_instance_class_label, hovernet_post_process
+from src.algorithm.pair_mask_assignment import assign_predicted_to_ground_instance_mask
 resnet_sizes = [18, 34, 50, 101, 152]
 
 # todo consider using ModuleList instead of Sequential?
@@ -103,13 +107,21 @@ class HoVerNet(pl.LightningModule):
 
         y_hat = self(i)
 
-        pq_sum = 0
-        for i in range(batch_size):
-            sm_pred, hv_pred = y_hat[0][i], y_hat[1][i]
-            instance_pred = hovernet_post_process(sm_pred.squeeze().cpu(), hv_pred.cpu(), h=0.5, k=0.5)
-            pq_sum += panoptic_quality(instance_pred, inm.cpu())
-        self.log("Mean Panoptic Quality", pq_sum/batch_size)
-
+        cf = torch.zeros(5, 5)
+        if self.categories and 'category_mask' in val_batch:
+            for i in range(batch_size):
+                sm_gt, hv_gt, c_gt = sm[i].squeeze().cpu(
+                ), hv[i].squeeze().cpu(), c[i].squeeze().cpu()
+                sm_pred, hv_pred, c_pred = y_hat[0][i].squeeze().cpu(
+                ), y_hat[1][i].squeeze().cpu(), y_hat[2][i].squeeze().cpu()
+                instance_pred = hovernet_post_process(sm_pred, hv_pred, h=0.5, k=0.7)
+                instance_ground = hovernet_post_process(sm_gt, hv_gt, h=0.5, k=0.7)
+                cell_cat_pred = torch.as_tensor(assign_instance_class_label(instance_pred, c_pred))
+                cell_cat_ground = torch.as_tensor(assign_instance_class_label(instance_ground, c_gt))
+                matches = list(assign_predicted_to_ground_instance_mask(instance_pred, instance_ground))
+                gt_id, pred_id = list(map(lambda x: x[0], matches)), list(map(lambda x: x[1], matches))
+                cf += confusion_matrix(cell_cat_ground[gt_id], cell_cat_pred[pred_id], 5)
+        self.log("confusion matrix", cf)
         loss = HoVerNetLoss()(y_hat, y)
         self.log("val_loss", loss)
         return loss

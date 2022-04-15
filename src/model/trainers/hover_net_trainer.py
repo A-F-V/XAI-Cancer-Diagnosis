@@ -60,7 +60,7 @@ transforms_training = Compose([
     RandomFlip(),
     RandomApply(
         [
-            StainJitter(theta=0.03, fields=["image"]),
+            StainJitter(theta=0.015, fields=["image"]),
             RandomChoice([
                 AddGaussianNoise(0.01, fields=["image"]),
                 GaussianBlur(fields=["image"])]),
