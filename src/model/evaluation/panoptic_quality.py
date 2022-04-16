@@ -14,7 +14,7 @@ def panoptic_quality(pred: Tensor, gt: Tensor):
         gt (Tensor): Ground Truth instance segmentation (H,W)
 
     Returns:
-        float: PQ
+        float: SQ,DQ,PQ
     """
     # TP = matched,  FP = unmatched Predicted, FN = unmatched Ground Truth,
     pred = reset_ids(pred.numpy())
@@ -28,4 +28,4 @@ def panoptic_quality(pred: Tensor, gt: Tensor):
     DQ = 1 if (len(TP)+len(FP)/2+len(FN)/2) == 0 else len(TP)/(len(TP)+len(FP)/2+len(FN)/2)  # Detection Quality
     SQ = 1 if len(TP) == 0 else sum([assig[2] for assig in TP])/len(TP)  # Segmentation Quality
 
-    return DQ*SQ
+    return SQ, DQ, DQ*SQ
