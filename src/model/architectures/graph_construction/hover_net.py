@@ -1,3 +1,5 @@
+from src.model.evaluation.dice2 import DICE2
+from src.model.evaluation.aji import AJI
 from torch import nn, optim, Tensor
 import torch
 import numpy as np
@@ -20,6 +22,7 @@ from src.model.evaluation.panoptic_quality import panoptic_quality
 from src.transforms.graph_construction.hovernet_post_processing import assign_instance_class_label, hovernet_post_process
 from src.algorithm.pair_mask_assignment import assign_predicted_to_ground_instance_mask
 resnet_sizes = [18, 34, 50, 101, 152]
+
 
 # todo consider using ModuleList instead of Sequential?
 
@@ -108,23 +111,32 @@ class HoVerNet(pl.LightningModule):
         y_hat = self(i)
 
         cf = torch.zeros(5, 5)
-        if self.categories and 'category_mask' in val_batch:
-            for i in range(batch_size):
-                sm_gt, hv_gt, c_gt = sm[i].squeeze().cpu(
-                ), hv[i].squeeze().cpu(), c[i].squeeze().cpu()
-                sm_pred, hv_pred, c_pred = y_hat[0][i].squeeze().cpu(
-                ), y_hat[1][i].squeeze().cpu(), y_hat[2][i].squeeze().cpu()
-                instance_pred = hovernet_post_process(sm_pred, hv_pred, h=0.5, k=0.7)
-                instance_ground = hovernet_post_process(sm_gt, hv_gt, h=0.5, k=0.7)
+
+        m_aji, m_dice, m_sq, m_dq, mpq = 0, 0, 0, 0, 0
+        for i in range(batch_size):
+            sm_gt, hv_gt = sm[i].squeeze().cpu(), hv[i].squeeze().cpu()
+            sm_pred, hv_pred = y_hat[0][i].squeeze().cpu(), y_hat[1][i].squeeze().cpu()
+            instance_pred = hovernet_post_process(sm_pred, hv_pred, h=0.5, k=0.5)
+            instance_ground = hovernet_post_process(sm_gt, hv_gt, h=0.5, k=0.5)
+
+            # evaluating classification
+            if self.categories and 'category_mask' in val_batch:
+                c_gt, c_pred = c[i].squeeze().cpu(), y_hat[2][i].squeeze().cpu()
                 cell_cat_pred = torch.as_tensor(assign_instance_class_label(instance_pred, c_pred))
                 cell_cat_ground = torch.as_tensor(assign_instance_class_label(instance_ground, c_gt))
                 matches = list(assign_predicted_to_ground_instance_mask(instance_ground, instance_pred))
                 gt_id, pred_id = list(map(lambda x: x[0], matches)), list(map(lambda x: x[1], matches))
                 cf += confusion_matrix(cell_cat_ground[gt_id], cell_cat_pred[pred_id], 5)
 
+            # evaluating segmentation
+            sq, dq, pq = panoptic_quality(instance_ground, instance_pred)
+            aji, dice = AJI(instance_ground, instance_pred), DICE2(instance_ground, instance_pred)
+            m_aji, m_dice, m_sq, m_dq, mpq = m_aji+aji, m_dice+dice, m_sq+sq, m_dq+dq, mpq+pq
+
+        m_aji, m_dice, m_sq, m_dq, mpq = m_aji/batch_size, m_dice/batch_size, m_sq/batch_size, m_dq/batch_size, mpq/batch_size
         loss = HoVerNetLoss()(y_hat, y)
         self.log("val_loss", loss)
-        return {'loss': loss, 'confusion_matrix': cf}
+        return {'loss': loss, 'confusion_matrix': cf, 'AJI': m_aji, 'DICE': m_dice, 'SQ': m_sq, 'DQ': m_dq, 'PQ': mpq}
 
     def train_dataloader(self):
         return self.train_loader
@@ -144,7 +156,24 @@ class HoVerNet(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         cf = torch.stack(list(map(lambda x: x['confusion_matrix'], outputs))).sum(dim=0)
         assert cf.shape == (5, 5)
-        self.log("val_confusion matrix", cf)
+        print(cf)
+
+        aji_v, aji_m = torch.var_mean(torch.as_tensor(list(map(lambda x: x['AJI'], outputs))), unbiased=True)
+        dice_v, dice_m = torch.var_mean(torch.as_tensor(list(map(lambda x: x['DICE'], outputs))), unbiased=True)
+        pq_v, pq_m = torch.var_mean(torch.as_tensor(list(map(lambda x: x['PQ'], outputs))), unbiased=True)
+        sq_v, sq_m = torch.var_mean(torch.as_tensor(list(map(lambda x: x['SQ'], outputs))), unbiased=True)
+        dq_v, dq_m = torch.var_mean(torch.as_tensor(list(map(lambda x: x['DQ'], outputs))), unbiased=True)
+
+        self.log("mean_AJI", aji_m)
+        self.log("var_AJI", aji_v)
+        self.log("mean_DICE", dice_m)
+        self.log("var_DICE", dice_v)
+        self.log("mean_SQ", sq_m)
+        self.log("var_SQ", sq_v)
+        self.log("mean_DQ", dq_m)
+        self.log("var_DQ", dq_v)
+        self.log("mean_PQ", pq_m)
+        self.log("var_PQ", pq_v)
 
     def on_validation_epoch_end(self):
         if self.current_epoch != 0:

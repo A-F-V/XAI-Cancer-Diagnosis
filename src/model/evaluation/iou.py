@@ -1,4 +1,4 @@
-import np
+import numpy as np
 
 
 def IoU(img_1: np.ndarray, img_2: np.ndarray):

@@ -12,6 +12,7 @@ import os
 from numpy.ma import masked_where
 from src.transforms.graph_construction.percolation import hollow
 from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
+from matplotlib.lines import Line2D
 
 
 def generate_mask_diagram(model, dataloader, mask_name="semantic_mask", args=None):
@@ -116,7 +117,8 @@ def instance_segmentation_vizualised(img: np.ndarray, instance_seg: np.ndarray, 
         cat_pred (np.ndarray): List of cell type predictions. cat_pred[i] is cell i's prediction
     """
     assert img.shape[:2] == instance_seg.shape[:], "Image and instance segmentation must be same size"
-
+    assert len(cat_pred) == instance_seg.max(
+    )+1, f"Number of predictions {len(cat_pred)-1} must match number of cells {instance_seg.max()}"
     # neo - red, inflam - green, conn - blue, dead - yell, non-neo - orange,
     colour_scheme = [[1., 0., 0.], [0., 1., 0.], [0., 0., 1.], [1.0, 1.0, 0.], [1.0, 0.5, 0.]]
     hl = tensor_to_numpy(hollow(torch.tensor(instance_seg)))
@@ -127,5 +129,7 @@ def instance_segmentation_vizualised(img: np.ndarray, instance_seg: np.ndarray, 
 
     plt.figure(figsize=figsize)
     plt.imshow(tensor_to_numpy(img))
-    plt.imshow(final_mask, alpha=0.7)
+    plt.imshow(final_mask, alpha=0.5)
+    lines = [Line2D([0], [0], color=c, lw=4) for c in colour_scheme]
+    plt.legend(lines, ["Neo-Plastic", "Inflammatory", "Connective", "Dead", "Epithelial"])
     plt.axis("off")

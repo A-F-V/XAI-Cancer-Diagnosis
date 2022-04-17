@@ -4,11 +4,11 @@ from src.utilities.tensor_utilties import reset_ids
 from src.model.evaluation.iou import IoU
 
 
-def AJI(pred: Tensor, gt: Tensor):
+def AJI(gt: Tensor, pred: Tensor):
     """ Calculates the AJI / Aggregated Jaccard Index
     Args:
-        pred (Tensor): Predicted instance segmentation (H,W)
         gt (Tensor): Ground Truth instance segmentation (H,W)
+        pred (Tensor): Predicted instance segmentation (H,W)
 
     Returns:
         float: D
@@ -22,16 +22,19 @@ def AJI(pred: Tensor, gt: Tensor):
 
     matching = {}
     for p in range(1, pred.max()+1):
+        pmask = pred == p
+        ps = p_sum_cache.get(p, pmask.sum())
+        p_sum_cache[p] = ps
         for q in range(1, gt.max()+1):
-            pmask, qmask = pred == p, gt == q
-            ps, qs = p_sum_cache.get(p, pmask.sum()), q_sum_cache.get(q, qmask.sum())
+            qmask = gt == q
+            qs = q_sum_cache.get(q, qmask.sum())
 
             i = (pmask*qmask).sum()
             u = ps+qs-i
 
             inter_cache[(p, q)] = i
             union_cache[(p, q)] = u
-            p_sum_cache[p] = ps
+
             q_sum_cache[q] = qs
 
             if i == 0:

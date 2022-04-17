@@ -16,7 +16,7 @@ from src.datasets.PanNuke import PanNuke
 
 from src.utilities.os_utilities import copy_dir, copy_file
 
-normalize = True
+normalize = False
 singular_norm_check = True
 
 

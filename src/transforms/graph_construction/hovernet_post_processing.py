@@ -222,7 +222,8 @@ def instance_mask_prediction_hovernet(model, img, tile_size=128, pre_normalized=
     sm_pred, hv_pred, cat_pred = tiled_hovernet_prediction(model, t_img, tile_size)
     ins_pred = hovernet_post_process(sm_pred, hv_pred, h=h, k=k)
     cell_cat_pred = assign_instance_class_label(ins_pred, cat_pred)
-    return (ins_pred, cell_cat_pred) if not all_channels else (ins_pred, cat_pred, sm_pred, hv_pred)
+    assert len(cell_cat_pred) == ins_pred.max()+1
+    return (ins_pred, cell_cat_pred) if not all_channels else (ins_pred, cell_cat_pred, sm_pred, hv_pred)
 
 
 def cut_img_from_tile(img, tile_size=32):

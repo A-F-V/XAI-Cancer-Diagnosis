@@ -71,15 +71,15 @@ transforms_training = Compose([
 
         p=0.8),
     # ToOpticalDensity(fields=["image"]),
-    #Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
+    # Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
     RandomCrop(size=cropsize),  # 256 is size of the whole image
     Normalize({"image": [0.6441, 0.4474, 0.6039]}, {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
 transforms_val = Compose([
-    RandomCrop(size=cropsize),
+    RandomCrop(size=(256, 256)),
     # ToOpticalDensity(fields=["image"]),
-    #Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
+    # Normalize({'image': torch.tensor([0.7387, 0.5822, 0.7199])}, {'image': torch.tensor([0.0314, 0.0277, 0.0148])})
     Normalize({"image": [0.6441, 0.4474, 0.6039]}, {"image": [0.1892, 0.1922, 0.1535]})
 ])
 
@@ -99,9 +99,12 @@ class HoverNetTrainer(Base_Trainer):
 
         # consider adding scale
         if args["DATASET"] == "MoNuSeg":
-            src_folder = os.path.join("data", "processed",
-                                      "MoNuSeg_TRAIN")
-            train_set, val_set = train_val_split(MoNuSeg, src_folder, 0.8, transforms_training, transforms_val)
+            mon_train_folder = os.path.join("data", "processed",
+                                            "MoNuSeg_TRAIN")
+            mon_test_folder = os.path.join("data", "processed",
+                                           "MoNuSeg_TEST")
+            train_set = MoNuSeg(mon_train_folder, transform=transforms_training)
+            val_set = MoNuSeg(mon_test_folder, transform=transforms_val)
 
         elif args["DATASET"] == "PanNuke":
             src_folder = os.path.join("data", "processed",

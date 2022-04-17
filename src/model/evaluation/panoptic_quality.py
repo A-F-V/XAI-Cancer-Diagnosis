@@ -1,4 +1,5 @@
 from torch import Tensor
+import torch
 from src.utilities.tensor_utilties import reset_ids
 import numpy as np
 from scipy.stats import mode
@@ -6,19 +7,19 @@ from scipy.optimize import linear_sum_assignment
 from src.algorithm.pair_mask_assignment import assign_predicted_to_ground_instance_mask
 
 
-def panoptic_quality(pred: Tensor, gt: Tensor):
+def panoptic_quality(gt: Tensor, pred: Tensor):
     """Calculates the panoptic quality of the prediction, as defined in the HoVerNet Paper.
 
     Args:
-        pred (Tensor): Predicted instance segmentation (H,W)
         gt (Tensor): Ground Truth instance segmentation (H,W)
+        pred (Tensor): Predicted instance segmentation (H,W)
 
     Returns:
         float: SQ,DQ,PQ
     """
     # TP = matched,  FP = unmatched Predicted, FN = unmatched Ground Truth,
-    pred = reset_ids(pred.numpy())
-    gt = reset_ids(gt.numpy())
+    pred = torch.as_tensor(reset_ids(pred.numpy()))
+    gt = torch.as_tensor(reset_ids(gt.numpy()))
 
     TP = assign_predicted_to_ground_instance_mask(gt, pred)
 

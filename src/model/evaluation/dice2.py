@@ -3,11 +3,11 @@ from torch import Tensor
 from src.utilities.tensor_utilties import reset_ids
 
 
-def DICE2(pred: Tensor, gt: Tensor):
+def DICE2(gt: Tensor, pred: Tensor):
     """ Calculates the DICE2 / Aggregated DICE coefficient
     Args:
-        pred (Tensor): Predicted instance segmentation (H,W)
         gt (Tensor): Ground Truth instance segmentation (H,W)
+        pred (Tensor): Predicted instance segmentation (H,W)
 
     Returns:
         float: D
