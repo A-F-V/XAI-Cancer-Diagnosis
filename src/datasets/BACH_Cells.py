@@ -8,6 +8,7 @@ from multiprocessing import Pool
 from src.algorithm.counting_matrix import CountingMatrix
 import pickle
 import numpy as np
+from torch.nn.functional import one_hot
 
 
 class BACH_Cells(Dataset):
@@ -57,12 +58,18 @@ class BACH_Cells(Dataset):
                 graph = torch.load(graph_path)
                 x = graph.x
                 y = graph.y
+                categories = graph.categories
                 start_id = nt if i in train_ind else nv
                 for cell_id in range(start_id, start_id+x.shape[0]):
-                    cell = x[cell_id-start_id].unflatten(0, (3, self.img_dim, self.img_dim)).clone()
+                    relative_id = cell_id - start_id
+                    cell = x[relative_id].unflatten(0, (3, self.img_dim, self.img_dim)).clone()
+                    cell_type = categories[relative_id].int().item()  # background = 0
+                    cell_type_one_hot = torch.zeros(5)
+                    cell_type_one_hot[cell_type] = 1
                     assert cell.shape == (3, 64, 64)
                     assert y.shape == (4,)
-                    torch.save({'img': cell, 'diagnosis': y}, (os.path.join(
+                    assert cell_type_one_hot.shape == (5,)
+                    torch.save({'img': cell, 'diagnosis': y, 'cell_type': cell_type_one_hot}, (os.path.join(
                         self.cell_dir if i in train_ind else self.cell_val_dir, f'{cell_id}.pt')))
 
                     save_image(cell, os.path.join(self.cell_img_dir, f'{cell_id}.png'))
@@ -99,7 +106,7 @@ class BACH_Cells(Dataset):
 
     @property
     def graph_paths(self):
-        return [os.path.join(self.graph_dir, f) for f in self.graph_file_names]
+        return sorted([os.path.join(self.graph_dir, f) for f in self.graph_file_names])
 
     def __len__(self):
         return len(self.ids)
@@ -114,7 +121,7 @@ class BACH_Cells(Dataset):
         # return {'img': cell, "diagnosis": y}
         path = os.path.join(self.cell_dir if not self.val else self.cell_val_dir, str(self.ids[ind])+".pt")
         data = torch.load(path)
-        cell, y = data['img'], data['diagnosis']
+        cell, y, cell_type = data['img'], data['diagnosis'], data['cell_type']
         if self.img_augmentation is not None:
             cell = self.img_augmentation(cell)
-        return {'img': cell, "diagnosis": y}
+        return {'img': cell, "diagnosis": y, "cell_type": cell_type}

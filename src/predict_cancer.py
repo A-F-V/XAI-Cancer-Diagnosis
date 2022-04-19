@@ -35,6 +35,7 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
     Returns:
         str: Cancer type.
     """
+    # todo check if fewer than 10 cells are identified
     exp = explainability_location != None
     if exp:
         file_name = os.path.basename(img_loc).split(".")[0]

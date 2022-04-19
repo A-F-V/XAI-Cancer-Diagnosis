@@ -34,15 +34,7 @@ class UNET_AE(pl.LightningModule):
         self.width = kwargs["WIDTH"] if "WIDTH" in kwargs else 32
         self.dropout = kwargs["DROPOUT"] if "DROPOUT" in kwargs else 0
 
-        self.unet = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-                                   in_channels=3, out_channels=1, init_features=self.width, pretrained=True, verbose=False)
-        self.unet.conv = nn.Conv2d(self.width, 3, kernel_size=1, stride=1)
-
-        self.encoder = nn.Sequential(self.unet.encoder1, self.unet.pool1, self.unet.encoder2,
-                                     self.unet.pool2, self.unet.encoder3, self.unet.pool3, self.unet.encoder4, self.unet.pool4, self.unet.bottleneck)
-        self.decoder = nn.Sequential(self.unet.upconv4, self.unet.decoder4, self.unet.upconv3, self.unet.decoder3,
-                                     self.unet.upconv2, self.unet.decoder2, self.unet.upconv1, self.unet.decoder1, self.unet.conv)
-        self.phase = 0
+        self.encoder('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
         self.predictor = nn.Sequential(
             nn.Flatten(),
             nn.Dropout(self.dropout),
