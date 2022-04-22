@@ -5,7 +5,7 @@ from ray.tune.utils.util import wait_for_gpu
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter
 from ray import tune
-from src.model.architectures.cancer_prediction.pred_gnn import PredGNN
+
 from src.model.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
@@ -19,8 +19,9 @@ from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
-from src.model.architectures.cancer_prediction.cancer_net import CancerNet
-from src.model.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
+
+
+from src.model.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
@@ -152,8 +153,8 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    model = PredGNN(num_steps=num_steps,
-                    val_loader=val_loader, train_loader=train_loader, **args)
+    model = CancerGNN(num_steps=num_steps,
+                      val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     ############################

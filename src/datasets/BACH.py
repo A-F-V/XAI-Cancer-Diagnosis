@@ -12,6 +12,7 @@ from src.utilities.os_utilities import create_dir_if_not_exist
 from torchvision.transforms import Normalize
 from threading import Thread
 from torch import Tensor
+from torchvision.transforms import Normalize
 
 
 class GraphExtractor(Thread):
@@ -64,7 +65,7 @@ class BACH(Dataset):
         self.graph_augmentation = graph_augmentation
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
-        create_dir_if_not_exist(self.prob_graph_dir, False)
+        create_dir_if_not_exist(self.encoded_graph_dir, False)
         create_dir_if_not_exist(os.path.join(self.instance_segmentation_dir, "VIZUALISED"), False)
 
     @property
@@ -91,15 +92,15 @@ class BACH(Dataset):
         return [os.path.join(self.instance_segmentation_dir, f) for f in self.instance_segmentation_file_names]
 
     @property
-    def prob_graph_dir(self):
-        return os.path.join(self.src_folder, "PROB_GRAPH")
+    def encoded_graph_dir(self):
+        return os.path.join(self.src_folder, "ENCODED_GRAPH")
 
     @property
-    def prob_graph_file_names(self):
+    def encoded_graph_file_names(self):
         return [f for f in os.listdir(self.prob_graph_dir) if ".pt" in f]
 
     @property
-    def prob_graph_paths(self):
+    def encoded_graph_paths(self):
         return [os.path.join(self.prob_graph_dir, f) for f in self.prob_graph_file_names]
 
     @property
@@ -126,11 +127,15 @@ class BACH(Dataset):
             for thread in threads:
                 thread.join()
 
-    def generate_prob_graphs(self, model):
-        for gn in tqdm(self.graph_file_names, desc="Generating Prob Graphs"):
+    def generate_encoded_graphs(self, model):
+        normer = Normalize(mean=[0.6441, 0.4474, 0.6039], std=[0.1892, 0.1922, 0.1535], inplace=True)
+        for gn in tqdm(self.graph_file_names, desc="Generating Encoded Graphs"):
             graph = torch.load(os.path.join(self.graph_dir, gn))
-            graph.x = model.forward_pred(graph.x.unflatten(1, (3, 64, 64)))
-            torch.save(graph, os.path.join(self.prob_graph_dir, gn))
+            graph.x = graph.x.unflatten(1, (3, 64, 64))
+            graph.x = normer(graph.x)
+            graph.x = graph.x.to(model.device)
+            graph.x = model.forward_pred(graph.x)
+            torch.save(graph, os.path.join(self.encoded_graph_dir, gn))
 
     def generate_node_distribution(self):
         counts = {}

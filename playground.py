@@ -5,7 +5,7 @@ from src.model.trainers.hover_net_trainer import HoverNetTrainer
 import torch
 from src.datasets.BACH_Cells import BACH_Cells
 import os
-from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.datasets.BACH import BACH
 
 from tqdm import tqdm
@@ -14,19 +14,19 @@ from src.predict_cancer import predict_cancer
 
 # todo train with all data
 
-def create_prob():
-    from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
+def create_encoded_graphs():
+    from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
     import json
     src_folder = os.path.join(os.getcwd(), "data", "processed", "BACH_TRAIN")
     args = json.load(open(os.path.join(os.getcwd(), "experiments", "args", "default.json")))
-    model = UNET_AE.load_from_checkpoint(os.path.join(
-        os.getcwd(), "experiments", "checkpoints", "AE_UNET_PREDICTOR_NO_MSE.ckpt"), data_set_path=src_folder, **args)
+    model = CellEncoder.load_from_checkpoint(os.path.join(
+        os.getcwd(), "experiments", "checkpoints", "CellEncoder.ckpt"), train_loader=None, val_loader=None, data_set_path=src_folder, **args)
     with torch.no_grad():
         model.eval()
         model = model.cuda()
 
         bach_prob = BACH(src_folder, downsample=1)
-        bach_prob.generate_prob_graphs(model)
+        bach_prob.generate_encoded_graphs(model)
 
 
 def create_test_set_predictions():
@@ -64,11 +64,11 @@ if __name__ == "__main__":
 
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)'
 
-    #trainer = GNNTrainer()
+    trainer = GNNTrainer()
     #trainer = CellAETrainer()
-    trainer = HoverNetTrainer()
+    #trainer = HoverNetTrainer()
     trainer.train()
 
-    # create_prob()
+    # create_encoded_graphs()
     # create_test_set_predictions()
     # test_explainability()

@@ -1,6 +1,6 @@
 import os
 from src.model.architectures.graph_construction.hover_net import HoVerNet
-from src.model.architectures.cancer_prediction.cell_unet_ae import UNET_AE
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.model.architectures.cancer_prediction.pred_gnn import PredGNN
 from PIL import Image
 from torchvision.transforms import ToTensor
@@ -46,7 +46,7 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
     with torch.no_grad():
         # Load the Models
         hover_net = HoVerNet.load_from_checkpoint(hover_net_loc).eval().cuda()
-        cell_predictor = UNET_AE.load_from_checkpoint(cell_predictor_loc).eval().cuda()
+        cell_predictor = CellEncoder.load_from_checkpoint(cell_predictor_loc).eval().cuda()
         def cell_predict(X): return cell_predictor.forward_pred(X)
         gnn_voter = PredGNN.load_from_checkpoint(gnn_voter_loc, **gnn_voter_args).eval().cuda()
 

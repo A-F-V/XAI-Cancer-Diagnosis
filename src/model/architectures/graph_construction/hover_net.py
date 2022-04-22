@@ -48,8 +48,6 @@ class HoVerNet(pl.LightningModule):
         self.args = kwargs
         self.args = kwargs
         self.num_batches = num_batches
-        self.train_loader = train_loader
-        self.val_loader = val_loader
 
         self.categories = categories
         if categories:

@@ -121,7 +121,7 @@ class BACH_Cells(Dataset):
         # return {'img': cell, "diagnosis": y}
         path = os.path.join(self.cell_dir if not self.val else self.cell_val_dir, str(self.ids[ind])+".pt")
         data = torch.load(path)
-        cell, y, cell_type = data['img'], data['diagnosis'], data['cell_type']
         if self.img_augmentation is not None:
-            cell = self.img_augmentation(cell)
+            data = self.img_augmentation(data)  # BECAUSE TRANSFORMS ACT ON ENTIRE PAYLOAD
+        cell, y, cell_type = data['img'], data['diagnosis'], data['cell_type']
         return {'img': cell, "diagnosis": y, "cell_type": cell_type}

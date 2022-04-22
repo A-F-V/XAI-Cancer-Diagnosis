@@ -64,3 +64,25 @@ def gradient(tensor: Tensor, dim=0):  # todo test
     grad = (shifted - permuted)
     grad[-1] = grad[-2]
     return grad.permute(*axis_reorder)
+
+
+def one_hot_cartesian_product(a: Tensor, b: Tensor):
+    """Takes stacks of one_hot encoded tensors, performs tensor product pairwise
+
+    Args:
+        a (Tensor): A (n, x) tensor of one_hot encoded values
+        b (Tensor): B (n,y)
+
+    Returns:
+        fin (Tensor): (n, x*y)
+    """
+    assert a.shape[0] == b.shape[0]
+    assert len(a.shape) == len(b.shape) == 2
+
+    z = zip(a, b)
+
+    prod = list(map(lambda p: torch.kron(p[0], p[1]), z))
+    fin = torch.stack(prod)
+    assert fin.shape[0] == a.shape[0]
+    assert fin.shape[1] == a.shape[1]*b.shape[1]
+    return fin
