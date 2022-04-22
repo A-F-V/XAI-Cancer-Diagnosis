@@ -29,10 +29,10 @@ class CancerGNN(pl.LightningModule):
         self.model = GINTopK(input_width=40, hidden_width=self.width, output_width=4, conv_depth=self.height)
 
     def forward(self, x, edge_index, edge_attr, batch):
-        return self.model(x, edge_index, edge_attr, batch)
+        return self.model(x, edge_index,  batch)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=0.0)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-4)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
@@ -51,8 +51,8 @@ class CancerGNN(pl.LightningModule):
 
         pred_cat = y_hat.argmax(dim=1)
 
-        canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
-        canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
+        canc_pred = (pred_cat <= 1).float()
+        canc_grd = (y <= 1).float()
         acc = (pred_cat == y).float().mean()
         canc_acc = (canc_pred == canc_grd).float().mean()
 
@@ -71,8 +71,8 @@ class CancerGNN(pl.LightningModule):
 
         pred_cat = y_hat.argmax(dim=1)
 
-        canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
-        canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
+        canc_pred = (pred_cat <= 1).float()
+        canc_grd = (y <= 1).float()
         acc = (pred_cat == y).float().mean()
         canc_acc = (canc_pred == canc_grd).float().mean()
 

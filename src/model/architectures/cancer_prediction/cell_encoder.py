@@ -54,7 +54,7 @@ class CellEncoder(pl.LightningModule):
             nn.LeakyReLU(inplace=True),
             nn.BatchNorm1d((40*self.width)//32))
 
-        self.predictor = nn.Sequential(nn.Linear((40*self.width)//32, 4*5))  # NO SOFTMAX
+        self.predictor = nn.Sequential(nn.Linear((40*self.width)//32, 4))  # NO SOFTMAX
 
     def forward(self, x):
         enc1 = self.encodercnn(x)
@@ -83,7 +83,8 @@ class CellEncoder(pl.LightningModule):
         cells, diag_hot, cell_type_hot = train_batch["img"], train_batch["diagnosis"].int(
         ), train_batch['cell_type'].int()
 
-        y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        #y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        y = diag_hot
         y_cat = categorise(y)
         _, y_hat = self.forward(cells)
 

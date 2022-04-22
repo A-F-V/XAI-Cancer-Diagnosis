@@ -30,6 +30,7 @@ from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
+b_size = 256
 
 
 class GNNTrainer(Base_Trainer):
@@ -46,13 +47,12 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(40), KNNGraph(k=args["K_NN"]), EdgeDropout(p=0.04),  Distance(norm=False, cat=False)]
+        graph_aug_train = Compose([RandomTranslate(40), KNNGraph(k=args["K_NN"]),   Distance(norm=False, cat=False)]  # EdgeDropout(p=0.04),
                                   )
         graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]),  Distance(norm=False, cat=False)])
 
         train_ind, val_ind = [], []
-        src_folder = os.path.join(os.getcwd(), "data", "processed",
-                                  "BACH_TRAIN")
+        src_folder = "C:\\Users\\aless\\Documents\\data"
         graph_split = os.path.join(src_folder, "graph_ind.txt")
         with open(graph_split, "r") as f:
             l1 = f.readline().strip()
@@ -68,14 +68,14 @@ class GNNTrainer(Base_Trainer):
         #train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, pred_mode=True), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred, pred_mode=True)
+                                  graph_augmentation=graph_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                                 shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
 
-        accum_batch = max(1, 64//args["BATCH_SIZE_TRAIN"])
+        accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")

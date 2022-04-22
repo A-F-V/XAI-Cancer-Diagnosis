@@ -51,7 +51,7 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None, pred_mode=False):
+    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -61,7 +61,6 @@ class BACH(Dataset):
         self.downsample = downsample
         self.min_nodes = min_nodes
         self.img_augmentation = img_augmentation
-        self.pred_mode = pred_mode
         self.graph_augmentation = graph_augmentation
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
@@ -97,11 +96,11 @@ class BACH(Dataset):
 
     @property
     def encoded_graph_file_names(self):
-        return [f for f in os.listdir(self.prob_graph_dir) if ".pt" in f]
+        return [f for f in os.listdir(self.encoded_graph_dir) if ".pt" in f]
 
     @property
     def encoded_graph_paths(self):
-        return [os.path.join(self.prob_graph_dir, f) for f in self.prob_graph_file_names]
+        return [os.path.join(self.encoded_graph_dir, f) for f in self.encoded_graph_file_names]
 
     @property
     def graph_dir(self):
@@ -156,8 +155,8 @@ class BACH(Dataset):
         return len(self.ids)
 
     def __getitem__(self, ind):
-        graph_id = (self.ids[ind]-1) % len(self.graph_file_names)
-        path = self.graph_paths[graph_id] if not self.pred_mode else self.prob_graph_paths[graph_id]
+        graph_id = (self.ids[ind]-1) % len(self.encoded_graph_file_names)
+        path = self.encoded_graph_paths[graph_id]
         graph = torch.load(path)
         if self.graph_augmentation is not None:
             graph = self.graph_augmentation(graph)
