@@ -3,6 +3,7 @@ from skimage.feature import greycomatrix
 from src.utilities.img_utilities import tensor_to_numpy
 import numpy as np
 import torch
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 
 
 def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighbours: Tensor, cell_types: Tensor):
@@ -24,7 +25,7 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     assert argb.shape == (num_batches, 3)
 
     # Cell_types
-    cell_types_one_hot = F.one_hot(cell_types, num_classes=5)
+    cell_types_one_hot = nn.functional.one_hot(cell_types, num_classes=5)
     assert cell_types_one_hot.shape == (num_batches, 5)
 
     # GLCM
@@ -54,3 +55,16 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     final = torch.cat((argb, cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=0)
     assert final.shape == (num_batches, 315)
     return final
+
+
+def node_embedder(model_location):
+    model = CellEncoder.load_from_checkpoint(model_location)
+    model.cuda()
+
+    def inner(graph):
+        imgs = graph.x
+        cell_types = graph.categories
+        num_neighbours = graph.num_neighbours
+
+        return generate_node_embeddings(imgs=imgs, resnet_encoder=model, num_neighbours=num_neighbours, cell_types=cell_types)
+    return inner

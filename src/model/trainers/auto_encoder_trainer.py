@@ -94,7 +94,7 @@ class CellAETrainer(Base_Trainer):
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
 
                 model, trainer = create_trainer(grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=1500, max_lr=1000)
+                lr_finder = trainer.tuner.lr_find(model, num_training=100, max_lr=1000)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())

@@ -10,7 +10,7 @@ from src.model.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
 from torch_geometric.loader.dataloader import DataLoader
-from src.transforms.image_processing.augmentation import *
+from src.transforms.image_processing.augmentation import StainJitter, RandomElasticDeformation, RandomFlip
 import mlflow
 from src.datasets.BACH import BACH
 import pytorch_lightning as pl
@@ -19,18 +19,45 @@ from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
-
+from torchvision.transforms import RandomApply, RandomChoice
 
 from src.model.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
-from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
+from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
 
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
-
+from src.transforms.graph_construction.node_embedding import node_embedder
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
 b_size = 256
+
+
+img_aug_train = Compose([
+
+    RandomApply(
+        [
+            StainJitter(theta=0.025, fields=["image"]),
+            RandomFlip(fields=['image']),
+            # RandomChoice([
+            #    AddGaussianNoise(0.01, fields=["img"]),
+            #    GaussianBlur(fields=["img"])]),
+            RandomElasticDeformation(alpha=1.7, sigma=0.08, fields=['image'])
+
+            # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
+        ],
+
+        p=0.5),
+    #  Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
+])
+
+
+img_aug_val = Compose([])
+
+
+graph_aug_train = Compose([RandomTranslate(25), RadiusGraph(r=100)])  # EdgeDropout(p=0.04),
+
+graph_aug_val = Compose([RadiusGraph(r=100)])
 
 
 class GNNTrainer(Base_Trainer):
@@ -47,10 +74,6 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        graph_aug_train = Compose([RandomTranslate(40), KNNGraph(k=args["K_NN"]),   Distance(norm=False, cat=False)]  # EdgeDropout(p=0.04),
-                                  )
-        graph_aug_pred = Compose([KNNGraph(k=args["K_NN"]),  Distance(norm=False, cat=False)])
-
         train_ind, val_ind = [], []
         src_folder = "C:\\Users\\aless\\Documents\\data"
         graph_split = os.path.join(src_folder, "graph_ind.txt")
@@ -65,10 +88,12 @@ class GNNTrainer(Base_Trainer):
             #    train_ind += list(random_ids[:int(100*0.75)])
             #    val_ind += list(random_ids[int(100*0.75):])
 
-        #train_ind = list(range(400))
+        # train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
+
+        ne = node_embedder(os.path.join("model", "CellEncoder.ckpt"))
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_pred)
+                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, node_embedder=ne), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, node_embedder=ne)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)

@@ -19,7 +19,7 @@ from src.utilities.tensor_utilties import one_hot_cartesian_product
 # todo rename
 
 class CellEncoder(pl.LightningModule):
-    def __init__(self, train_loader, val_loader, img_size=64, num_steps=0, **kwargs):
+    def __init__(self, train_loader=None, val_loader=None, img_size=64, num_steps=0, **kwargs):
         super(CellEncoder, self).__init__()
         self.args = kwargs
         self.img_size = img_size
@@ -40,7 +40,6 @@ class CellEncoder(pl.LightningModule):
         self.dropout = kwargs["DROPOUT"] if "DROPOUT" in kwargs else 0
         self.encoder = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=True)
         self.encoder.classifier[4] = nn.Conv2d(512, 3, kernel_size=1)
-        print(self.encoder)
         # self.encodercnn = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
         #   self.encoderann = nn.Sequential(
         #       nn.Dropout(self.dropout),
@@ -159,7 +158,7 @@ class CellEncoder(pl.LightningModule):
         return self.val_loader
 
     def on_validation_epoch_end(self):
-        # if self.current_epoch != 0:
+
         sample = self.val_dataloader().dataset[0]['img'].unsqueeze(0).to(self.device)
         pred_out = self.forward(sample).clip(0, 1)
         f = plot_images([tensor_to_numpy(sample.squeeze().detach().cpu()),

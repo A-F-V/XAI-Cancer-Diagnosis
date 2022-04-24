@@ -51,7 +51,7 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None):
+    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, node_embedder=None, img_augmentation=None, graph_augmentation=None, ):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -62,6 +62,7 @@ class BACH(Dataset):
         self.min_nodes = min_nodes
         self.img_augmentation = img_augmentation
         self.graph_augmentation = graph_augmentation
+        self.node_embedder = node_embedder
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
         create_dir_if_not_exist(self.encoded_graph_dir, False)
@@ -160,6 +161,13 @@ class BACH(Dataset):
         graph = torch.load(path)
         if self.graph_augmentation is not None:
             graph = self.graph_augmentation(graph)
+        if self.img_augmentation is not None:
+            aug_x = torch.zeros((len(graph.x), 3, 64, 64), dtype=torch.float32)
+            for i in range(len(graph.x)):
+                aug_x[i] = self.img_augmentation({'image': graph.x[i].unflatten(1, (3, 64, 64))})[
+                    'image']  # unfortunately need to do this
+            graph.x = aug_x
+        graph.x = self.node_embedder(graph)
         graph.y = categorise(graph.y)
         return graph
 
