@@ -20,17 +20,17 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from torchvision.transforms import RandomApply, RandomChoice
-
+from functools import partial
 from src.model.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
-
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
 from src.transforms.graph_construction.node_embedding import node_embedder
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 256
+b_size = 5
 
 
 img_aug_train = Compose([
@@ -91,14 +91,17 @@ class GNNTrainer(Base_Trainer):
         # train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
 
-        ne = node_embedder(os.path.join("model", "CellEncoder.ckpt"))
+        ne_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
+        ne_model.cuda()
+
+        ne = partial(node_embedder, ne_model)
         train_set, val_set = BACH(src_folder, ids=train_ind,
                                   graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, node_embedder=ne), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, node_embedder=ne)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
+                                  shuffle=True, num_workers=args["NUM_WORKERS"])
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True if args["NUM_WORKERS"] > 0 else False)
+                                shuffle=False, num_workers=args["NUM_WORKERS"])
 
         accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
@@ -116,7 +119,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=300, max_lr=1000)
+                lr_finder = trainer.tuner.lr_find(model, num_training=50, max_lr=1000)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())

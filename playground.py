@@ -57,7 +57,7 @@ def test_explainability():
     predict_cancer(os.path.join(directory, file_name), explainability_location=explainability_path)
 
 
-if __name__ == "__main__":
+def main():
 
     torch.multiprocessing.freeze_support()
     torch.autograd.set_detect_anomaly(True)
@@ -72,3 +72,7 @@ if __name__ == "__main__":
     # create_encoded_graphs()
     # create_test_set_predictions()
     # test_explainability()
+
+
+if __name__ == "__main__":
+    main()

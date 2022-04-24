@@ -11,7 +11,7 @@ from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax,
 from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv, TopKPooling, MessagePassing
 import pytorch_lightning as pl
 from torch_geometric.nn import GINConv, Sequential as Seq, Linear as Lin
-from src.model.architectures.components.gintopk import GINTopK
+from src.model.architectures.components.gintopk import GCNTopK
 
 
 class CancerGNN(pl.LightningModule):
@@ -26,10 +26,10 @@ class CancerGNN(pl.LightningModule):
         self.val_loader = val_loader
         self.height = self.args["HEIGHT"]
         self.width = self.args["WIDTH"]
-        self.model = GINTopK(input_width=40, hidden_width=self.width, output_width=4, conv_depth=self.height)
+        self.gnn = GCNTopK(input_width=315, hidden_width=self.width, output_width=4, conv_depth=self.height)
 
     def forward(self, x, edge_index, edge_attr, batch):
-        return self.model(x, edge_index,  batch)
+        return self.gnn(x, edge_index,  batch)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-4)

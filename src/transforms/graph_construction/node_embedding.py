@@ -1,9 +1,10 @@
 from torch import Tensor, nn, as_tensor
-from skimage.feature import greycomatrix
+from skimage.feature import graycomatrix
 from src.utilities.img_utilities import tensor_to_numpy
 import numpy as np
 import torch
 from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
+from src.transforms.image_processing.filters import to_gray
 
 
 def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighbours: Tensor, cell_types: Tensor):
@@ -25,46 +26,46 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     assert argb.shape == (num_batches, 3)
 
     # Cell_types
-    cell_types_one_hot = nn.functional.one_hot(cell_types, num_classes=5)
+    cell_types_one_hot = nn.functional.one_hot(cell_types.to(torch.int64), num_classes=5)
     assert cell_types_one_hot.shape == (num_batches, 5)
 
     # GLCM
     glcm = torch.zeros(0, 50)
     for img in imgs:
-        cur_glcm = as_tensor(greycomatrix(image=tensor_to_numpy(img), distances=[
-                             1], angles=[0, np.pi/2], levels=5)).flatten()
-        assert cur_glcm.shape == (50,)
+        gray = (torch.div(to_gray(img)*255, 51, rounding_mode="trunc")).clip(0, 4).numpy().astype(np.uint8)
+        cur_glcm = as_tensor(graycomatrix(image=gray, distances=[
+            1], angles=[0, np.pi/2], levels=5).astype(np.float16)).flatten().unsqueeze(0)
+        assert cur_glcm.shape == (1, 50)
         glcm = torch.cat((glcm, cur_glcm), dim=0)
 
     assert glcm.shape == (num_batches, 50)
     # num_neighbours
-    if(num_neighbours.shape == (num_batches)):
+    if(len(num_neighbours.shape) == 1):
         num_neighbours = num_neighbours.unsqueeze(1)
     assert num_neighbours.shape == (num_batches, 1)
 
     # resnet_encoder
     resnet_encoder.eval()
     with torch.no_grad():
+        imgs = imgs.to(resnet_encoder.device)
         resnet_encoded = resnet_encoder.predict(imgs)
-        assert resnet_encoded.shape == (num_batches, 256, 32, 32)
+        assert resnet_encoded.shape == (num_batches, 256, 16, 16)
         resnet_encoded = resnet_encoded.mean(dim=(2, 3))
         assert resnet_encoded.shape == (num_batches, 256)
-
+    resnet_encoded = resnet_encoded.to(argb.device)
     # concatenate
 
-    final = torch.cat((argb, cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=0)
+    final = torch.cat((argb, cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=1)
     assert final.shape == (num_batches, 315)
     return final
 
 
-def node_embedder(model_location):
-    model = CellEncoder.load_from_checkpoint(model_location)
-    model.cuda()
+def node_embedder(model, graph):
 
-    def inner(graph):
-        imgs = graph.x
-        cell_types = graph.categories
-        num_neighbours = graph.num_neighbours
+    imgs = graph.x
+    cell_types = graph.categories
+    num_neighbours = graph.num_neighbours
 
-        return generate_node_embeddings(imgs=imgs, resnet_encoder=model, num_neighbours=num_neighbours, cell_types=cell_types)
-    return inner
+    embedding = generate_node_embeddings(imgs=imgs, resnet_encoder=model,
+                                         num_neighbours=num_neighbours, cell_types=cell_types)
+    return embedding

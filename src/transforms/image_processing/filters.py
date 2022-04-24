@@ -36,3 +36,10 @@ def sobel(img: Tensor):
     #img_x = conv2d(img,sobel_x,stride=1,padding=1)
     #img_y = conv2d(img,sobel_y,stride=1,padding=1)
     # return img_x,img_y
+
+
+def to_gray(img: Tensor):
+    assert len(img.shape) == 3
+    # Perform a linear approximation of gamma compression algorithm
+    img_gray = torch.matmul(img.permute((1, 2, 0)), Tensor([0.299, 0.587, 0.114]))
+    return img_gray

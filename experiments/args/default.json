@@ -1,22 +1,42 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "CellEncoder",
-  "EXPERIMENT_ID": 8,
-  "EXPERIMENT_NAME": "CellEncoding",
-  "EPOCHS": 1,
-  "BATCH_SIZE_TRAIN": 256,
-  "BATCH_SIZE_VAL": 256,
-  "MAX_LR": 0.01,
+  "RUN_NAME": "GNN_PREDICTOR",
+  "EXPERIMENT_ID": 6,
+  "EXPERIMENT_NAME": "GINTopK",
+  "EPOCHS": 200,
+  "BATCH_SIZE_TRAIN": 10,
+  "BATCH_SIZE_VAL": 10,
+  "MAX_LR": 0.1,
   "ONE_CYCLE": true,
-  "START_LR": 0.0001,
-  "NUM_WORKERS": 6,
-  "START_CHECKPOINT": null,
+  "START_LR": 0.0005,
+  "NUM_WORKERS": 0,
+  "START_CHECKPOINT": "",
   "EARLY_STOP": false,
-  "LR_TEST": false,
+  "LR_TEST": true,
+
   "IMG_SIZE": 64,
-  "NOTES": "AutoEncoder",
-  "DROPOUT": 0.9,
-  "WIDTH": 32,
-  "WEIGHT_DECAY": 0.0001,
-  "GRID_SEARCH": false
+  "DROPOUT": 0,
+  "GRID": [
+    {
+      "HP": "LAYERS",
+      "TYPE": "CHOICE",
+      "VALUE": [10, 20, 30, 40]
+    },
+
+    {
+      "HP": "RADIUS_FUNCTION",
+      "TYPE": "CHOICE",
+      "VALUE": ["INVSQUARE", "ID", "INV", "NONE"]
+    },
+    {
+      "HP": "WIDTH",
+      "TYPE": "CHOICE",
+      "VALUE": [4, 8, 12]
+    }
+  ],
+  "GRID_SEARCH": false,
+  "TRIALS": 15,
+  "HEIGHT": 4,
+  "WIDTH": 40,
+  "K_NN": 6
 }

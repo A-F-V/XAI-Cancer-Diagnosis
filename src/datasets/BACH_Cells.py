@@ -53,6 +53,9 @@ class BACH_Cells(Dataset):
                 np.random.shuffle(random_ids)
                 train_ind += list(random_ids[:int(100*train_test_split)])
                 val_ind += list(random_ids[int(100*train_test_split):])
+            f = open(os.path.join(self.src_folder, "graph_ind.txt"), "w")
+            f.write(str(train_ind)+"\n"+str(val_ind))
+            f.close()
             nt, nv = 0, 0
             for i, graph_path in tqdm(enumerate(self.graph_paths), total=len(self.graph_paths)):
                 graph = torch.load(graph_path)
@@ -75,9 +78,6 @@ class BACH_Cells(Dataset):
                     save_image(cell, os.path.join(self.cell_img_dir, f'{cell_id}.png'))
                 nt, nv = (nt+x.shape[0]) if i in train_ind else nt, (nv+x.shape[0]) if i in val_ind else nv
                 n += x.shape[0]
-            f = open(os.path.join(self.src_folder, "graph_ind.txt"), "w")
-            f.write(str(train_ind)+"\n"+str(val_ind))
-            f.close()
             self.num_cells = n
 
     @property

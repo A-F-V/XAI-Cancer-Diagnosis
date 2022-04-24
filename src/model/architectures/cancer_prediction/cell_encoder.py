@@ -61,8 +61,8 @@ class CellEncoder(pl.LightningModule):
         pred = self.encoder(x)['out']
         return pred
 
-    @incremental_forward(512)
-    def forward_pred(self, x):
+    @incremental_forward(2048)
+    def predict(self, x):
         c1 = self.encoder.backbone.conv1(x)
         b1 = self.encoder.backbone.bn1(c1)
         r1 = self.encoder.backbone.relu(b1)

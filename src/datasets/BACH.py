@@ -156,18 +156,20 @@ class BACH(Dataset):
         return len(self.ids)
 
     def __getitem__(self, ind):
-        graph_id = (self.ids[ind]-1) % len(self.encoded_graph_file_names)
-        path = self.encoded_graph_paths[graph_id]
+        graph_id = (self.ids[ind]-1) % len(self.graph_file_names)
+        path = self.graph_paths[graph_id]
         graph = torch.load(path)
         if self.graph_augmentation is not None:
             graph = self.graph_augmentation(graph)
         if self.img_augmentation is not None:
             aug_x = torch.zeros((len(graph.x), 3, 64, 64), dtype=torch.float32)
             for i in range(len(graph.x)):
-                aug_x[i] = self.img_augmentation({'image': graph.x[i].unflatten(1, (3, 64, 64))})[
+                aug_x[i] = self.img_augmentation({'image': graph.x[i].unflatten(0, (3, 64, 64))})[
                     'image']  # unfortunately need to do this
             graph.x = aug_x
+
         graph.x = self.node_embedder(graph)
+        assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)
         return graph
 
