@@ -46,20 +46,20 @@ transforms_training = Compose([
     RandomApply(
         [
 
-            RandomChoice([
-                AddGaussianNoise(0.01, fields=["img"]),
-                GaussianBlur(fields=["img"])]),
+            # RandomChoice([
+            #    AddGaussianNoise(0.01, fields=["img"]),
+            #    GaussianBlur(fields=["img"])]),
             RandomElasticDeformation(alpha=1.7, sigma=0.08, fields=['img'])
 
             # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
         ],
 
         p=0.8),
-    Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
+    #  Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
 ])
 
 transforms_val = Compose([
-    Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
+    # Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
 ])
 
 
@@ -166,7 +166,7 @@ def create_trainer(grid_search=False, **args):
                               shuffle=True, num_workers=args["NUM_WORKERS"],
                               persistent_workers=True
                               )
-    val_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_VAL"],
+    val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                             shuffle=False, num_workers=args["NUM_WORKERS"],
                             persistent_workers=True)
 

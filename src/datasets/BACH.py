@@ -51,12 +51,12 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, k=7, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None):
+    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
         self.dmin = dmin
-        self.k = k
+
         self.window_size = window_size
         self.downsample = downsample
         self.min_nodes = min_nodes
@@ -119,8 +119,8 @@ class BACH(Dataset):
         for batch in tqdm(range(0, len(self.instance_segmentation_file_names), num_workers)):
             threads = []
             for path in self.instance_segmentation_paths[batch:min(len(self.instance_segmentation_paths), batch+num_workers)]:
-                thread = GraphExtractor(path, self.graph_dir, window_size=self.window_size,
-                                        k=self.k, dmin=self.dmin, downsample=self.downsample, min_nodes=self.min_nodes, img_trans=self.img_augmentation)
+                thread = GraphExtractor(path, self.graph_dir, window_size=self.window_size, dmin=self.dmin,
+                                        downsample=self.downsample, min_nodes=self.min_nodes, img_trans=self.img_augmentation)
                 thread.start()
                 threads.append(thread)
             for thread in threads:

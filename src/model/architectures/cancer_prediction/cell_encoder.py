@@ -41,7 +41,7 @@ class CellEncoder(pl.LightningModule):
         self.encoder = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=True)
         self.encoder.classifier[4] = nn.Conv2d(512, 3, kernel_size=1)
         print(self.encoder)
-        #self.encodercnn = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
+        # self.encodercnn = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
         #   self.encoderann = nn.Sequential(
         #       nn.Dropout(self.dropout),
         #       nn.Linear(1000, (1000*self.width)//32),
@@ -60,11 +60,16 @@ class CellEncoder(pl.LightningModule):
 
     def forward(self, x):
         pred = self.encoder(x)['out']
-        return enc2, pred
+        return pred
 
-    @ incremental_forward(512)
+    @incremental_forward(512)
     def forward_pred(self, x):
-        return self.forward(x)[0]
+        c1 = self.encoder.backbone.conv1(x)
+        b1 = self.encoder.backbone.bn1(c1)
+        r1 = self.encoder.backbone.relu(b1)
+        p1 = self.encoder.backbone.maxpool(r1)
+        final = self.encoder.backbone.layer1(p1)
+        return final
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate,
@@ -83,23 +88,26 @@ class CellEncoder(pl.LightningModule):
         cells, diag_hot, cell_type_hot = train_batch["img"], train_batch["diagnosis"].int(
         ), train_batch['cell_type'].int()
 
-        #y = one_hot_cartesian_product(diag_hot, cell_type_hot)
-        y = diag_hot
-        y_cat = categorise(y)
-        _, y_hat = self.forward(cells)
+        y = cells
+        y_pred = self.forward(cells)
+        # y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        # y = diag_hot
+        # y_cat = categorise(y)
+        # _, y_hat = self.forward(cells)
 
-        loss = F.cross_entropy(y_hat, y_cat)
+        # loss = F.cross_entropy(y_hat, y_cat)
+        loss = F.mse_loss(y_pred, y)
 
-        overall_pred_label = y_hat.argmax(dim=1)
-        #cell_type_pred = overall_pred_label % 5
-        #diag_pred = overall_pred_label//5
+        # overall_pred_label = y_hat.argmax(dim=1)
+        # cell_type_pred = overall_pred_label % 5
+        # diag_pred = overall_pred_label//5
 
-        acc = (overall_pred_label == y_cat).float().mean()
-        #cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
-        #diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
-        self.log("train_acc", acc)
-        #self.log("train_cell_type_acc", cell_type_acc)
-        #self.log("train_diag_acc", diag_acc)
+        # acc = (overall_pred_label == y_cat).float().mean()
+        # cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
+        # diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
+        # self.log("train_acc", acc)
+        # self.log("train_cell_type_acc", cell_type_acc)
+        # self.log("train_diag_acc", diag_acc)
         # pred_cat = y_hat.argmax(dim=1)
         # canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
         # canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
@@ -114,23 +122,26 @@ class CellEncoder(pl.LightningModule):
         cells, diag_hot, cell_type_hot = val_batch["img"], val_batch["diagnosis"].int(
         ), val_batch['cell_type'].int()
 
-        #y = one_hot_cartesian_product(diag_hot, cell_type_hot)
-        y = diag_hot
-        y_cat = categorise(y)
-        _, y_hat = self.forward(cells)
+        y = cells
+        y_pred = self.forward(cells)
+        # y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        # y = diag_hot
+        # y_cat = categorise(y)
+        # _, y_hat = self.forward(cells)
 
-        loss = F.cross_entropy(y_hat, y_cat)
+        loss = F.mse_loss(y_pred, y)
 
-        overall_pred_label = y_hat.argmax(dim=1)
-        #cell_type_pred = overall_pred_label % 5
-        #diag_pred = overall_pred_label//5
+        # loss = F.cross_entropy(y_hat, y_cat)
 
-        acc = (overall_pred_label == y_cat).float().mean()
-        #cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
-        #diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
-        self.log("val_acc", acc)
-        #self.log("val_cell_type_acc", cell_type_acc)
-        #self.log("val_diag_acc", diag_acc)
+        # overall_pred_label = y_hat.argmax(dim=1)
+        # cell_type_pred = overall_pred_label % 5
+        # diag_pred = overall_pred_label//5
+        # acc = (overall_pred_label == y_cat).float().mean()
+        # cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
+        # diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
+        # self.log("val_acc", acc)
+        # self.log("val_cell_type_acc", cell_type_acc)
+        # self.log("val_diag_acc", diag_acc)
         # pred_cat = y_hat.argmax(dim=1)
         # canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
         # canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
@@ -146,6 +157,15 @@ class CellEncoder(pl.LightningModule):
 
     def val_dataloader(self):
         return self.val_loader
+
+    def on_validation_epoch_end(self):
+        # if self.current_epoch != 0:
+        sample = self.val_dataloader().dataset[0]['img'].unsqueeze(0).to(self.device)
+        pred_out = self.forward(sample).clip(0, 1)
+        f = plot_images([tensor_to_numpy(sample.squeeze().detach().cpu()),
+                        tensor_to_numpy(pred_out.squeeze().detach().cpu())], (2, 1))
+        log_plot(plt=f, name=f"{self.current_epoch}", logger=self.logger.experiment, run_id=self.logger.run_id)
+        # self.logger.experiment.log_artifact(local_path=gif_diag_path, artifact_path=f"Cell_Seg_{self.current_epoch}", run_id=self.logger.run_id)  # , "sliding_window_gif")
 
 
 def categorise(t: Tensor):

@@ -9,7 +9,7 @@ import networkx.algorithms as nx
 # todo remove small islands
 
 
-def extract_graph(img: Tensor, ins_seg: Tensor, cell_categories: Tensor, window_size=64, k=6, dmin=150, min_nodes=10, downsample=1, img_trans=None):
+def extract_graph(img: Tensor, ins_seg: Tensor, cell_categories: Tensor, window_size=64, dmin=150, min_nodes=10, downsample=1, img_trans=None):
     # cell_categories 0 = background, 1 = first cell
     nuclei = ins_seg.max()
     centres = []
@@ -25,22 +25,24 @@ def extract_graph(img: Tensor, ins_seg: Tensor, cell_categories: Tensor, window_
             centres.append((x, y))
             selected_nuclei.append(i)
 
-    # Perform KNN search
+    # Perform FILTER DMIN CLOSEST
     def euclidean_dist(p1, p2):
         return ((p1[0]-p2[0])**2+(p1[1]-p2[1])**2)**0.5
 
     edges_index = torch.zeros((2, 0), dtype=torch.long)
     edge_attr = torch.zeros((0, 1))
+    num_neighbours = torch.zeros((0, 1))
     for sr in range(len(centres)):
         closest = []
         for ds in range(len(centres)):
             if(sr != ds and euclidean_dist(centres[sr], centres[ds]) < dmin):
                 closest.append((ds, euclidean_dist(centres[sr], centres[ds])))
-        closest = sorted(closest, key=lambda x: x[1])[:min(k, len(closest))]
+        # closest = sorted(closest, key=lambda x: x[1])[:min(k, len(closest))]
         for to, length in closest:
-            edges_index = torch.cat((edges_index, torch.tensor([[sr, to], [to, sr]])), dim=1)
+            edges_index = torch.cat((edges_index, torch.tensor([sr, to]).unsqueeze(dim=1)), dim=1)
             edge_attr = torch.cat((edge_attr, torch.tensor(
                 [[length], [length]])), dim=0)                 # USE 1/DIST**2
+        num_neighbours = torch.cat((num_neighbours, torch.tensor([[len(closest)]])), dim=0)
 
     # Perfrom Feature Extraction - NORMALIZE?
     feature_matrix_x = None
@@ -58,18 +60,22 @@ def extract_graph(img: Tensor, ins_seg: Tensor, cell_categories: Tensor, window_
 
         feature_matrix_x = torch.cat((feature_matrix_x, feature.unsqueeze(0)), dim=0)
         position_matrix = torch.cat((position_matrix, torch.tensor([[x, y]])), dim=0)
+
     nuclei_categories = cell_categories[selected_nuclei]
 
     output = Data(x=feature_matrix_x, edge_index=edges_index, edge_attr=edge_attr,
-                  pos=position_matrix, categories=nuclei_categories)
+                  pos=position_matrix, categories=nuclei_categories, num_neighbours=num_neighbours)
 
-    G = to_networkx(output, to_undirected=True, node_attrs=['x', 'pos', 'categories'], edge_attrs=['edge_attr'])
+    G = to_networkx(output, to_undirected=True, node_attrs=[
+                    'x', 'pos', 'categories', 'num_neighbours'], edge_attrs=['edge_attr'])
     Gp = nx.operators.compose_all([G.subgraph(g) for g in nx.components.connected_components(G) if len(g) >= min_nodes])
-    output = from_networkx(Gp, group_node_attrs=['x', 'pos', 'categories'], group_edge_attrs=['edge_attr'])
+    output = from_networkx(Gp, group_node_attrs=['x', 'pos', 'categories',
+                           'num_neighbours'], group_edge_attrs=['edge_attr'])
     # output.x = [x|pos|category] = [start- -3:-3 - -1:-1 - end]
-    output.pos = output.x[:, -3:-1]
-    output.categories = output.x[:, -1]
-    output.x = output.x[:, :-3]
+    output.pos = output.x[:, -4:-2]
+    output.categories = output.x[:, -2]
+    output.num_neighbours = output.x[:, -1]
+    output.x = output.x[:, :-4]
     return output
 
 
