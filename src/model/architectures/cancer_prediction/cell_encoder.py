@@ -38,28 +38,28 @@ class CellEncoder(pl.LightningModule):
         self.num_steps = num_steps
         self.width = kwargs["WIDTH"] if "WIDTH" in kwargs else 32
         self.dropout = kwargs["DROPOUT"] if "DROPOUT" in kwargs else 0
-
-        self.encodercnn = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
-        self.encoderann = nn.Sequential(
-            nn.Dropout(self.dropout),
-            nn.Linear(1000, (1000*self.width)//32),
-            nn.LeakyReLU(inplace=True),
-            nn.BatchNorm1d((1000*self.width)//32),
-            nn.Dropout(self.dropout),
-            nn.Linear((1000*self.width)//32, (200*self.width)//32),
-            nn.LeakyReLU(inplace=True),
-            nn.BatchNorm1d((200*self.width)//32),
-            nn.Dropout(self.dropout),
-            nn.Linear((200*self.width)//32, (40*self.width)//32),
-            nn.LeakyReLU(inplace=True),
-            nn.BatchNorm1d((40*self.width)//32))
-
-        self.predictor = nn.Sequential(nn.Linear((40*self.width)//32, 4))  # NO SOFTMAX
+        self.encoder = torch.hub.load('pytorch/vision:v0.10.0', 'fcn_resnet50', pretrained=True)
+        self.encoder.classifier[4] = nn.Conv2d(512, 3, kernel_size=1)
+        print(self.encoder)
+        #self.encodercnn = torch.hub.load('NVIDIA/DeepLearningExamples:torchhub', 'nvidia_resnet50', pretrained=True)
+        #   self.encoderann = nn.Sequential(
+        #       nn.Dropout(self.dropout),
+        #       nn.Linear(1000, (1000*self.width)//32),
+        #       nn.LeakyReLU(inplace=True),
+        #       nn.BatchNorm1d((1000*self.width)//32),
+        #       nn.Dropout(self.dropout),
+        #       nn.Linear((1000*self.width)//32, (200*self.width)//32),
+        #       nn.LeakyReLU(inplace=True),
+        #       nn.BatchNorm1d((200*self.width)//32),
+        #       nn.Dropout(self.dropout),
+        #       nn.Linear((200*self.width)//32, (40*self.width)//32),
+        #       nn.LeakyReLU(inplace=True),
+        #       nn.BatchNorm1d((40*self.width)//32))
+#
+        #   self.predictor = nn.Sequential(nn.Linear((40*self.width)//32, 4))  # NO SOFTMAX
 
     def forward(self, x):
-        enc1 = self.encodercnn(x)
-        enc2 = self.encoderann(enc1)
-        pred = self.predictor(enc2)
+        pred = self.encoder(x)['out']
         return enc2, pred
 
     @ incremental_forward(512)
@@ -91,15 +91,15 @@ class CellEncoder(pl.LightningModule):
         loss = F.cross_entropy(y_hat, y_cat)
 
         overall_pred_label = y_hat.argmax(dim=1)
-        cell_type_pred = overall_pred_label % 5
-        diag_pred = overall_pred_label//5
+        #cell_type_pred = overall_pred_label % 5
+        #diag_pred = overall_pred_label//5
 
         acc = (overall_pred_label == y_cat).float().mean()
-        cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
-        diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
+        #cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
+        #diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
         self.log("train_acc", acc)
-        self.log("train_cell_type_acc", cell_type_acc)
-        self.log("train_diag_acc", diag_acc)
+        #self.log("train_cell_type_acc", cell_type_acc)
+        #self.log("train_diag_acc", diag_acc)
         # pred_cat = y_hat.argmax(dim=1)
         # canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
         # canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()
@@ -114,22 +114,23 @@ class CellEncoder(pl.LightningModule):
         cells, diag_hot, cell_type_hot = val_batch["img"], val_batch["diagnosis"].int(
         ), val_batch['cell_type'].int()
 
-        y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        #y = one_hot_cartesian_product(diag_hot, cell_type_hot)
+        y = diag_hot
         y_cat = categorise(y)
         _, y_hat = self.forward(cells)
 
         loss = F.cross_entropy(y_hat, y_cat)
 
         overall_pred_label = y_hat.argmax(dim=1)
-        cell_type_pred = overall_pred_label % 5
-        diag_pred = overall_pred_label//5
+        #cell_type_pred = overall_pred_label % 5
+        #diag_pred = overall_pred_label//5
 
         acc = (overall_pred_label == y_cat).float().mean()
-        cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
-        diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
+        #cell_type_acc = (cell_type_pred == categorise(cell_type_hot)).float().mean()
+        #diag_acc = (diag_pred == categorise(diag_hot)).float().mean()
         self.log("val_acc", acc)
-        self.log("val_cell_type_acc", cell_type_acc)
-        self.log("val_diag_acc", diag_acc)
+        #self.log("val_cell_type_acc", cell_type_acc)
+        #self.log("val_diag_acc", diag_acc)
         # pred_cat = y_hat.argmax(dim=1)
         # canc_pred = (torch.where(pred_cat.eq(0) | pred_cat.eq(3), 0, 1)).float()
         # canc_grd = (torch.where(y.eq(0) | y.eq(3), 0, 1)).float()

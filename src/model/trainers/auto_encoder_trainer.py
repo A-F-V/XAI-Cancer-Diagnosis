@@ -37,11 +37,11 @@ from torchvision.transforms import RandomApply, RandomChoice
 
 
 # Normalize({"image": [0.6441, 0.4474, 0.6039]},{"image": [0.1892, 0.1922, 0.1535]})   # for image not optical
-batch_size = 512
+batch_size = 256
 
 transforms_training = Compose([
 
-    StainJitter(theta=0.03, fields=["img"]),
+    StainJitter(theta=0.025, fields=["img"]),
     RandomFlip(fields=['img']),
     RandomApply(
         [
@@ -166,13 +166,17 @@ def create_trainer(grid_search=False, **args):
                               shuffle=True, num_workers=args["NUM_WORKERS"],
                               persistent_workers=True
                               )
-    val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
+    val_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_VAL"],
                             shuffle=False, num_workers=args["NUM_WORKERS"],
                             persistent_workers=True)
 
     accum_batch = max(1, batch_size//args["BATCH_SIZE_TRAIN"])
     num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
 
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    trainer_callbacks = [
+        lr_monitor
+    ]
     if args["START_CHECKPOINT"] is not None:
         model = CellEncoder.load_from_checkpoint(os.path.join('experiments', 'checkpoints', args["START_CHECKPOINT"]), train_loader=train_loader,
                                                  val_loader=val_loader, img_size=64, num_steps=num_steps, **args)
@@ -180,7 +184,9 @@ def create_trainer(grid_search=False, **args):
         model = CellEncoder(train_loader=train_loader, val_loader=val_loader, img_size=64, num_steps=num_steps, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
-    trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
+    # model.encodercnn.requires_grad_(False)
+
+    trainer = pl.Trainer(log_every_n_steps=1, gpus=1, callbacks=trainer_callbacks,
                          max_epochs=args["EPOCHS"], logger=mlf_logger,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",

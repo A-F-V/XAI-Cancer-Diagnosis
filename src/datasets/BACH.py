@@ -133,7 +133,7 @@ class BACH(Dataset):
             graph.x = graph.x.unflatten(1, (3, 64, 64))
             graph.x = normer(graph.x)
             graph.x = graph.x.to(model.device)
-            graph.x = model.forward_pred(graph.x)
+            graph.x = model.forward_pred(graph.x)  # todo append cell type
             torch.save(graph, os.path.join(self.encoded_graph_dir, gn))
 
     def generate_node_distribution(self):
