@@ -28,9 +28,9 @@ from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Dista
 from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
-from src.transforms.graph_construction.node_embedding import node_embedder
+
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 5
+b_size = 32
 
 
 img_aug_train = Compose([
@@ -91,12 +91,8 @@ class GNNTrainer(Base_Trainer):
         # train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
 
-        ne_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
-        ne_model.cuda()
-
-        ne = partial(node_embedder, ne_model)
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, node_embedder=ne), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, node_embedder=ne)
+                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"])

@@ -12,6 +12,9 @@ from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool
 import pytorch_lightning as pl
 from torch_geometric.nn import GINConv, Sequential as Seq, Linear as Lin
 from src.model.architectures.components.gintopk import GCNTopK
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
+import os
+from src.transforms.graph_construction.node_embedding import generate_node_embeddings
 
 
 class CancerGNN(pl.LightningModule):
@@ -20,7 +23,7 @@ class CancerGNN(pl.LightningModule):
         self.args = dict(config)
         self.img_size = img_size
         self.learning_rate = config["START_LR"] if "START_LR" in config else 1e-3
-
+        self.node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -28,7 +31,7 @@ class CancerGNN(pl.LightningModule):
         self.width = self.args["WIDTH"]
         self.gnn = GCNTopK(input_width=315, hidden_width=self.width, output_width=4, conv_depth=self.height)
 
-    def forward(self, x, edge_index, edge_attr, batch):
+    def forward(self, x, edge_index, batch):
         return self.gnn(x, edge_index,  batch)
 
     def configure_optimizers(self):
@@ -44,8 +47,13 @@ class CancerGNN(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        x, edge_index, edge_attr, y, batch = train_batch.x, train_batch.edge_index, train_batch.edge_attr, train_batch.y, train_batch.batch
-        y_hat = self.forward(x, edge_index, edge_attr, batch)
+        x, edge_index, num_neighbours, cell_types, y, batch = train_batch.x, train_batch.edge_index, train_batch.num_neighbours, train_batch.categories, train_batch.y, train_batch.batch
+
+        x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
+                                           num_neighbours=num_neighbours, cell_types=cell_types)
+        del x
+        torch.cuda.empty_cache()
+        y_hat = self.forward(x_embed, edge_index, batch)
 
         loss = cross_entropy(y_hat, y)
 
@@ -64,8 +72,14 @@ class CancerGNN(pl.LightningModule):
         return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
     def validation_step(self, val_batch, batch_idx):
-        x, edge_index, edge_attr, y, batch = val_batch.x, val_batch.edge_index, val_batch.edge_attr, val_batch.y, val_batch.batch
-        y_hat = self.forward(x, edge_index, edge_attr, batch)
+        x, edge_index, num_neighbours, cell_types, y, batch = val_batch.x, val_batch.edge_index, val_batch.num_neighbours, val_batch.categories, val_batch.y, val_batch.batch
+
+        x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
+                                           num_neighbours=num_neighbours, cell_types=cell_types)
+        del x
+        torch.cuda.empty_cache()
+
+        y_hat = self.forward(x_embed, edge_index, batch)
 
         loss = cross_entropy(y_hat, y)
 

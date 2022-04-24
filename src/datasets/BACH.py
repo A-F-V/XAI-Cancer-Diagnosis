@@ -51,7 +51,7 @@ class GraphExtractor(Thread):
 
 # todo refactor to use kwargs instead
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, node_embedder=None, img_augmentation=None, graph_augmentation=None, ):
+    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None, ):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -62,7 +62,7 @@ class BACH(Dataset):
         self.min_nodes = min_nodes
         self.img_augmentation = img_augmentation
         self.graph_augmentation = graph_augmentation
-        self.node_embedder = node_embedder
+
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
         create_dir_if_not_exist(self.encoded_graph_dir, False)
@@ -168,8 +168,8 @@ class BACH(Dataset):
                     'image']  # unfortunately need to do this
             graph.x = aug_x
 
-        graph.x = self.node_embedder(graph)
-        assert graph.x.shape[1] == 315
+        #graph.x = self.node_embedder(graph)
+        #assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)
         return graph
 

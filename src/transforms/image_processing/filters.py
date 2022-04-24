@@ -41,5 +41,6 @@ def sobel(img: Tensor):
 def to_gray(img: Tensor):
     assert len(img.shape) == 3
     # Perform a linear approximation of gamma compression algorithm
-    img_gray = torch.matmul(img.permute((1, 2, 0)), Tensor([0.299, 0.587, 0.114]))
+    linear_factor = torch.as_tensor([0.299, 0.587, 0.114]).to(img.device)
+    img_gray = torch.matmul(img.permute((1, 2, 0)), linear_factor)
     return img_gray

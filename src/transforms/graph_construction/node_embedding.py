@@ -30,13 +30,15 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     assert cell_types_one_hot.shape == (num_batches, 5)
 
     # GLCM
-    glcm = torch.zeros(0, 50)
+    glcm = torch.zeros(0, 50).to(imgs.device)
     for img in imgs:
-        gray = (torch.div(to_gray(img)*255, 51, rounding_mode="trunc")).clip(0, 4).numpy().astype(np.uint8)
-        cur_glcm = as_tensor(graycomatrix(image=gray, distances=[
-            1], angles=[0, np.pi/2], levels=5).astype(np.float16)).flatten().unsqueeze(0)
-        assert cur_glcm.shape == (1, 50)
-        glcm = torch.cat((glcm, cur_glcm), dim=0)
+        gray = to_gray(img)
+        quantized = (torch.div(gray*255, 51, rounding_mode="trunc")).clip(0, 4)/5
+        Q = (quantized*5).int().cpu()
+        cur_glam = as_tensor(graycomatrix(image=Q, distances=[
+            1], angles=[0, np.pi/2], levels=5).astype(np.float16)).flatten().unsqueeze(0).to(img.device)
+        assert cur_glam.shape == (1, 50)
+        glcm = torch.cat((glcm, cur_glam), dim=0)
 
     assert glcm.shape == (num_batches, 50)
     # num_neighbours
@@ -58,14 +60,3 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     final = torch.cat((argb, cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=1)
     assert final.shape == (num_batches, 315)
     return final
-
-
-def node_embedder(model, graph):
-
-    imgs = graph.x
-    cell_types = graph.categories
-    num_neighbours = graph.num_neighbours
-
-    embedding = generate_node_embeddings(imgs=imgs, resnet_encoder=model,
-                                         num_neighbours=num_neighbours, cell_types=cell_types)
-    return embedding
