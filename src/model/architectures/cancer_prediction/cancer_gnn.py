@@ -47,10 +47,11 @@ class CancerGNN(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        x, edge_index, num_neighbours, cell_types, y, batch = train_batch.x, train_batch.edge_index, train_batch.num_neighbours, train_batch.categories, train_batch.y, train_batch.batch
+        x, edge_index, num_neighbours, cell_types, y, batch, glcm = train_batch.x, train_batch.edge_index, train_batch.num_neighbours, train_batch.categories, train_batch.y, train_batch.batch, train_batch.glcm
 
         x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
-                                           num_neighbours=num_neighbours, cell_types=cell_types)
+                                           num_neighbours=num_neighbours, cell_types=cell_types,
+                                           glcm=glcm)
         del x
         torch.cuda.empty_cache()
         y_hat = self.forward(x_embed, edge_index, batch)
@@ -72,10 +73,11 @@ class CancerGNN(pl.LightningModule):
         return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
     def validation_step(self, val_batch, batch_idx):
-        x, edge_index, num_neighbours, cell_types, y, batch = val_batch.x, val_batch.edge_index, val_batch.num_neighbours, val_batch.categories, val_batch.y, val_batch.batch
+        x, edge_index, num_neighbours, cell_types, y, batch, glcm = val_batch.x, val_batch.edge_index, val_batch.num_neighbours, val_batch.categories, val_batch.y, val_batch.batch, val_batch.glcm
 
         x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
-                                           num_neighbours=num_neighbours, cell_types=cell_types)
+                                           num_neighbours=num_neighbours, cell_types=cell_types,
+                                           glcm=glcm)
         del x
         torch.cuda.empty_cache()
 

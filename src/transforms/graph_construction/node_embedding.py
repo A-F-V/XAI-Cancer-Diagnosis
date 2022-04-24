@@ -7,7 +7,7 @@ from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.transforms.image_processing.filters import to_gray
 
 
-def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighbours: Tensor, cell_types: Tensor):
+def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighbours: Tensor, cell_types: Tensor, glcm: Tensor):
     """Generates the node embeddings for my cell graph dataset.
 
     Args:
@@ -30,17 +30,9 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     assert cell_types_one_hot.shape == (num_batches, 5)
 
     # GLCM
-    glcm = torch.zeros(0, 50).to(imgs.device)
-    for img in imgs:
-        gray = to_gray(img)
-        quantized = (torch.div(gray*255, 51, rounding_mode="trunc")).clip(0, 4)/5
-        Q = (quantized*5).int().cpu()
-        cur_glam = as_tensor(graycomatrix(image=Q, distances=[
-            1], angles=[0, np.pi/2], levels=5).astype(np.float16)).flatten().unsqueeze(0).to(img.device)
-        assert cur_glam.shape == (1, 50)
-        glcm = torch.cat((glcm, cur_glam), dim=0)
 
     assert glcm.shape == (num_batches, 50)
+
     # num_neighbours
     if(len(num_neighbours.shape) == 1):
         num_neighbours = num_neighbours.unsqueeze(1)

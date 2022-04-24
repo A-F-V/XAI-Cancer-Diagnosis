@@ -4,6 +4,9 @@ from torch.nn.functional import conv2d
 from torch import Tensor
 import cv2
 import torch
+from torch import Tensor, nn, as_tensor
+from skimage.feature import graycomatrix
+import numpy as np
 
 sobel_x = Tensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]).unsqueeze(0).unsqueeze(0).float()/4
 sobel_y = Tensor([[1, 2, 1], [0, 0, 0], [-1, -2, -1]]).unsqueeze(0).unsqueeze(0).float()/4
@@ -44,3 +47,13 @@ def to_gray(img: Tensor):
     linear_factor = torch.as_tensor([0.299, 0.587, 0.114]).to(img.device)
     img_gray = torch.matmul(img.permute((1, 2, 0)), linear_factor)
     return img_gray
+
+
+def glcm(img: Tensor):
+    gray = to_gray(img)
+    quantized = (torch.div(gray*255, 51, rounding_mode="trunc")).clip(0, 4)/5
+    Q = (quantized*5).int().cpu()
+    cur_glcm = graycomatrix(image=Q, distances=[1], angles=[0, np.pi/2], levels=5).astype(np.float16)
+    cur_glcm = as_tensor(cur_glcm).flatten().unsqueeze(0).to(img.device)
+    assert cur_glcm.shape == (1, 50)
+    return cur_glcm

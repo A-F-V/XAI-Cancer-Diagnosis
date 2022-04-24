@@ -1,7 +1,5 @@
 from ast import arg
-import ray
-from ray.tune.integration.pytorch_lightning import TuneReportCallback, \
-    TuneReportCheckpointCallback
+
 from ray.tune.utils.util import wait_for_gpu
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter

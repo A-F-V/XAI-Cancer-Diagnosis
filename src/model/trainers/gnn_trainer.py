@@ -92,12 +92,12 @@ class GNNTrainer(Base_Trainer):
         print(f"The data source folder is {src_folder}")
 
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val)
+                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, persistent_workers=True)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
                                   shuffle=True, num_workers=args["NUM_WORKERS"])
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"])
+                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
 
         accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]

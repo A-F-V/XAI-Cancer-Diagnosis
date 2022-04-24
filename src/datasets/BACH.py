@@ -13,6 +13,7 @@ from torchvision.transforms import Normalize
 from threading import Thread
 from torch import Tensor
 from torchvision.transforms import Normalize
+from src.transforms.image_processing.filters import glcm
 
 
 class GraphExtractor(Thread):
@@ -168,6 +169,9 @@ class BACH(Dataset):
                     'image']  # unfortunately need to do this
             graph.x = aug_x
 
+        graph.glcm = torch.zeros((graph.x.shape[0], 50))
+        for i, img in enumerate(graph.x):
+            graph.glcm[i] = glcm(img)
         #graph.x = self.node_embedder(graph)
         #assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)
