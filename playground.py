@@ -1,11 +1,7 @@
 
-from src.model.trainers.auto_encoder_trainer import CellAETrainer
 from src.model.trainers.gnn_trainer import GNNTrainer
-from src.model.trainers.hover_net_trainer import HoverNetTrainer
 import torch
-from src.datasets.BACH_Cells import BACH_Cells
 import os
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.datasets.BACH import BACH
 
 from tqdm import tqdm

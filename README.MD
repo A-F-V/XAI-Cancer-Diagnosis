@@ -6,9 +6,16 @@
 
 ## Introduction
 
-**This project explores modern deep learning methods for diagnosising cancer**. In particular, the goal is to detect the presence of cancer from a H&E staining. This may be accomplished by **1)** taking an H&E image and producing a [cell graph](https://cacm.acm.org/magazines/2017/1/211111-cell-graphs/fulltext), then **2)** using a **graph neural network** to perform the detection.
+**This project explores modern deep learning methods for diagnosising cancer**. In particular, the goal is to detect the presence of cancer from an H&E staining. My steps are as follows:
 
-In addition, it is essential for clinical models to be explainable, otherwise they will not be used. Therefore, I add a third step: **3)** Use a post-hoc GNN explanation model (like **GCExplainer**) in order to deliver more meaningful findings to clinicians.
+1. **Stain Normalization**: Implement an algorithm (**Macenko Algorithm**) for normalizing H&E stains.
+2. **Nuclear Panoptic Segmentation**: Implement a deep learning model (**HoVerNet**) for identifying
+   and classifying nuclei.
+3. **Cell Graph Construction**: Define and create a [cell graph](https://cacm.acm.org/magazines/2017/1/211111-cell-graphs/fulltext).
+4. **Cell Graph Classification**: Implement a graph neural network to classify the presence
+   of cancer in graph from (3).
+5. **Explainability**: Implement a post-hoc explainability algorithm (**GCExplainer**) to
+   make the model in (4) more interpretable.
 
 ## Usage
 
@@ -40,3 +47,9 @@ python xcd.py [OPTIONS] ACTION
    > Gamper, Jevgenij, et al. "Pannuke dataset extension, insights and baselines." arXiv preprint arXiv:2003.10778 (2020).
 4. [MoNuSeg Dataset](https://ieeexplore.ieee.org/document/7872382)
    > Kumar, Neeraj, et al. "A dataset and a technique for generalized nuclear segmentation for computational pathology." IEEE transactions on medical imaging 36.7 (2017): 1550-1560.
+5. BACH Dataset
+6. Histographs
+7. ResNet
+8. FCN
+9. GINTopK
+10. GCExplainer

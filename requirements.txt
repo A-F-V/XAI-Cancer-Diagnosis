@@ -34,3 +34,4 @@ networkx
 ray[tune]
 gputil
 seaborn
+class-resolver

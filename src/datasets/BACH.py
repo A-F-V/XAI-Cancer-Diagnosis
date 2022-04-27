@@ -171,7 +171,7 @@ class BACH(Dataset):
 
         graph.glcm = torch.zeros((graph.x.shape[0], 50))
         for i, img in enumerate(graph.x):
-            graph.glcm[i] = glcm(img)
+            graph.glcm[i] = glcm(img, normalize=True)
         #graph.x = self.node_embedder(graph)
         #assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)

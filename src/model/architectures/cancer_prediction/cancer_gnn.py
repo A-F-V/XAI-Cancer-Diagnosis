@@ -1,3 +1,4 @@
+
 from src.model.evaluation.graph_agreement import hard_agreement
 from src.utilities.pytorch_utilities import incremental_forward
 import torch.nn as nn
@@ -7,11 +8,11 @@ from src.transforms.graph_construction.graph_extractor import mean_pixel_extract
 from torch import optim, Tensor, softmax
 import torch
 from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
-from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter
-from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCN, GCNConv, TopKPooling, MessagePassing
+from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter, LayerNorm
+from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCNConv, TopKPooling, MessagePassing, GCN
 import pytorch_lightning as pl
-from torch_geometric.nn import GINConv, Sequential as Seq, Linear as Lin
-from src.model.architectures.components.gintopk import GCNTopK
+from torch_geometric.nn import GINConv, Sequential as Seq, Linear as Lin, MLP
+from src.model.architectures.components.gcntopk import GCNTopK
 from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 import os
 from src.transforms.graph_construction.node_embedding import generate_node_embeddings
@@ -24,15 +25,26 @@ class CancerGNN(pl.LightningModule):
         self.img_size = img_size
         self.learning_rate = config["START_LR"] if "START_LR" in config else 1e-3
         self.node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
+        self.node_embedder_model.eval()
+        self.node_embedder_model.requires_grad_(False)
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.height = self.args["HEIGHT"]
         self.width = self.args["WIDTH"]
         self.gnn = GCNTopK(input_width=315, hidden_width=self.width, output_width=4, conv_depth=self.height)
+        self.gnn_basic = GIN(in_channels=315, hidden_channels=self.width,
+                             out_channels=self.width, num_layers=self.height,)
+        self.inn = LayerNorm(315)
+        self.mlp = MLP([self.width, self.width//4, 4], dropout=0, batch_norm=True)
 
     def forward(self, x, edge_index, batch):
+       # x = self.inn(x)
         return self.gnn(x, edge_index,  batch)
+        f = self.gnn_basic(x=x, edge_index=edge_index)
+        #b = self.bn(f)
+        gp = global_mean_pool(f, batch)
+        return self.mlp(gp)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-4)

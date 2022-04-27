@@ -37,6 +37,7 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
     if(len(num_neighbours.shape) == 1):
         num_neighbours = num_neighbours.unsqueeze(1)
     assert num_neighbours.shape == (num_batches, 1)
+    num_neighbours /= 40
 
     # resnet_encoder
     resnet_encoder.eval()

@@ -20,17 +20,15 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from torchvision.transforms import RandomApply, RandomChoice
-from functools import partial
 from src.model.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 32
+b_size = 64
 
 
 img_aug_train = Compose([
@@ -47,7 +45,7 @@ img_aug_train = Compose([
             # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
         ],
 
-        p=0.5),
+        p=0.02),
     #  Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
 ])
 
@@ -55,9 +53,9 @@ img_aug_train = Compose([
 img_aug_val = Compose([])
 
 
-graph_aug_train = Compose([RandomTranslate(25), RadiusGraph(r=100)])  # EdgeDropout(p=0.04),
+graph_aug_train = Compose([RandomTranslate(10), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
 
-graph_aug_val = Compose([RadiusGraph(r=100)])
+graph_aug_val = Compose([KNNGraph(k=6)])
 
 
 class GNNTrainer(Base_Trainer):
@@ -92,12 +90,12 @@ class GNNTrainer(Base_Trainer):
         print(f"The data source folder is {src_folder}")
 
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, persistent_workers=True)
+                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"])
+                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=args["NUM_WORKERS"], persistent_workers=True)
+                                shuffle=False, num_workers=2, persistent_workers=True)
 
         accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
         num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
