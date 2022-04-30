@@ -28,7 +28,7 @@ from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 64
+b_size = 16
 
 
 img_aug_train = Compose([
@@ -45,7 +45,7 @@ img_aug_train = Compose([
             # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
         ],
 
-        p=0.02),
+        p=0.03),
     #  Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
 ])
 
@@ -53,7 +53,7 @@ img_aug_train = Compose([
 img_aug_val = Compose([])
 
 
-graph_aug_train = Compose([RandomTranslate(10), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
+graph_aug_train = Compose([RandomTranslate(30), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
 
 graph_aug_val = Compose([KNNGraph(k=6)])
 
@@ -90,15 +90,15 @@ class GNNTrainer(Base_Trainer):
         print(f"The data source folder is {src_folder}")
 
         train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val)
+                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=True), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, pre_encoded=True)
 
         train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True)
+                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1)
         val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
                                 shuffle=False, num_workers=2, persistent_workers=True)
 
         accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
-        num_steps = (len(train_loader)//accum_batch+1)*args["EPOCHS"]
+        num_steps = (len(train_loader)//accum_batch)*args["EPOCHS"]+10
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
@@ -113,7 +113,7 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=50, max_lr=1000)
+                lr_finder = trainer.tuner.lr_find(model, num_training=1000, max_lr=1000)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())
@@ -175,8 +175,12 @@ def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    model = CancerGNN(num_steps=num_steps,
-                      val_loader=val_loader, train_loader=train_loader, **args)
+    if args['START_CHECKPOINT'] is not None:
+        model = CancerGNN.load_from_checkpoint(os.path.join(
+            "experiments", "checkpoints", args['START_CHECKPOINT']), num_steps=num_steps, val_loader=val_loader, train_loader=train_loader, **args)
+    else:
+        model = CancerGNN(num_steps=num_steps,
+                          val_loader=val_loader, train_loader=train_loader, **args)
     mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     ############################

@@ -13,12 +13,12 @@ import pytorch_lightning as pl
 from torch_geometric.nn import GINConv
 
 
-# def _create_convolution(in_channels, out_channels):
-#    return GINConv(nn=Seq(BatchNorm(in_channels), ReLU(), Lin(in_channels, in_channels), BatchNorm(in_channels),
-#                          ReLU(), Lin(in_channels, out_channels)))
-
 def _create_convolution(in_channels, out_channels):
-    return GCNConv(in_channels, out_channels, improved=True)
+    return GINConv(nn=Seq(BatchNorm(in_channels), ReLU(),  Lin(in_channels, out_channels)))
+
+#
+# def _create_convolution(in_channels, out_channels):
+#    return GCNConv(in_channels, out_channels, improved=True)
 
 
 def _create_transform(in_channels, out_channels):
@@ -34,32 +34,30 @@ class GCNTopK(torch.nn.Module):
 
         self.conv_depth = conv_depth
         self.conv = ModuleList([_create_convolution(self.iw if i == 0 else self.hw, self.hw)
-                                for i in range(self.conv_depth)])
+                                for i in range(self.conv_depth*2)])
         self.transform = ModuleList([_create_transform((self.iw if i == 0 else self.hw), (self.iw if i == 0 else self.hw))
                                     for i in range(self.conv_depth)])
-        self.pool = ModuleList([TopKPooling(self.hw, ratio=0.8)
+        self.pool = ModuleList([TopKPooling(self.hw, ratio=0.5)
                                 for i in range(self.conv_depth)])
 
-        self.predictor = Seq(Dropout(p=0.8),
-                             Lin(2*hidden_width, hidden_width),
-
+        self.predictor = Seq(Dropout(p=0.92),
+                             Lin(hidden_width*self.conv_depth, hidden_width*self.conv_depth//4),
+                             BatchNorm1d(hidden_width*self.conv_depth//4),
                              ReLU(),
-                             Dropout(p=0.8),
-                             Lin(hidden_width, hidden_width//2),
-                             ReLU(),
-                             Lin(hidden_width//2, output_width))
+                             Lin(hidden_width*self.conv_depth//4, output_width))
         self.normalize = BatchNorm1d(input_width, momentum=0.01)
 
     def forward(self, x, edge_index, batch):
        # x = self.normalize(x)
         readouts = []
         for i in range(self.conv_depth):
-            x = self.transform[i](x)
-            x = self.conv[i](x=x, edge_index=edge_index)
+            #x = self.transform[i](x)
+            x = self.conv[2*i](x=x, edge_index=edge_index)
+            x = self.conv[2*i+1](x=x, edge_index=edge_index)
             x, edge_index, _, batch, _, _ = self.pool[i](x, edge_index, None, batch)
-            r = torch.cat([gmp(x, batch), gap(x, batch)], dim=1)
+            r = torch.cat([gap(x, batch)], dim=1)
             readouts.append(r)
-        r = torch.sum(torch.stack(readouts, dim=1), dim=1)/4
+        r = torch.cat(readouts, dim=1)
 
         x = self.predictor(r)
         return x

@@ -19,14 +19,15 @@ from src.transforms.graph_construction.node_embedding import generate_node_embed
 
 
 class CancerGNN(pl.LightningModule):
-    def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, **config):
+    def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, pre_encoded=True, **config):
         super(CancerGNN, self).__init__()
         self.args = dict(config)
         self.img_size = img_size
         self.learning_rate = config["START_LR"] if "START_LR" in config else 1e-3
-        self.node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
-        self.node_embedder_model.eval()
-        self.node_embedder_model.requires_grad_(False)
+        if not pre_encoded:
+            self.node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
+            self.node_embedder_model.eval()
+            self.node_embedder_model.requires_grad_(False)
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -35,6 +36,7 @@ class CancerGNN(pl.LightningModule):
         self.gnn = GCNTopK(input_width=315, hidden_width=self.width, output_width=4, conv_depth=self.height)
         self.gnn_basic = GIN(in_channels=315, hidden_channels=self.width,
                              out_channels=self.width, num_layers=self.height,)
+        self.pre_encoded = pre_encoded
         self.inn = LayerNorm(315)
         self.mlp = MLP([self.width, self.width//4, 4], dropout=0, batch_norm=True)
 
@@ -47,7 +49,7 @@ class CancerGNN(pl.LightningModule):
         return self.mlp(gp)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-4)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-1)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
@@ -59,14 +61,14 @@ class CancerGNN(pl.LightningModule):
         self.logger.log_hyperparams(self.args)
 
     def training_step(self, train_batch, batch_idx):
-        x, edge_index, num_neighbours, cell_types, y, batch, glcm = train_batch.x, train_batch.edge_index, train_batch.num_neighbours, train_batch.categories, train_batch.y, train_batch.batch, train_batch.glcm
+        x, edge_index, num_neighbours, cell_types, y, batch = train_batch.x, train_batch.edge_index, train_batch.num_neighbours, train_batch.categories, train_batch.y, train_batch.batch
+        if not self.pre_encoded:
+            glcm = train_batch.glcm
+            x = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
+                                         num_neighbours=num_neighbours, cell_types=cell_types,
+                                         glcm=glcm)
 
-        x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
-                                           num_neighbours=num_neighbours, cell_types=cell_types,
-                                           glcm=glcm)
-        del x
-        torch.cuda.empty_cache()
-        y_hat = self.forward(x_embed, edge_index, batch)
+        y_hat = self.forward(x, edge_index, batch)
 
         loss = cross_entropy(y_hat, y)
 
@@ -85,15 +87,15 @@ class CancerGNN(pl.LightningModule):
         return {"loss": loss, "train_acc": acc, "train_canc_acc": canc_acc}
 
     def validation_step(self, val_batch, batch_idx):
-        x, edge_index, num_neighbours, cell_types, y, batch, glcm = val_batch.x, val_batch.edge_index, val_batch.num_neighbours, val_batch.categories, val_batch.y, val_batch.batch, val_batch.glcm
+        x, edge_index, num_neighbours, cell_types, y, batch = val_batch.x, val_batch.edge_index, val_batch.num_neighbours, val_batch.categories, val_batch.y, val_batch.batch
 
-        x_embed = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
-                                           num_neighbours=num_neighbours, cell_types=cell_types,
-                                           glcm=glcm)
-        del x
-        torch.cuda.empty_cache()
+        if not self.pre_encoded:
+            glcm = val_batch.glcm
+            x = generate_node_embeddings(imgs=x, resnet_encoder=self.node_embedder_model,
+                                         num_neighbours=num_neighbours, cell_types=cell_types,
+                                         glcm=glcm)
 
-        y_hat = self.forward(x_embed, edge_index, batch)
+        y_hat = self.forward(x, edge_index, batch)
 
         loss = cross_entropy(y_hat, y)
 

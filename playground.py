@@ -6,6 +6,7 @@ from src.datasets.BACH import BACH
 
 from tqdm import tqdm
 from src.predict_cancer import predict_cancer
+from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 
 
 # todo train with all data
@@ -53,6 +54,15 @@ def test_explainability():
     predict_cancer(os.path.join(directory, file_name), explainability_location=explainability_path)
 
 
+def pre_encode_bach():
+    node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
+    node_embedder_model.eval()
+    node_embedder_model.requires_grad_(False)
+
+    src_folder = "C:\\Users\\aless\\Documents\\data"
+    BACH(src_folder, pre_encoded=False).generate_encoded_graphs(node_embedder_model)
+
+
 def main():
 
     torch.multiprocessing.freeze_support()
@@ -60,6 +70,7 @@ def main():
 
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)'
 
+    # pre_encode_bach()
     trainer = GNNTrainer()
     #trainer = CellAETrainer()
     #trainer = HoverNetTrainer()
