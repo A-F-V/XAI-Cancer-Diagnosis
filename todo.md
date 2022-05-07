@@ -1,0 +1,5 @@
+- [ ] Load Model and get val & train set statistics
+- [ ] Get activation for last layers
+- [ ] K Means on this activation space
+- [ ] TSNE or other Viz
+- [ ]

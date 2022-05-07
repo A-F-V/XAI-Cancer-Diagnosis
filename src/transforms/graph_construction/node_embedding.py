@@ -17,13 +17,13 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
         cell_types (Tensor): An tensor or array of the each node's cell type.
 
     Returns:
-        Tensor: B x 315
+        Tensor: B x 312
     """
     num_batches = imgs.shape[0]
 
     # average RGB
-    argb = imgs.mean(dim=(2, 3))
-    assert argb.shape == (num_batches, 3)
+   # argb = imgs.mean(dim=(2, 3))
+   # assert argb.shape == (num_batches, 3)
 
     # Cell_types
     cell_types_one_hot = nn.functional.one_hot(cell_types.to(torch.int64), num_classes=5)
@@ -47,9 +47,9 @@ def generate_node_embeddings(imgs: Tensor, resnet_encoder: nn.Module, num_neighb
         assert resnet_encoded.shape == (num_batches, 256, 16, 16)
         resnet_encoded = resnet_encoded.mean(dim=(2, 3))
         assert resnet_encoded.shape == (num_batches, 256)
-    resnet_encoded = resnet_encoded.to(argb.device)
+    resnet_encoded = resnet_encoded.to(glcm.device)
     # concatenate
 
-    final = torch.cat((argb, cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=1)
-    assert final.shape == (num_batches, 315)
+    final = torch.cat((cell_types_one_hot, num_neighbours, resnet_encoded, glcm), dim=1)
+    assert final.shape == (num_batches, 312)
     return final

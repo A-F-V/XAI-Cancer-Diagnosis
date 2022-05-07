@@ -33,14 +33,17 @@ class CancerGNN(pl.LightningModule):
         self.val_loader = val_loader
         self.height = self.args["HEIGHT"]
         self.width = self.args["WIDTH"]
-        self.gnn = GCNTopK(input_width=315, hidden_width=self.width, output_width=4, conv_depth=self.height)
+        self.gnn = GCNTopK(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
         self.gnn_basic = GIN(in_channels=315, hidden_channels=self.width,
                              out_channels=self.width, num_layers=self.height,)
         self.pre_encoded = pre_encoded
-        self.inn = LayerNorm(315)
+
         self.mlp = MLP([self.width, self.width//4, 4], dropout=0, batch_norm=True)
 
     def forward(self, x, edge_index, batch):
+        # TEMPORARY
+        if x.shape[1] == 315:
+            x = x[:, 3:]
        # x = self.inn(x)
         return self.gnn(x, edge_index,  batch)
         f = self.gnn_basic(x=x, edge_index=edge_index)
@@ -49,7 +52,7 @@ class CancerGNN(pl.LightningModule):
         return self.mlp(gp)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-1)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=3e-4)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
@@ -69,8 +72,12 @@ class CancerGNN(pl.LightningModule):
                                          glcm=glcm)
 
         y_hat = self.forward(x, edge_index, batch)
+        y_hat_canc = to_cancer_scores(y_hat)
+        y_canc = (y <= 1).to(dtype=torch.int64)
 
-        loss = cross_entropy(y_hat, y)
+        four_loss = cross_entropy(y_hat, y)
+        two_loss = cross_entropy(y_hat_canc, y_canc)
+        loss = four_loss  # + two_loss
 
         pred_cat = y_hat.argmax(dim=1)
 
@@ -97,7 +104,12 @@ class CancerGNN(pl.LightningModule):
 
         y_hat = self.forward(x, edge_index, batch)
 
-        loss = cross_entropy(y_hat, y)
+        y_hat_canc = to_cancer_scores(y_hat)
+        y_canc = (y <= 1).to(dtype=torch.int64)
+
+        four_loss = cross_entropy(y_hat, y)
+        two_loss = cross_entropy(y_hat_canc, y_canc)
+        loss = four_loss  # + two_loss
 
         pred_cat = y_hat.argmax(dim=1)
 
@@ -143,3 +155,14 @@ def create_linear_predictor(**config):
         layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
     layers.append(Softmax(dim=1))
     return Sequential(*layers)
+
+
+def to_cancer_scores(y):
+    assert len(y.shape) == 2
+    assert y.shape[1] == 4
+    output = torch.zeros(y.shape[0], 2)
+    output[:, 0] = y[:, 0] + y[:, 1]
+    output[:, 1] = y[:, 2] + y[:, 3]
+    output = output.to(y.device)
+    assert output.device == y.device
+    return output
