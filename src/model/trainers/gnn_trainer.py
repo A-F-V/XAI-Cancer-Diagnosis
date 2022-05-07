@@ -53,7 +53,7 @@ img_aug_train = Compose([
 img_aug_val = Compose([])
 
 
-graph_aug_train = Compose([RandomTranslate(15), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
+graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
 
 graph_aug_val = Compose([KNNGraph(k=6)])
 

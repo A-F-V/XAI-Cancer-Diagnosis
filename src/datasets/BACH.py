@@ -90,6 +90,17 @@ class BACH(Dataset):
         create_dir_if_not_exist(self.encoded_graph_dir, False)
         create_dir_if_not_exist(os.path.join(self.instance_segmentation_dir, "VIZUALISED"), False)
 
+    @staticmethod
+    def get_train_val_ids(src_folder):
+        train_ind, val_ind = [], []
+        graph_split = os.path.join(src_folder, "graph_ind.txt")
+        with open(graph_split, "r") as f:
+            l1 = f.readline().strip()
+            l2 = f.readline().strip()
+            train_ind = list(map(int, l1[1:-1].split(",")))
+            val_ind = list(map(int, l2[1:-1].split(",")))
+        return train_ind, val_ind
+
     @property
     def original_image_paths(self):
         paths = []

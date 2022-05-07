@@ -31,8 +31,8 @@ class CancerGNN(pl.LightningModule):
         self.num_steps = num_steps
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.height = self.args["HEIGHT"]
-        self.width = self.args["WIDTH"]
+        self.height = self.args["HEIGHT"] if "HEIGHT" in self.args else 2
+        self.width = self.args["WIDTH"] if "WIDTH" in self.args else 16
         self.gnn = GCNTopK(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
         self.gnn_basic = GIN(in_channels=315, hidden_channels=self.width,
                              out_channels=self.width, num_layers=self.height,)
@@ -52,7 +52,7 @@ class CancerGNN(pl.LightningModule):
         return self.mlp(gp)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=3e-4)
+        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-2)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
