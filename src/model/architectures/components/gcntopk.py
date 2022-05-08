@@ -40,12 +40,7 @@ class GCNTopK(torch.nn.Module):
         self.pool = ModuleList([TopKPooling(self.hw, ratio=0.5)
                                 for i in range(self.conv_depth)])
 
-        self.predictor = Seq(Dropout(p=0.0),
-                             Lin(hidden_width, hidden_width),
-                             BatchNorm1d(hidden_width, momentum=0.01),
-                             ReLU(),
-                             Dropout(p=0.0),
-                             Lin(hidden_width, output_width))
+
         self.normalize = BatchNorm1d(input_width, momentum=0.01)
 
     def forward(self, x, edge_index, batch):
@@ -57,6 +52,9 @@ class GCNTopK(torch.nn.Module):
             x = self.transform[2*i+1](x)
             x = self.conv[2*i+1](x=x, edge_index=edge_index)
             #x, edge_index, _, batch, _, _ = self.pool[i](x, edge_index, None, batch)
-            r = torch.cat([gap(x, batch)], dim=1)
+            r = torch.cat([gap(x, batch),gmp(x,batch)], dim=1)
             readouts.append(r)
         return readouts[-1]
+
+        x = self.predictor(r)
+        return x

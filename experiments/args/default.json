@@ -1,12 +1,12 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "12_REG",
+  "RUN_NAME": "14_REG",
   "EXPERIMENT_ID": 6,
   "EXPERIMENT_NAME": "GINTopK",
-  "EPOCHS": 400,
+  "EPOCHS": 200,
   "BATCH_SIZE_TRAIN": 4,
   "BATCH_SIZE_VAL": 4,
-  "MAX_LR": 0.003,
+  "MAX_LR": 0.001,
   "ONE_CYCLE": true,
   "START_LR": 0.000005,
   "NUM_WORKERS": 6,
@@ -37,6 +37,6 @@
   "GRID_SEARCH": false,
   "TRIALS": 15,
   "HEIGHT": 2,
-  "WIDTH": 8,
+  "WIDTH": 32,
   "K_NN": 6
 }

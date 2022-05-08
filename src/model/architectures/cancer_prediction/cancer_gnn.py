@@ -7,11 +7,11 @@ from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignature
 from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
 from torch import optim, Tensor, softmax
 import torch
-from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot
+from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot, mse_loss
 from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax, Dropout, LeakyReLU, ModuleDict, Parameter, LayerNorm
 from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCNConv, TopKPooling, MessagePassing, GCN
 import pytorch_lightning as pl
-from torch_geometric.nn import GINConv, Sequential as Seq, Linear as Lin, MLP
+from torch.nn import Sequential as Seq, Linear as Lin
 from src.model.architectures.components.gcntopk import GCNTopK
 from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 import os
@@ -34,22 +34,28 @@ class CancerGNN(pl.LightningModule):
         self.height = self.args["HEIGHT"] if "HEIGHT" in self.args else 2
         self.width = self.args["WIDTH"] if "WIDTH" in self.args else 16
         self.gnn = GCNTopK(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
-        self.gnn_basic = GIN(in_channels=315, hidden_channels=self.width,
-                             out_channels=self.width, num_layers=self.height,)
+        self.predictor = Seq(Dropout(p=0.3),
+                             Lin(self.width*2, self.width),
+                             BatchNorm1d(self.width, momentum=0.01),
+                             ReLU(),
+                             Dropout(p=0.0),
+                             Lin(self.width, 4))
+        self.grader = Seq(Dropout(p=0.3),
+                          Lin(self.width*2, self.width),
+                          BatchNorm1d(self.width, momentum=0.01),
+                          ReLU(),
+                          Dropout(p=0.0),
+                          Lin(self.width, 1),
+                          ReLU())
         self.pre_encoded = pre_encoded
-
-        self.mlp = MLP([self.width, self.width//4, 4], dropout=0, batch_norm=True)
 
     def forward(self, x, edge_index, batch):
         # TEMPORARY
         if x.shape[1] == 315:
             x = x[:, 3:]
        # x = self.inn(x)
-        return self.gnn(x, edge_index,  batch)
-        f = self.gnn_basic(x=x, edge_index=edge_index)
-        #b = self.bn(f)
-        gp = global_mean_pool(f, batch)
-        return self.mlp(gp)
+        r = self.gnn(x, edge_index,  batch)
+        return self.predictor(r)
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-2)
@@ -71,13 +77,13 @@ class CancerGNN(pl.LightningModule):
                                          num_neighbours=num_neighbours, cell_types=cell_types,
                                          glcm=glcm)
 
-        y_hat = self.forward(x, edge_index, batch)
+        y_hat, y_grade = self.forward(x, edge_index, batch)
         y_hat_canc = to_cancer_scores(y_hat)
         y_canc = (y <= 1).to(dtype=torch.int64)
 
         four_loss = cross_entropy(y_hat, y)
-        two_loss = cross_entropy(y_hat_canc, y_canc)
-        loss = four_loss  # + two_loss
+        grade_loss = mse_loss(y_grade, (y+(y >= 2).int()).float())*2
+        loss = four_loss  # + grade_loss  # + two_loss
 
         pred_cat = y_hat.argmax(dim=1)
 
@@ -86,6 +92,8 @@ class CancerGNN(pl.LightningModule):
         acc = (pred_cat == y).float().mean()
         canc_acc = (canc_pred == canc_grd).float().mean()
 
+        self.log("grade_loss", grade_loss)
+        self.log("four_loss", four_loss)
         self.log("train_loss", loss)
         self.log("train_acc", acc)
         self.log("train_canc_acc", canc_acc)
@@ -102,14 +110,14 @@ class CancerGNN(pl.LightningModule):
                                          num_neighbours=num_neighbours, cell_types=cell_types,
                                          glcm=glcm)
 
-        y_hat = self.forward(x, edge_index, batch)
+        y_hat, y_grade = self.forward(x, edge_index, batch)
 
         y_hat_canc = to_cancer_scores(y_hat)
         y_canc = (y <= 1).to(dtype=torch.int64)
 
         four_loss = cross_entropy(y_hat, y)
-        two_loss = cross_entropy(y_hat_canc, y_canc)
-        loss = four_loss  # + two_loss
+        grade_loss = mse_loss(y_grade, (y+(y >= 2).int()).float())*2
+        loss = four_loss  # + grade_loss  # + two_loss
 
         pred_cat = y_hat.argmax(dim=1)
 
@@ -119,6 +127,8 @@ class CancerGNN(pl.LightningModule):
         canc_acc = (canc_pred == canc_grd).float().mean()
 
         self.log("val_loss", loss)
+        self.log("val_four_loss", four_loss)
+        self.log("val_grade_loss", grade_loss)
         self.log("val_acc", acc)
         return {'val_loss': loss, 'val_acc': acc, 'val_canc_acc': canc_acc}
 
