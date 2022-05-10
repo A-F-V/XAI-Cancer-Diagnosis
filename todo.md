@@ -1,5 +1,88 @@
 - [x] Load Model and get val & train set statistics
 - [x] Get activation for last layers
 - [x] K Means on this activation space
-- [ ] TSNE or other Viz
-- [ ]
+- [x] TSNE or other Viz
+- [x] Node to 4 class TSNE
+  - [x] Alongside Node to concept
+- [ ] Think about how to rank k
+  - [ ] Maybe s.t. number of is above 500 for all
+- [ ] Code to represent concepts
+- [ ] Save concepts in a folder
+- [ ] Decompose prediction into supporting and contradicting evidence
+- [ ] Highlight on original image the concepts of interest
+- [ ] Present examples of the concept
+- [ ] Concept purity and concept completeness
+- [ ] predict cancer for test set
+- [ ] Refactor repsository
+  - [ ] Rename, move around
+  - [ ] Document
+  - [ ] Create a README
+
+### With respect to dissertation
+
+- [x] Move GCN part out of preperation
+- [x] Delete project managemet part
+- [x] Delete part on average colour in graph definition
+- [ ] Add photo of graph visualized
+- [ ] Rewrite section on GCN
+  - [x] Talk about GCN and how it works
+  - [x] Talk about use of mean and max global pooling with reference to the GIN paper
+  - [x] Talk about additional transformations
+  - [ ] Keep stuff about regularization and talk about how constraining model width
+  - [ ] Graph Augmentations
+- [ ] Write section on GCExplainer
+  - [ ] What are concepts
+  - [ ] Suggest model implicitly discovers concepts and uses them
+  - [ ] Clustering as a tool of concept discovery
+    - [ ] What is clustering
+    - [ ] K-Means
+  - [ ] How are concepts discovered?
+    - [ ] Clustering on final node activations. Hypothesis is that the latent representation is the embedding for that concept.
+    - [ ] TSNE of node-embeddings conceptualized
+  - [ ] Concepts should span training set
+  - [ ] Concepts can be used as indicators
+    - [ ] Conditional probability distribution
+    - [ ] P(class|concept)
+    - [ ] Many concepts in a graph, some support and some are contradictions of prediction
+  - [ ] Want to extract the supporting evidence from the graph
+    - [ ] Can point towards the presence "concept X & Y" as reasons / explanations for the model predicting
+  - [ ] Need to give interpretation for concepts. What does concept 2 mean?
+    - [ ] Needs expert to translate, but can give examples
+    - [ ] Algorithm for getting examples
+    - [ ] Examples can be visually depicted
+  - [ ] How are these explanations conveyed to the user?
+    - [ ] By highlighting the regions exhibiting the most supporting concepts and giving other examples of such a concept.
+- [ ] Write Evaluation of GCN
+  - [ ] Compare to competition results
+  - [ ] Comment on marginal improvement for canc_acc - confusion matrix weird
+  - [ ] Evaluate why GIN and TopK were not used as per paper
+  - [ ] Suggest with hyper parameter tuning, this could be definitly improved.
+  - [ ] Remind tha only 300 examples for 4 classes are used
+  - [ ] Also suggest augmentation of node embedding
+- [ ] Write evaluation of GCExplainer
+  - [ ] How was k chosen
+  - [ ] Concept completeness score
+    - [ ] Quote
+    - [ ] Challenge of overfitting (as k tends to number of nodes in graph, concept completeness tends to 1)
+    - [ ] Propose use of concept prevelance:
+      - [ ] The percentage of graphs the least n% occuring concepts feature in
+  - [ ] Concept purity
+    - [ ] How close concepts are to the centroid
+  - [ ] Compare to GCExplainer results
+    - [ ] New paper
+    - [ ] Real world sets were predicted to perform less well
+- [ ] Write Conclusion:
+  - [ ] Results:
+    - [ ] Decent implementations that, with further tuning, would perform around existing models
+    - [ ] Applied GCExplainer to a new problem and explored its strengths and weaknesses
+  - [ ] Impact:
+    - [ ] Universality of approach - not specific to breast cancer but can in theory by trained on other tissues
+  - [ ] Lessons Learnt:
+    - [ ] The reward and Challenge with working with real world data
+    - [ ] Working at intersection of discplines
+  - [ ] Future Work:
+    - [ ] Modularity of steps and improvement of each
+    - [ ] Combine Neural and symbolic reasoning for explanations
+  - [ ]
+- [ ] Repository Tree with line count
+- [ ] Pipeline diagram overview

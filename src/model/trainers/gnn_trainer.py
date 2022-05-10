@@ -28,7 +28,7 @@ from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
 from src.transforms.graph_augmentation.largest_component import LargestComponent
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 4
+b_size = 16
 pre_encoded = True
 
 img_aug_train = Compose([
@@ -98,7 +98,7 @@ class GNNTrainer(Base_Trainer):
                                 shuffle=False, num_workers=2, persistent_workers=True)
 
         accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
-        num_steps = (len(train_loader)//accum_batch)*args["EPOCHS"]+10
+        num_steps = (len(train_loader)//accum_batch)*args["EPOCHS"]+1000
 
         print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
 
