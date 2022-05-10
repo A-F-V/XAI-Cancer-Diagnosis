@@ -4,8 +4,8 @@
 - [x] TSNE or other Viz
 - [x] Node to 4 class TSNE
   - [x] Alongside Node to concept
-- [ ] Think about how to rank k
-  - [ ] Maybe s.t. number of is above 500 for all
+- [x] Think about how to rank k
+  - [x] Maybe s.t. number of is above 500 for all
 - [ ] Code to represent concepts
 - [ ] Save concepts in a folder
 - [ ] Decompose prediction into supporting and contradicting evidence
@@ -24,23 +24,24 @@
 - [x] Delete project managemet part
 - [x] Delete part on average colour in graph definition
 - [ ] Add photo of graph visualized
-- [ ] Rewrite section on GCN
+- [x] Rewrite section on GCN
   - [x] Talk about GCN and how it works
   - [x] Talk about use of mean and max global pooling with reference to the GIN paper
   - [x] Talk about additional transformations
-  - [ ] Keep stuff about regularization and talk about how constraining model width
-  - [ ] Graph Augmentations
+  - [x] Keep stuff about regularization and talk about how constraining model width
+  - [x] Graph Augmentations
+  - [x] Recall 4 possible classes - MAKE CLEAR
 - [ ] Write section on GCExplainer
-  - [ ] What are concepts
-  - [ ] Suggest model implicitly discovers concepts and uses them
-  - [ ] Clustering as a tool of concept discovery
+  - [x] What are concepts
+  - [x] Suggest model implicitly discovers concepts and uses them
+  - [x] Clustering as a tool of concept discovery
     - [ ] What is clustering
     - [ ] K-Means
-  - [ ] How are concepts discovered?
-    - [ ] Clustering on final node activations. Hypothesis is that the latent representation is the embedding for that concept.
-    - [ ] TSNE of node-embeddings conceptualized
-  - [ ] Concepts should span training set
-  - [ ] Concepts can be used as indicators
+  - [x] How are concepts discovered?
+    - [x] Clustering on final node activations. Hypothesis is that the latent representation is the embedding for that concept.
+    - [x] TSNE of node-embeddings conceptualized
+  - [x] Concepts should span training set
+  - [x] Concepts can be used as indicators
     - [ ] Conditional probability distribution
     - [ ] P(class|concept)
     - [ ] Many concepts in a graph, some support and some are contradictions of prediction

@@ -194,6 +194,7 @@ class BACH(Dataset):
         graph_id = (self.ids[ind])
         path = os.path.join(self.graph_dir if not self.pre_encoded else self.encoded_graph_dir, _id_to_path(graph_id))
         graph = torch.load(path)
+        graph.img_id = _id_to_path(graph_id)[:-3]
         if self.graph_augmentation is not None:
             graph = self.graph_augmentation(graph)
         if not self.pre_encoded:

@@ -22,6 +22,8 @@ graph_trans = Compose([KNNGraph(6),  Distance(norm=False, cat=False)])
 gnn_voter_args = {"LAYERS": 12, "WIDTH": 4, "GLOBAL_POOL": "MEAN", "RADIUS_FUNCTION": "INVSQUARE", "POOL_RATIO": 1}
 
 
+# ADD NORMALIZER
+
 def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt"), cell_predictor_loc=os.path.join("model", "CELL_PREDICTOR.ckpt"), gnn_voter_loc=os.path.join("model", "GNN_VOTER.ckpt"), explainability_location=None):
     """
     Predict cancer from image.
