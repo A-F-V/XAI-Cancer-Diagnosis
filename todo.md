@@ -6,7 +6,7 @@
   - [x] Alongside Node to concept
 - [x] Think about how to rank k
   - [x] Maybe s.t. number of is above 500 for all
-- [ ] Code to represent concepts
+- [x] Code to represent concepts
 - [ ] Save concepts in a folder
 - [ ] Decompose prediction into supporting and contradicting evidence
 - [ ] Highlight on original image the concepts of interest
@@ -17,6 +17,7 @@
   - [ ] Rename, move around
   - [ ] Document
   - [ ] Create a README
+- [ ] Get rid of Todos
 
 ### With respect to dissertation
 
@@ -87,3 +88,7 @@
   - [ ]
 - [ ] Repository Tree with line count
 - [ ] Pipeline diagram overview
+  - [x] Diagram
+  - [ ] Example
+- [ ] Add Pietro's suggestions
+  - [ ] Put in introduction picture of cellular network
