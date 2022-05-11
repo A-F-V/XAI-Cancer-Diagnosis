@@ -92,3 +92,8 @@
   - [ ] Example
 - [ ] Add Pietro's suggestions
   - [ ] Put in introduction picture of cellular network
+- [ ] Software Licenses
+- [ ] All Libraries Used
+- [ ] Impact
+- [ ] Candidates who fail to put their names on the top right-hand corners of cover sheets, misunderstand the phrase "at most 100 words", or omit the Proforma altogether, will not receive high marks for Presentation.
+- [ ] Confidence Metrics?
