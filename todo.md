@@ -7,9 +7,9 @@
 - [x] Think about how to rank k
   - [x] Maybe s.t. number of is above 500 for all
 - [x] Code to represent concepts
-- [ ] Save concepts in a folder
-- [ ] Decompose prediction into supporting and contradicting evidence
-- [ ] Highlight on original image the concepts of interest
+- [x] Save concepts in a folder
+- [x] Decompose prediction into supporting and contradicting evidence
+- [x] Highlight on original image the concepts of interest
 - [ ] Present examples of the concept
 - [ ] Concept purity and concept completeness
 - [ ] predict cancer for test set
@@ -18,6 +18,9 @@
   - [ ] Document
   - [ ] Create a README
 - [ ] Get rid of Todos
+
+- Deduce k evaluation code and write up
+- Do full explanation code
 
 ### With respect to dissertation
 
@@ -32,7 +35,7 @@
   - [x] Keep stuff about regularization and talk about how constraining model width
   - [x] Graph Augmentations
   - [x] Recall 4 possible classes - MAKE CLEAR
-- [ ] Write section on GCExplainer
+- [x] Write section on GCExplainer
   - [x] What are concepts
   - [x] Suggest model implicitly discovers concepts and uses them
   - [x] Clustering as a tool of concept discovery
@@ -46,14 +49,14 @@
     - [ ] Conditional probability distribution
     - [ ] P(class|concept)
     - [ ] Many concepts in a graph, some support and some are contradictions of prediction
-  - [ ] Want to extract the supporting evidence from the graph
-    - [ ] Can point towards the presence "concept X & Y" as reasons / explanations for the model predicting
-  - [ ] Need to give interpretation for concepts. What does concept 2 mean?
-    - [ ] Needs expert to translate, but can give examples
-    - [ ] Algorithm for getting examples
-    - [ ] Examples can be visually depicted
-  - [ ] How are these explanations conveyed to the user?
-    - [ ] By highlighting the regions exhibiting the most supporting concepts and giving other examples of such a concept.
+  - [x] Want to extract the supporting evidence from the graph
+    - [x] Can point towards the presence "concept X & Y" as reasons / explanations for the model predicting
+  - [x] Need to give interpretation for concepts. What does concept 2 mean?
+    - [x] Needs expert to translate, but can give examples
+    - [x] Algorithm for getting examples
+    - [x] Examples can be visually depicted
+  - [x] How are these explanations conveyed to the user?
+    - [x] By highlighting the regions exhibiting the most supporting concepts and giving other examples of such a concept.
 - [ ] Write Evaluation of GCN
   - [ ] Compare to competition results
   - [ ] Comment on marginal improvement for canc_acc - confusion matrix weird
@@ -73,27 +76,27 @@
   - [ ] Compare to GCExplainer results
     - [ ] New paper
     - [ ] Real world sets were predicted to perform less well
-- [ ] Write Conclusion:
-  - [ ] Results:
-    - [ ] Decent implementations that, with further tuning, would perform around existing models
-    - [ ] Applied GCExplainer to a new problem and explored its strengths and weaknesses
-  - [ ] Impact:
-    - [ ] Universality of approach - not specific to breast cancer but can in theory by trained on other tissues
-  - [ ] Lessons Learnt:
-    - [ ] The reward and Challenge with working with real world data
-    - [ ] Working at intersection of discplines
-  - [ ] Future Work:
-    - [ ] Modularity of steps and improvement of each
-    - [ ] Combine Neural and symbolic reasoning for explanations
-  - [ ]
+- [x] Write Conclusion:
+  - [x] Results:
+    - [x] Decent implementations that, with further tuning, would perform around existing models
+    - [x] Applied GCExplainer to a new problem and explored its strengths and weaknesses
+  - [x] Impact:
+    - [x] Universality of approach - not specific to breast cancer but can in theory by trained on other tissues
+  - [x] Lessons Learnt:
+    - [x] The reward and Challenge with working with real world data
+    - [x] Working at intersection of discplines
+  - [x] Future Work:
+    - [x] Modularity of steps and improvement of each
+    - [x] Combine Neural and symbolic reasoning for explanations
 - [ ] Repository Tree with line count
-- [ ] Pipeline diagram overview
+- [x] Pipeline diagram overview
   - [x] Diagram
-  - [ ] Example
-- [ ] Add Pietro's suggestions
-  - [ ] Put in introduction picture of cellular network
-- [ ] Software Licenses
-- [ ] All Libraries Used
-- [ ] Impact
-- [ ] Candidates who fail to put their names on the top right-hand corners of cover sheets, misunderstand the phrase "at most 100 words", or omit the Proforma altogether, will not receive high marks for Presentation.
-- [ ] Confidence Metrics?
+  - [x] Example
+- [x] Add Pietro's suggestions
+  - [x] Put in introduction picture of cellular network
+- [x] Software Licenses
+- [x] All Libraries Used
+- [x] Impact
+- [x] Candidates who fail to put their names on the top right-hand corners of cover sheets, misunderstand the phrase "at most 100 words", or omit the Proforma altogether, will not receive high marks for Presentation.
+- [x] Confidence Metrics?
+- [x] What is XAI
