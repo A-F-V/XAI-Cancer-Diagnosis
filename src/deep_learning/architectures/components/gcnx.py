@@ -25,9 +25,9 @@ def _create_transform(in_channels, out_channels, dropout=0.5):
         BatchNorm1d(in_channels, momentum=0.01), ReLU(), Dropout(dropout), Lin(in_channels, out_channels))
 
 
-class GCNTopK(torch.nn.Module):
+class GCNx(torch.nn.Module):
     def __init__(self, input_width, hidden_width, output_width, conv_depth=4):
-        super(GCNTopK, self).__init__()
+        super(GCNx, self).__init__()
         self.iw = input_width
         self.hw = hidden_width
         self.ow = output_width

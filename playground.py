@@ -71,10 +71,10 @@ def main():
     # BACH_Cells(os.path.join("data", "processed", "BACH_TRAIN")).compile_cells(recompute=True, train_test_split=0.8)'
 
     # pre_encode_bach()
-    trainer = GNNTrainer()
+    #trainer = GNNTrainer()
     #trainer = CellAETrainer()
     #trainer = HoverNetTrainer()
-    trainer.train()
+    # trainer.train()
 
     # create_encoded_graphs()
     # create_test_set_predictions()

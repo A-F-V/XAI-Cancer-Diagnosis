@@ -25,3 +25,7 @@ def disect_concept_graph(concept_graph, min_subgraph_size=5):
         g.concept = g.x[0].argmax()
         sub_graphs[i] = g
     return sub_graphs
+
+
+def load_concept_information(concept_folder):
+    pass

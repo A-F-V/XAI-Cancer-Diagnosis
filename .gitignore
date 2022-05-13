@@ -87,3 +87,4 @@ experiments/checkpoints/*
 experiments/artifacts/*
 
 model/*
+model_old/*

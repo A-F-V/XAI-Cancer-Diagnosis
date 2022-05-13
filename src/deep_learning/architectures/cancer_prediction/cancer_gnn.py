@@ -12,8 +12,8 @@ from torch.nn import ModuleList, Sequential, Linear, ReLU, BatchNorm1d, Softmax,
 from torch_geometric.nn import TopKPooling, PNAConv, BatchNorm, global_mean_pool, global_max_pool, GIN, GAT, GCNConv, TopKPooling, MessagePassing, GCN
 import pytorch_lightning as pl
 from torch.nn import Sequential as Seq, Linear as Lin
-from src.model.architectures.components.gcntopk import GCNTopK
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
+from src.deep_learning.architectures.components.gcnx import GCNx
+from src.deep_learning.architectures.cancer_prediction.cell_encoder import CellEncoder
 import os
 from src.transforms.graph_construction.node_embedding import generate_node_embeddings
 
@@ -33,7 +33,7 @@ class CancerGNN(pl.LightningModule):
         self.val_loader = val_loader
         self.height = self.args["HEIGHT"] if "HEIGHT" in self.args else 2
         self.width = self.args["WIDTH"] if "WIDTH" in self.args else 16
-        self.gnn = GCNTopK(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
+        self.gnn = GCNx(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
         self.predictor = Seq(Dropout(p=0.4),
                              Lin(self.width*2, self.width),
                              BatchNorm1d(self.width, momentum=0.01),
@@ -48,6 +48,9 @@ class CancerGNN(pl.LightningModule):
         #                  Lin(self.width, 1),
         #                  ReLU())
         self.pre_encoded = pre_encoded
+
+    def predict(self, graph):
+        return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x)))
 
     def forward(self, x, edge_index, batch):
         # TEMPORARY
