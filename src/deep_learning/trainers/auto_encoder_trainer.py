@@ -4,8 +4,8 @@ from ray.tune.utils.util import wait_for_gpu
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter
 from ray import tune
-from src.model.architectures.cancer_prediction.pred_gnn import PredGNN
-from src.model.trainers.base_trainer import Base_Trainer
+from src.deep_learning.architectures.cancer_prediction.pred_gnn import PredGNN
+from src.deep_learning.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
 from torch_geometric.loader.dataloader import DataLoader
@@ -18,17 +18,15 @@ from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
-from src.model.architectures.cancer_prediction.cancer_net import CancerNet
-from src.model.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
+from src.deep_learning.architectures.cancer_prediction.cancer_net import CancerNet
+from src.deep_learning.architectures.cancer_prediction.cancer_predictor import CancerPredictorGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance
 from src.datasets.BACH_Cells import BACH_Cells
 import os
 from torch.utils.data import DataLoader, SubsetRandomSampler
-from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
-from src.transforms.graph_augmentation.largest_component import LargestComponent
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
+from src.deep_learning.architectures.cancer_prediction.cell_encoder import CellEncoder
 from torchvision.transforms import RandomApply, RandomChoice
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))

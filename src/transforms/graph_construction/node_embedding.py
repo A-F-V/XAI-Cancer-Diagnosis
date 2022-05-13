@@ -3,7 +3,6 @@ from skimage.feature import graycomatrix
 from src.utilities.img_utilities import tensor_to_numpy
 import numpy as np
 import torch
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
 from src.transforms.image_processing.filters import to_gray
 
 

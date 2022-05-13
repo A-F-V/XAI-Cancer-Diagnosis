@@ -6,7 +6,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune import CLIReporter
 from ray import tune
 
-from src.model.trainers.base_trainer import Base_Trainer
+from src.deep_learning.trainers.base_trainer import Base_Trainer
 import os
 from tqdm import tqdm
 from torch_geometric.loader.dataloader import DataLoader
@@ -20,12 +20,11 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
 import numpy as np
 from torchvision.transforms import RandomApply, RandomChoice
-from src.model.architectures.cancer_prediction.cancer_gnn import CancerGNN
+from src.deep_learning.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
-from src.transforms.graph_augmentation.edge_dropout import EdgeDropout, far_mass
-from src.transforms.graph_augmentation.largest_component import LargestComponent
+
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
 b_size = 16

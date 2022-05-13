@@ -1,4 +1,3 @@
-from src.model.graph_construction.graph import Graph
 from torch_geometric.data import Data
 
 
