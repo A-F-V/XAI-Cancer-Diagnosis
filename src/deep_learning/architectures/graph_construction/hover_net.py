@@ -1,13 +1,13 @@
-from src.model.evaluation.dice2 import DICE2
-from src.model.evaluation.aji import AJI
+from src.deep_learning.metrics.dice2 import DICE2
+from src.deep_learning.metrics.aji import AJI
 from torch import nn, optim, Tensor
 import torch
 import numpy as np
-from src.model.architectures.components.residual_unit import ResidualUnit
-from src.model.architectures.components.dense_decoder_unit import DenseDecoderUnit
+from src.deep_learning.architectures.components.residual_unit import ResidualUnit
+from src.deep_learning.architectures.components.dense_decoder_unit import DenseDecoderUnit
 import pytorch_lightning as pl
-from src.model.evaluation.confusion_matrix import confusion_matrix
-from src.model.evaluation.hover_net_loss import HoVerNetLoss
+from src.deep_learning.metrics.confusion_matrix import confusion_matrix
+from src.deep_learning.metrics.hover_net_loss import HoVerNetLoss
 import matplotlib.pyplot as plt
 from PIL import Image
 import io
@@ -18,8 +18,8 @@ from src.vizualizations.cellseg_viz import cell_segmentation_sliding_window_gif_
 from src.utilities.img_utilities import tensor_to_numpy
 from torch.nn.functional import binary_cross_entropy
 import os
-from src.model.evaluation.panoptic_quality import panoptic_quality
-from src.transforms.graph_construction.hovernet_post_processing import assign_instance_class_label, hovernet_post_process
+from src.deep_learning.metrics.panoptic_quality import panoptic_quality
+from src.transforms.cell_segmentation.hovernet_post_processing import assign_instance_class_label, hovernet_post_process
 from src.algorithm.pair_mask_assignment import assign_predicted_to_ground_instance_mask
 resnet_sizes = [18, 34, 50, 101, 152]
 

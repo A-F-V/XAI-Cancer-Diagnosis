@@ -1,19 +1,18 @@
 
-from src.model.trainers.gnn_trainer import GNNTrainer
+
 import torch
 import os
 from src.datasets.BACH import BACH
 
 from tqdm import tqdm
 from src.predict_cancer import predict_cancer
-from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
+from src.deep_learning.architectures.cancer_prediction.cell_encoder import CellEncoder
+from src.predict_cancer import predict_cancer
+import json
 
-
-# todo train with all data
 
 def create_encoded_graphs():
-    from src.model.architectures.cancer_prediction.cell_encoder import CellEncoder
-    import json
+
     src_folder = os.path.join(os.getcwd(), "data", "processed", "BACH_TRAIN")
     args = json.load(open(os.path.join(os.getcwd(), "experiments", "args", "default.json")))
     model = CellEncoder.load_from_checkpoint(os.path.join(
@@ -79,6 +78,9 @@ def main():
     # create_encoded_graphs()
     # create_test_set_predictions()
     # test_explainability()
+    file = os.path.join("data", "raw", "unzipped", "BACH_TRAIN",
+                        "ICIAR2018_BACH_Challenge", "Photos", "Invasive", "iv015.tif")
+    predict_cancer(file, explainability_location="explain.png")
 
 
 if __name__ == "__main__":

@@ -1,10 +1,4 @@
 
-from src.model.evaluation.graph_agreement import hard_agreement
-from src.utilities.pytorch_utilities import incremental_forward
-import torch.nn as nn
-from src.model.architectures.cancer_prediction.cell_autoencoder import Conv
-from src.model.architectures.cancer_prediction.cgs_gnn import CellGraphSignatureGNN
-from src.transforms.graph_construction.graph_extractor import mean_pixel_extraction, principle_pixels_extraction
 from torch import optim, Tensor, softmax
 import torch
 from torch.nn.functional import nll_loss, sigmoid, log_softmax, cross_entropy, one_hot, mse_loss
@@ -50,7 +44,7 @@ class CancerGNN(pl.LightningModule):
         self.pre_encoded = pre_encoded
 
     def predict(self, graph):
-        return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x)))
+        return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x), dtype=torch.int64).to(graph.x.device))
 
     def forward(self, x, edge_index, batch):
         # TEMPORARY

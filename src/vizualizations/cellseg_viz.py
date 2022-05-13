@@ -6,12 +6,12 @@ import io
 import matplotlib.pyplot as plt
 from sqlalchemy import desc
 from src.utilities.img_utilities import tensor_to_numpy
-from src.transforms.graph_construction.hover_maps import hover_map
+from src.transforms.cell_segmentation.hover_maps import hover_map
 from tqdm import tqdm
 import os
 from numpy.ma import masked_where
-from src.transforms.graph_construction.percolation import hollow
-from src.transforms.graph_construction.hovernet_post_processing import hovernet_post_process
+from src.transforms.cell_segmentation.percolation import hollow
+from src.transforms.cell_segmentation.hovernet_post_processing import hovernet_post_process
 from matplotlib.lines import Line2D
 
 

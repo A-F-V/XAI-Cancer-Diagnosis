@@ -1,7 +1,7 @@
 from torch import nn, Tensor
 import torch
-from src.model.evaluation.dice_loss import DiceLoss
-from src.model.evaluation.msegradloss import MSEGradLoss
+from src.deep_learning.metrics.dice_loss import DiceLoss
+from src.deep_learning.metrics.msegradloss import MSEGradLoss
 
 
 W = torch.as_tensor([9,   47,   22, 50,   33,    1])  # PanNuke Weights

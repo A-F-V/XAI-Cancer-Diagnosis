@@ -1,7 +1,3 @@
-<!--[![CircleCI](https://circleci.com/gh/A-F-V/XAI-Cancer-Diagnosis/tree/master.svg?style=svg&circle-token=7fb0c2bb52a5fffae0961cedf3dce014293ceef6)](https://circleci.com/gh/A-F-V/XAI-Cancer-Diagnosis/tree/master)-->
-
-[![Documentation Status](https://readthedocs.org/projects/xai-cancer-diagnosis/badge/?version=latest)](https://xai-cancer-diagnosis.readthedocs.io/en/latest/?badge=latest)
-
 # Towards Explainable AI for Cancer Diagnosis
 
 ## Introduction
@@ -17,26 +13,29 @@
 5. **Explainability**: Implement a post-hoc explainability algorithm (**GCExplainer**) to
    make the model in (4) more interpretable.
 
+![Overview](./md_images/Full_Overview.png)
+
 ## Usage
 
-This repository includes a CLI tool. Documentation for using it can be found below:
+This repository includes a CLI tool. Documentation for using it can be found below. Note you must have the concepts and trained models on the local machine, which are not provided in this repository due to size constraints:
 
 ```sh
-python xcd.py [OPTIONS] ACTION
+python xcd.py FILE_LOCATION [ARGUMENTS]
 ```
 
-| Action  | Description                                                                                       |
-| ------- | ------------------------------------------------------------------------------------------------- |
-| `setup` | Downloads, extracts and processes required datasets for training. **Requires the GCP bucket key** |
-| `train` | Trains model passed in with `-m`                                                                  |
-| `run`   | Does a series of validation and diagnosis on the model. Specify the model and checkpoint location |
+| ARGUMENT              | Description                                                                                          |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `--explanation_file`  | The location for explanations to be saved to. If none is provided, no explanations will be generated |
+| `--hovernet_path`     | The location of the trained HoVerNet model                                                           |
+| `--cell_encoder_path` | The location of the trained ResNet50 encoder model                                                   |
+| `--gnn_path`          | The location of the trained GNN model                                                                |
+| `--concept_path`      | The location of the concepts folder, containing the exemplary concept representation                 |
 
-| Models      | Description                                                           |
-| ----------- | --------------------------------------------------------------------- |
-| `hover_net` | [HoVerNet](#bibliography) - used for **nuclei instance segmentation** |
+## Worked Example
 
-## To Cite
+![Overview](./md_images/example_pipeline.png)
 
+<!--
 ## Bibliography
 
 1. [HoVerNet](http://arxiv.org/abs/1812.06499)
@@ -47,9 +46,10 @@ python xcd.py [OPTIONS] ACTION
    > Gamper, Jevgenij, et al. "Pannuke dataset extension, insights and baselines." arXiv preprint arXiv:2003.10778 (2020).
 4. [MoNuSeg Dataset](https://ieeexplore.ieee.org/document/7872382)
    > Kumar, Neeraj, et al. "A dataset and a technique for generalized nuclear segmentation for computational pathology." IEEE transactions on medical imaging 36.7 (2017): 1550-1560.
-5. BACH Dataset
-6. Histographs
-7. ResNet
-8. FCN
+5. [BACH Dataset]
+6. [Histographs]
+7. [ResNet]
+8. [FCN]
 9. GINTopK
 10. GCExplainer
+--->

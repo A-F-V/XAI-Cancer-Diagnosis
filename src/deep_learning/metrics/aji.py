@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 from src.utilities.tensor_utilties import reset_ids
-from src.model.evaluation.iou import IoU
+from src.deep_learning.metrics.iou import IoU
 
 
 def AJI(gt: Tensor, pred: Tensor):

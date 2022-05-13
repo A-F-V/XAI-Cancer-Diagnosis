@@ -68,7 +68,7 @@ def find_primary_evidence(concept_sub_graphs, prediction, p_class_given_concept)
     return primary_evidence
 
 
-def explain_prediction(concept_graph, img_loc, prediction, means, k, p_class_given_concept, exemplary_concept_graphs_final):
+def explain_prediction(concept_graph, img_loc, prediction, means, k, p_class_given_concept, exemplary_concept_graphs_final, save_loc=None):
 
     sgs = disect_concept_graph(concept_graph, min_subgraph_size=10)
     assert p_class_given_concept.shape == (k, 4)
@@ -88,3 +88,6 @@ def explain_prediction(concept_graph, img_loc, prediction, means, k, p_class_giv
     for i, concept_img in enumerate(exemplary_concept_graphs_final[primary_concept]):
         ax_concepts[i].axis('off')
         ax_concepts[i].imshow(concept_img, aspect='auto')
+    if save_loc is not None:
+        plt.savefig(save_loc)
+        plt.close(f)

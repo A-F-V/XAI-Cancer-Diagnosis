@@ -1,47 +1,22 @@
 import click
-from src.scripts.setup import setup
 import os
-from src.model.trainers.hover_net_trainer import HoverNetTrainer
-import json
-from src.model.trainers.gnn_trainer import GNNTrainer
-from src.predict_cancer import predict_cancer
 
-models = {"hover_net": HoverNetTrainer, "gnn": GNNTrainer}
+import json
+from src.predict_cancer import predict_cancer
 
 
 @click.command()
-@click.argument('action')
-@click.option('--model', '-m', default=None, help='Model to use')
-@click.option('--checkpoint', '-c', default=None, help='Checkpoint to use')
-@click.option('--args', default=os.path.join("experiments", "args", "default.json"), help="File containing args")
-@click.option('--img_loc', '-i')
-def cli(action, model, checkpoint, args, img_loc):
-    args = json.load(open(args))
-    if action == "setup":
-        setup()
-        return
-    if action == "train":
-        if model == None or model not in models.keys():
-            print(f"Please specify a model from {models.keys()} to train")
-            return
-        models[model](args).train()
-        return
-    if action == "run":
-        if model == None or model not in models.keys():
-            print(f"Please specify a model from {models.keys()} to run")
-            return
-        models[model](args).run(checkpoint)
-        return
-    # if action == "run_experiment":
-    #    if experiment == None or experiment not in experiments:
-    #        print("Please specify a valid experiment to run")
-    #        return
-    #    experiments[experiment]()
-    #    return
-    if action == "predict":
-        print(predict_cancer(img_loc))
-        return
-    print(f"{action} is not a valid argument")
+@click.argument('img_location')
+@click.option('--concept_path', '-cp', default=os.path.join("data", "CONCEPTS_32"))
+@click.option('--hovernet_path', '-hp', default=os.path.join("model", "HoVerNet.ckpt"))
+@click.option('--cell_encoder_path', '-cep', default=os.path.join("model", "CellEncoder.ckpt"))
+@click.option('--gnn_path', '-gp', default=os.path.join("model", "GCN.ckpt"))
+@click.option('--explanation_file', '-eout', default=None)
+def cli(img_location, concept_path, hovernet_path, cell_encoder_path, gnn_path, explanation_file):
+    print("Predicting cancer for image: {}".format(img_location))
+    prediction = predict_cancer(img_loc=img_location, hover_net_loc=hovernet_path, resnet_encoder=cell_encoder_path,
+                                gnn_loc=gnn_path, explainability_location=explanation_file, concept_folder=concept_path)
+    print("Prediction: {}".format(prediction))
 
 
 if __name__ == '__main__':

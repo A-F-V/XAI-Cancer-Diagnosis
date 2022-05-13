@@ -1,12 +1,11 @@
 
 from tqdm import tqdm
 import torch
-from torch_geometric.data import InMemoryDataset, download_url
 from torch.utils.data import Dataset
 import os
 from PIL import Image
 from torchvision.transforms import ToTensor, Compose
-from src.transforms.graph_construction.hovernet_post_processing import cut_img_from_tile
+from src.transforms.cell_segmentation.hovernet_post_processing import cut_img_from_tile
 from src.transforms.graph_construction.graph_extractor import extract_graph
 from src.utilities.os_utilities import create_dir_if_not_exist
 from torchvision.transforms import Normalize

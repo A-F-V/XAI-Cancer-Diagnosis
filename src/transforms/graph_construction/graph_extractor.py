@@ -1,5 +1,5 @@
 
-from src.transforms.graph_construction.hover_maps import find_centre_of_mass
+from src.transforms.cell_segmentation.hover_maps import find_centre_of_mass
 from torch_geometric.data import Data
 import torch
 from torch import Tensor

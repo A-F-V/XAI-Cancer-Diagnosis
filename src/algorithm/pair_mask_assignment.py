@@ -3,7 +3,7 @@ from src.utilities.tensor_utilties import reset_ids
 import numpy as np
 from scipy.stats import mode
 from scipy.optimize import linear_sum_assignment
-from src.model.evaluation.iou import IoU
+from src.deep_learning.metrics.iou import IoU
 
 
 def assign_predicted_to_ground_instance_mask(gt: Tensor, pred: Tensor):

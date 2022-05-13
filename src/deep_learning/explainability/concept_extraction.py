@@ -1,5 +1,9 @@
 import networkx as nx
 from torch_geometric.utils import to_networkx, from_networkx
+import os
+import numpy as np
+from PIL import Image
+from torchvision.transforms import ToTensor
 
 
 def disect_concept_graph(concept_graph, min_subgraph_size=5):
@@ -28,4 +32,17 @@ def disect_concept_graph(concept_graph, min_subgraph_size=5):
 
 
 def load_concept_information(concept_folder):
-    pass
+    files = os.listdir(concept_folder)
+    concept_means = np.load(os.path.join(concept_folder, "concept_means.npy"))
+    k = len(concept_means)
+    exemplary_images = [[] for i in range(k)]
+    for concept in range(k):
+        for example in range(3):
+            file = os.path.join(concept_folder, f"c{concept}e{example}.png")
+            if file in files:
+                image = Image.open(file)
+                exemplary_images[concept].append(image)
+    class_concept_prob = np.load(os.path.join(concept_folder, "class_concept_prob.npy"))
+    mu = np.load(os.path.join(concept_folder, "mu.npy"))
+    sigma = np.load(os.path.join(concept_folder, "sigma.npy"))
+    return concept_means, exemplary_images, class_concept_prob, mu, sigma
