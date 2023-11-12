@@ -90,9 +90,9 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
         # 5) GCExplainability
         if explainability_location != None:
             concept_means, exemplary_images, class_concept_prob, mu, sigma = load_concept_information(concept_folder)
-            concept_graph = graph_to_activation_concept_graph(
-                cell_graph, prediction.argmax().item(), concept_means, 32, mu, sigma)
-            explain_prediction(concept_graph, img_loc, prediction, concept_means, 32,
+            concept_graph = graph_to_activation_concept_graph(gnn,
+                                                              cell_graph, concept_means, 32, mu, sigma)
+            explain_prediction(concept_graph, img_loc, prediction.argmax().item(), concept_means, 32,
                                class_concept_prob, exemplary_images, save_loc=explainability_location)
 
         # if exp:
@@ -100,7 +100,7 @@ def predict_cancer(img_loc, hover_net_loc=os.path.join("model", "HoVerNet.ckpt")
         #    save_instance_mask_vizualization(pdf, image_cropped, instance_mask)
         #    save_prediction_certainity_bar_chart(pdf, prediction)
         #    pdf.close()
-        print(prediction)
+        print(softmax(prediction, dim=0))
         return softmax(prediction, dim=0)
 
 

@@ -1,6 +1,8 @@
 import click
 import os
 
+from src.datasets.BACH import *
+
 import json
 from src.predict_cancer import predict_cancer
 
@@ -16,9 +18,11 @@ def cli(img_location, concept_path, hovernet_path, cell_encoder_path, gnn_path, 
     print("Predicting cancer for image: {}".format(img_location))
     prediction = predict_cancer(img_loc=img_location, hover_net_loc=hovernet_path, resnet_encoder=cell_encoder_path,
                                 gnn_loc=gnn_path, explainability_location=explanation_file, concept_folder=concept_path)
-    print("Prediction: {}".format(prediction))
+    pred = ["Normal", "Benign", "In Situ", "Invasive"][prediction.argmax().item()]
+    print("Prediction: {}".format(pred))
 
 
+print(id_to_path(226))
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     cli()

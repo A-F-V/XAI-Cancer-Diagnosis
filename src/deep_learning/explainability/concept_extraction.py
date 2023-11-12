@@ -23,8 +23,8 @@ def disect_concept_graph(concept_graph, min_subgraph_size=5):
         g.pos = g.x[:, -2:]
         g.activation = g.x[:, :32]
         g.x = g.x[:, 32:-2]
-        g.graph_id = graph.graph_id
-        g.y = graph.y.item()
+        #g.graph_id = graph.graph_id
+       # g.y = graph.y.item()
 
         g.concept = g.x[0].argmax()
         sub_graphs[i] = g
@@ -39,7 +39,7 @@ def load_concept_information(concept_folder):
     for concept in range(k):
         for example in range(3):
             file = os.path.join(concept_folder, f"c{concept}e{example}.png")
-            if file in files:
+            if f"c{concept}e{example}.png" in files:
                 image = Image.open(file)
                 exemplary_images[concept].append(image)
     class_concept_prob = np.load(os.path.join(concept_folder, "class_concept_prob.npy"))

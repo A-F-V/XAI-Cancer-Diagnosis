@@ -18,17 +18,16 @@ def nearest_mean(x, means):
 def graph_to_activations(model, graph):
     # Setup the hook for intercepting activations
 
-    raw_activations = torch.zeros(0, 32)
-
-    def append_raw_activations(self, input, output):
-        global raw_activations
-        raw_activations = torch.cat((raw_activations, output), dim=0)
-
-    hook = model.gnn.conv[-1].register_forward_hook(append_raw_activations)
+    def wrapper(mod):
+        def append_raw_activations(self, input, output):
+            mod.raw_activations = torch.cat((mod.raw_activations, output), dim=0)
+        return append_raw_activations
+    model.raw_activations = torch.zeros(0, 32).to(model.device)
+    hook = model.gnn.conv[-1].register_forward_hook(wrapper(model))
     model(graph.x, graph.edge_index, graph.batch)
 
     hook.remove()
-    return raw_activations
+    return model.raw_activations
 
 
 def compile_all_activations(model, train_loader):
@@ -65,13 +64,13 @@ def single_activation_to_concept(activation, means):
 def activation_to_concepts(activations, means, k):
     output = torch.zeros(0, k)
     for i in range(len(activations)):
-        concept = single_activation_to_concept(activations[i].numpy(), means).unsqueeze(0)
+        concept = single_activation_to_concept(activations[i], means).unsqueeze(0)
         output = torch.cat([output, concept], dim=0)
     return output
 
 
 def predict_activations_and_concept_from_graph(model, graph, means, k, mu, sigma):
-    activations = graph_to_activations(model, graph)
+    activations = graph_to_activations(model, graph).cpu().numpy()
     activations = whiten(activations, mu, sigma)
     return activations, activation_to_concepts(activations, means, k)
 

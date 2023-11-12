@@ -79,8 +79,8 @@ def main():
     # create_test_set_predictions()
     # test_explainability()
     file = os.path.join("data", "raw", "unzipped", "BACH_TRAIN",
-                        "ICIAR2018_BACH_Challenge", "Photos", "Invasive", "iv015.tif")
-    predict_cancer(file, explainability_location="explain.png")
+                        "ICIAR2018_BACH_Challenge", "Photos", "Benign", "b030.tif")
+    predict_cancer(file, explainability_location="explain.png", concept_folder=os.path.join("data", "CONCEPTS_32"))
 
 
 if __name__ == "__main__":

@@ -60,7 +60,7 @@ def _path_to_id(path):
     return group * 100 + offset
 
 
-def _id_to_path(id):
+def id_to_path(id):
     group = ['n', 'b', 'is', 'iv'][id // 100]
     offset = (id-1) % 100+1
     return f"{group}{offset:03d}.pt"

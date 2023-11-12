@@ -70,7 +70,7 @@ def find_primary_evidence(concept_sub_graphs, prediction, p_class_given_concept)
 
 def explain_prediction(concept_graph, img_loc, prediction, means, k, p_class_given_concept, exemplary_concept_graphs_final, save_loc=None):
 
-    sgs = disect_concept_graph(concept_graph, min_subgraph_size=10)
+    sgs = disect_concept_graph(concept_graph, min_subgraph_size=5)
     assert p_class_given_concept.shape == (k, 4)
 
     primary_evidence = find_primary_evidence(sgs, prediction, p_class_given_concept)
@@ -83,7 +83,7 @@ def explain_prediction(concept_graph, img_loc, prediction, means, k, p_class_giv
     ax_main.title.set_fontsize(40)
     visualise_concept_subgraphs(primary_evidence, img_loc, means, ax=ax_main)
     ax_concepts = [f.add_subplot(gs[i:i+1, 6:]) for i in range(3)]
-    ax_concepts[0].title.set_text('Supporting Concept:\n#'+str(primary_concept.item()))
+    ax_concepts[0].title.set_text('Supporting Concept:\n#'+str(primary_concept))
     ax_concepts[0].title.set_fontsize(40)
     for i, concept_img in enumerate(exemplary_concept_graphs_final[primary_concept]):
         ax_concepts[i].axis('off')

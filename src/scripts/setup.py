@@ -44,6 +44,11 @@ def setup():
     copy_dir(os.path.join(unzipped_folder, "BACH_TRAIN", "ICIAR2018_BACH_Challenge",
                           "Photos"), BACH_Train_folder_final)
 
+    def normalize(image_path):
+        img = Image.open(image_path)
+        img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15, check=singular_norm_check)
+        img = ToPILImage()(img)
+        img.save(image_path)
     # STAIN NORMALIZE
     if normalize:
         for folder in ["Benign", "InSitu", "Invasive", "Normal"]:
@@ -52,12 +57,8 @@ def setup():
                 img_path = os.path.join(folder_path, image_name)
                 if ".tif" not in img_path:
                     os.remove(img_path)
-                else:  # NO STAIN NORMING
-                    img = Image.open(img_path)
-                    img = normalize_he_image(ToTensor()(img), alpha=1, beta=0.15, check=singular_norm_check)
-                    img = ToPILImage()(img)
-                    img.save(img_path)
-
+                else:  
+                    normalize(img_path)
     ###############################################################################
     # Process MoNuSeg_TRAIN                                                            #
     ###############################################################################

@@ -39,6 +39,10 @@ class GCNx(torch.nn.Module):
 
     def forward(self, x, edge_index, batch):
        # x = self.normalize(x)
+       
+        # If batch in none, assume all nodes are in the same graph
+        if batch is None:
+            batch = torch.zeros(len(x), dtype=torch.int64).to(x.device)
         readouts = []
         for i in range(self.conv_depth):
             x = self.transform[i](x)
