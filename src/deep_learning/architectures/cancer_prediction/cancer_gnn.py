@@ -12,6 +12,8 @@ import os
 from src.transforms.graph_construction.node_embedding import generate_node_embeddings
 
 
+# TODO: Are we outputting the correct classes here?
+
 class CancerGNN(pl.LightningModule):
     def __init__(self, img_size=64, num_steps=0, train_loader=None, val_loader=None, pre_encoded=True, **config):
         super(CancerGNN, self).__init__()
@@ -19,7 +21,8 @@ class CancerGNN(pl.LightningModule):
         self.img_size = img_size
         self.learning_rate = config["START_LR"] if "START_LR" in config else 1e-3
         if not pre_encoded:
-            self.node_embedder_model = CellEncoder.load_from_checkpoint(os.path.join("model", "CellEncoder.ckpt"))
+            self.node_embedder_model = CellEncoder.load_from_checkpoint(
+                os.path.join("model", "CellEncoder.ckpt"))
             self.node_embedder_model.eval()
             self.node_embedder_model.requires_grad_(False)
         self.num_steps = num_steps
@@ -27,7 +30,9 @@ class CancerGNN(pl.LightningModule):
         self.val_loader = val_loader
         self.height = self.args["HEIGHT"] if "HEIGHT" in self.args else 2
         self.width = self.args["WIDTH"] if "WIDTH" in self.args else 16
-        self.gnn = GCNx(input_width=312, hidden_width=self.width, output_width=4, conv_depth=self.height)
+        self.input_dropout = self.args["INPUT_DROPOUT"] if "INPUT_DROPOUT" in self.args else 0.1
+        self.gnn = GCNx(input_width=312, hidden_width=self.width, output_width=4,
+                        conv_depth=self.height, input_dropout=self.input_dropout)
         self.predictor = Seq(Dropout(p=0.4),
                              Lin(self.width*2, self.width),
                              BatchNorm1d(self.width, momentum=0.01),
@@ -55,7 +60,8 @@ class CancerGNN(pl.LightningModule):
         return self.predictor(r)
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-2)
+        optimizer = optim.Adam(
+            self.parameters(), lr=self.learning_rate, eps=1e-5, weight_decay=1e-2)
         if self.args["ONE_CYCLE"]:
             lr_scheduler = optim.lr_scheduler.OneCycleLR(
                 optimizer, max_lr=self.args['MAX_LR'], total_steps=self.num_steps,  three_phase=True)
@@ -129,7 +135,8 @@ class CancerGNN(pl.LightningModule):
     def train_epoch_end(self, outputs):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         avg_acc = torch.stack([x["train_acc"] for x in outputs]).mean()
-        avg_canc_acc = torch.stack([x["train_canc_acc"] for x in outputs]).mean()
+        avg_canc_acc = torch.stack([x["train_canc_acc"]
+                                   for x in outputs]).mean()
         self.log("ep/train_loss", avg_loss)
         self.log("ep/train_acc", avg_acc)
         self.log("ep/train_canc_acc", avg_canc_acc)
@@ -150,13 +157,15 @@ class CancerGNN(pl.LightningModule):
 
 
 def create_linear_predictor(**config):
-    widths = [config["WIDTH"], max(4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
+    widths = [config["WIDTH"], max(
+        4, config["WIDTH"]//2), max(4, config["WIDTH"]//4)]
     layers = []
     for i in range(config["FFN_DEPTH"]):
         # layers.append(Dropout(config["DROPOUT"], inplace=True))
         layers.append(BatchNorm(widths[i]))
         layers.append(ReLU(inplace=True))
-        layers.append(Linear(widths[i], 4 if i+1 == config["FFN_DEPTH"] else widths[i+1]))
+        layers.append(Linear(widths[i], 4 if i+1 ==
+                      config["FFN_DEPTH"] else widths[i+1]))
     layers.append(Softmax(dim=1))
     return Sequential(*layers)
 

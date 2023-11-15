@@ -15,6 +15,8 @@ from torchvision.transforms import Normalize
 from src.transforms.image_processing.filters import glcm
 from src.transforms.graph_construction.node_embedding import generate_node_embeddings
 import re
+from src.transforms.graph_construction.crop_to_cell_graph import crop_graph_to_cell_graph
+import numpy as np
 
 
 class GraphExtractor(Thread):
@@ -28,7 +30,8 @@ class GraphExtractor(Thread):
         path = self.instance_seg_path
         data = torch.load(path)
         # try:
-        graph = extract_graph(data['original_image'], data['instance_mask'], data['cell_categories'], **self.kwargs)
+        graph = extract_graph(
+            data['original_image'], data['instance_mask'], data['cell_categories'], **self.kwargs)
         # except:
         #   print(f"Failed to extract anything of value from {path}")
         #    return
@@ -57,13 +60,18 @@ def _path_to_id(path):
     m = re.match(r'([a-z]+)(\d+)', path)
     offset = int(m.group(2))
     group = ['n', 'b', 'is', 'iv'].index(m.group(1))
-    return group * 100 + offset
+    return group * 100 + offset-1
 
 
 def id_to_path(id):
     group = ['n', 'b', 'is', 'iv'][id // 100]
-    offset = (id-1) % 100+1
+    offset = id % 100+1
     return f"{group}{offset:03d}.pt"
+
+
+assert (_path_to_id(id_to_path(150)) == 150)
+assert (_path_to_id(id_to_path(399)) == 399)
+assert (_path_to_id(id_to_path(0)) == 0)
 
 # todo refactor to use kwargs instead
 
@@ -73,7 +81,8 @@ class BACH(Dataset):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
-        self.ids = list(set(self.ids) & set(map(_path_to_id, self.graph_paths)))
+        self.ids = list(set(self.ids) & set(
+            map(_path_to_id, self.graph_paths)))
         self.dmin = dmin
 
         self.window_size = window_size
@@ -87,7 +96,8 @@ class BACH(Dataset):
         create_dir_if_not_exist(self.instance_segmentation_dir, False)
         create_dir_if_not_exist(self.graph_dir, False)
         create_dir_if_not_exist(self.encoded_graph_dir, False)
-        create_dir_if_not_exist(os.path.join(self.instance_segmentation_dir, "VIZUALISED"), False)
+        create_dir_if_not_exist(os.path.join(
+            self.instance_segmentation_dir, "VIZUALISED"), False)
 
     @staticmethod
     def get_train_val_ids(src_folder):
@@ -107,7 +117,8 @@ class BACH(Dataset):
             for name in os.listdir(os.path.join(self.src_folder, folder)):
                 if ".tif" in name:
                     if self.ids == None or int(name[-7:-4])+i*100 in self.ids:
-                        paths.append(os.path.join(self.src_folder, folder, name))
+                        paths.append(os.path.join(
+                            self.src_folder, folder, name))
         return paths
 
     @property
@@ -161,15 +172,9 @@ class BACH(Dataset):
 
     def generate_encoded_graphs(self, model):
         for gn in tqdm(self.graph_file_names, desc="Generating Encoded Graphs"):
-            graph = torch.load(os.path.join(self.graph_dir, gn))
-            graph.x = graph.x.unflatten(1, (3, 64, 64))
-
-            glcm_acc = torch.zeros((graph.x.shape[0], 50))
-            for i, img in enumerate(graph.x):
-                glcm_acc[i] = glcm(img, normalize=True)
-            xp = generate_node_embeddings(graph.x, model, graph.num_neighbours, graph.categories, glcm_acc)
-            graph.x = xp
-            torch.save(graph, os.path.join(self.encoded_graph_dir, gn))
+            crop_graph = torch.load(os.path.join(self.graph_dir, gn))
+            cell_graph = crop_graph_to_cell_graph(crop_graph, model)
+            torch.save(cell_graph, os.path.join(self.encoded_graph_dir, gn))
 
     def generate_node_distribution(self):
         counts = {}
@@ -191,7 +196,9 @@ class BACH(Dataset):
 
     def __getitem__(self, ind):
         graph_id = (self.ids[ind])
-        path = os.path.join(self.graph_dir if not self.pre_encoded else self.encoded_graph_dir, _id_to_path(graph_id))
+        path = os.path.join(
+            self.graph_dir if not self.pre_encoded else self.encoded_graph_dir, id_to_path(graph_id))
+
         graph = torch.load(path)
         graph.graph_id = graph_id
         if self.graph_augmentation is not None:
@@ -199,24 +206,29 @@ class BACH(Dataset):
         if not self.pre_encoded:
 
             if self.img_augmentation is not None:
-                aug_x = torch.zeros((len(graph.x), 3, 64, 64), dtype=torch.float32)
+                aug_x = torch.zeros(
+                    (len(graph.x), 3, 64, 64), dtype=torch.float32)
                 for i in range(len(graph.x)):
                     aug_x[i] = self.img_augmentation({'image': graph.x[i].unflatten(0, (3, 64, 64))})[
                         'image']  # unfortunately need to do this
                 graph.x = aug_x
 
             graph.glcm = torch.zeros((graph.x.shape[0], 50))
-            for i, img in enumerate(graph.x):
-                graph.glcm[i] = glcm(img, normalize=True)
+            for i, flat_img in enumerate(graph.x):
+                unflattend_img = flat_img.unflatten(0, (3, 64, 64))
+                graph.glcm[i] = glcm(unflattend_img, normalize=True)
             # graph.x = self.node_embedder(graph)
             # assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)
+        assert graph.y == graph_id//100
         return graph
 
     def get_graph_seg_pair(self, id):
         f_name = self.instance_segmentation_file_names[id]
-        g_path, seg_path = os.path.join(self.graph_dir, f_name), os.path.join(self.instance_segmentation_dir, f_name)
-        assert os.path.exists(g_path) and os.path.exists(seg_path), "Graph-Segmentation Pair not found"
+        g_path, seg_path = os.path.join(self.graph_dir, f_name), os.path.join(
+            self.instance_segmentation_dir, f_name)
+        assert os.path.exists(g_path) and os.path.exists(
+            seg_path), "Graph-Segmentation Pair not found"
         return torch.load(g_path), torch.load(seg_path)
 
 
@@ -224,3 +236,35 @@ def categorise(t: Tensor):
     if len(t.shape) == 1:
         t = t.unsqueeze(0)
     return t.argmax(dim=1)
+
+
+class BACHSplitter():
+    def __init__(self, src_folder: str) -> None:
+        super().__init__()
+        self.src_folder = src_folder
+
+    def generate_k_folds(self, k: int):
+        dataset = BACH(self.src_folder)
+        paths = dataset.encoded_graph_paths
+        ids = list(map(_path_to_id, paths))
+        # Shuffle and Split
+        np.random.shuffle(ids)
+        split = int(len(ids)/k)
+        folds = [ids[i*split:(i+1)*split] for i in range(k)]
+        return folds
+
+    def generate_train_val_split(self, split_prop: float):
+        dataset = BACH(self.src_folder)
+        paths = dataset.encoded_graph_paths
+        ids = list(map(_path_to_id, paths))
+        # Shuffle and Split
+        np.random.shuffle(ids)
+        split = int(len(ids)*split_prop)
+        train_ids, val_ids = ids[:split], ids[split:]
+        return train_ids, val_ids
+
+    def save_split(self, save_path: str, train_ids, val_ids):
+        with open(save_path, "w") as f:
+            f.write(str(train_ids))
+            f.write("\n")
+            f.write(str(val_ids))

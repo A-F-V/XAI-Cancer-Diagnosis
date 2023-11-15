@@ -1,0 +1,15 @@
+artifact_uri: file:./mlruns/1/297b83b9c09a4c298b1978292f83572f/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '1'
+lifecycle_stage: active
+name: ''
+run_id: 297b83b9c09a4c298b1978292f83572f
+run_uuid: 297b83b9c09a4c298b1978292f83572f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1699828796696
+status: 1
+tags: []
+user_id: aless

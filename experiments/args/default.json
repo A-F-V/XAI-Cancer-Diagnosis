@@ -1,6 +1,6 @@
 {
   "DEVICE": "cuda",
-  "RUN_NAME": "14_REG",
+  "RUN_NAME": "",
   "EXPERIMENT_ID": 6,
   "EXPERIMENT_NAME": "GINTopK",
   "EPOCHS": 450,
@@ -13,7 +13,6 @@
   "START_CHECKPOINT": null,
   "EARLY_STOP": false,
   "LR_TEST": false,
-
   "IMG_SIZE": 64,
   "DROPOUT": 0,
   "GRID": [

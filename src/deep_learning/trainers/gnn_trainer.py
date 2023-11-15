@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torch_geometric.loader.dataloader import DataLoader
 from src.transforms.image_processing.augmentation import StainJitter, RandomElasticDeformation, RandomFlip
 import mlflow
-from src.datasets.BACH import BACH
+from src.datasets.BACH import BACH, BACHSplitter
 import pytorch_lightning as pl
 from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
@@ -31,146 +31,38 @@ b_size = 16
 pre_encoded = True
 
 img_aug_train = Compose([
-
-    RandomApply([RandomElasticDeformation(alpha=1.7, sigma=0.08, fields=['image'])], p=0.1),
+    RandomApply([RandomElasticDeformation(
+        alpha=1.7, sigma=0.08, fields=['image'])], p=0.1),
     RandomApply(
         [
             StainJitter(theta=0.01, fields=["image"]),
-            RandomFlip(fields=['image']),
-            # RandomChoice([
-            #    AddGaussianNoise(0.01, fields=["img"]),
-            #    GaussianBlur(fields=["img"])]),
-
-            # ColourJitter(bcsh=(0.2, 0.1, 0.1, 0.1), fields=["image"]),
+            RandomFlip(fields=['image'])
         ],
 
         p=0.5),
     #  Normalize({"img": [0.6441, 0.4474, 0.6039]}, {"img": [0.1892, 0.1922, 0.1535]})
 ])
-
-
 img_aug_val = Compose([])
 
 
-graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=6)])  # EdgeDropout(p=0.04),RandomTranslate(25),
+def create_loaders(src_folder, train_ids, val_ids, **args):
+    graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=args["K_NN"])])
+    graph_aug_val = Compose([KNNGraph(k=args["K_NN"])])
 
-graph_aug_val = Compose([KNNGraph(k=6)])
+    train_set = BACH(src_folder, ids=train_ids,
+                     graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded)
+    val_set = BACH(src_folder, ids=val_ids, graph_augmentation=graph_aug_val,
+                   img_augmentation=img_aug_val, pre_encoded=pre_encoded)
 
+    # ensure that the intersection between train ids and val ids is 0
+    assert len(set(train_ids).intersection(set(val_ids))) == 0
 
-class GNNTrainer(Base_Trainer):
-    def __init__(self, args=None):
-        super(Base_Trainer, self).__init__()
-        if args == None:
-            args = json.load(open(os.path.join("experiments", "args", "default.json")))
-        self.args = args
-
-    def train(self):
-
-        print("Initializing Training")
-        args = self.args
-        print(f"The Args are: {args}")
-        print("Getting the Data")
-
-        train_ind, val_ind = [], []
-        src_folder = "C:\\Users\\aless\\Documents\\data"
-        graph_split = os.path.join(src_folder, "graph_ind.txt")
-        with open(graph_split, "r") as f:
-            l1 = f.readline().strip()
-            l2 = f.readline().strip()
-            train_ind = list(map(int, l1[1:-1].split(",")))
-            val_ind = list(map(int, l2[1:-1].split(",")))
-            # for clss in range(4):
-            #    random_ids = np.arange(clss*100, (clss+1)*100)
-            #    np.random.shuffle(random_ids)
-            #    train_ind += list(random_ids[:int(100*0.75)])
-            #    val_ind += list(random_ids[int(100*0.75):])
-
-        # train_ind = list(range(400))
-        print(f"The data source folder is {src_folder}")
-
-        train_set, val_set = BACH(src_folder, ids=train_ind,
-                                  graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded), BACH(src_folder, ids=val_ind, graph_augmentation=graph_aug_val, img_augmentation=img_aug_val, pre_encoded=pre_encoded)
-
-        train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                                  shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1)
-        val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                                shuffle=False, num_workers=2, persistent_workers=True)
-
-        accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
-        num_steps = (len(train_loader)//accum_batch)*args["EPOCHS"]+1000
-
-        print(f"Using {len(train_set)} training examples and {len(val_set)} validation example - With #{num_steps} steps")
-
-        ###########
-        # EXTRAS  #
-        ###########
-
-        ###########
-
-        if args["LR_TEST"]:
-            with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
-
-                model, trainer = create_trainer(train_loader, val_loader, num_steps,
-                                                accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(model, num_training=500, max_lr=1000)
-                fig = lr_finder.plot(suggest=True)
-                log_plot(fig, "LR_Finder")
-                print(lr_finder.suggestion())
-        else:
-            print("Training Started")
-            if args["GRID_SEARCH"]:
-                # grid search
-                grid_search(train_loader, val_loader, num_steps, accum_batch, **args)
-            else:
-                model, trainer = create_trainer(train_loader, val_loader, num_steps, accum_batch, **args)
-
-                trainer.fit(model)
-                # print("Training Over\nEvaluating")
-                # trainer.validate(model)
-                ckpt_file = str(args['EXPERIMENT_NAME'])+"_"+str(args['RUN_NAME'])+".ckpt"
-                ckpt_path = make_checkpoint_path(ckpt_file)
-                trainer.save_checkpoint(ckpt_path)
-
-    def run(self, checkpoint):
-        pass
-
-
-def grid_search(train_loader, val_loader, num_steps, accum_batch, **args):
-    def tuner_type_parser(tuner_info):  # expose outside
-        if tuner_info["TYPE"] == "CHOICE":
-            return tune.choice(tuner_info["VALUE"])
-        if tuner_info["TYPE"] == "UNIFORM":
-            return tune.uniform(*tuner_info["VALUE"])
-        return None
-
-    config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
-    scheduler = ASHAScheduler(
-        max_t=args["EPOCHS"],
-        grace_period=40,
-        reduction_factor=2)
-    reporter = CLIReporter(
-        parameter_columns=list(config.keys()),
-        metric_columns=["loss", "train_accuracy", "val_mean_accuracy", "train_canc_accuracy", "val_mean_canc_accuracy", "training_iteration"])
-
-    def train_fn(config):
-        # wait_for_gpu(target_util=0.1)
-        targs = dict(args)
-        targs.update(config)  # use args but with grid searched params
-        model, trainer = create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=True, ** targs)
-        trainer.fit(model)
-
-    resources_per_trial = {"cpu": 1, "gpu": 1}
-    analysis = tune.run(train_fn,
-                        metric="loss",
-                        mode="min",
-                        config=config,
-                        scheduler=scheduler,
-                        progress_reporter=reporter,
-                        name="tune_gnn_asha",
-                        resources_per_trial=resources_per_trial,
-                        num_samples=args["TRIALS"])  # number of trials
-
-    print(f"Best Config found was: " + str(analysis.get_best_config(metric="loss", mode="min")))
+    print(f"Usig NUM WORKERS: {args['NUM_WORKERS']}")
+    train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
+                              shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1)
+    val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
+                            shuffle=False, num_workers=2, persistent_workers=True)
+    return train_loader, val_loader
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
@@ -180,18 +72,8 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     else:
         model = CancerGNN(num_steps=num_steps,
                           val_loader=val_loader, train_loader=train_loader, pre_encoded=pre_encoded, **args)
-    mlf_logger = MLFlowLogger(experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
-
-    ############################
-    # Layering
-    ###################
-    # model.layers = 1
-
-    def layer_after_x(time):
-        def _layer(trainer, pl_module):
-            if trainer.current_epoch >= time:
-                model.layers = args["LAYERS"]
-        return _layer
+    mlf_logger = MLFlowLogger(
+        experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
 
     ############################
 
@@ -215,6 +97,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
             on="validation_end")
         trct = TuneReportCallback(
             {
+
                 "train_canc_accuracy": "ep/train_canc_acc",
                 "train_accuracy": "ep/train_acc"
             },
@@ -230,6 +113,161 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
     return model, trainer
 
 
+def cross_validate(src_folder, num_steps, accum_batch, k: int, **args):
+    # split the dataset int k folds
+    k_folds: list[list[int]] = BACHSplitter(src_folder).generate_k_folds(k)
+    # for e ach fold, train and validate
+    losses = []
+    accuracies = []
+    canc_accuracies = []
+    for i in range(k):
+        # Flatten the list of lists
+        train_ids = [item for sublist in k_folds[:i] + k_folds[i+1:]
+                     for item in sublist]
+        val_ids = k_folds[i]
+        train_loader, val_loader = create_loaders(
+            src_folder, train_ids, val_ids, **args)
+        model, trainer = create_trainer(
+            train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args)
+        trainer.fit(model)
+
+        # Calculate the metrics
+        output: _EVALUATE_OUTPUT = trainer.validate(model)
+        losses.append(output[0]['ep/val_loss'])
+        accuracies.append(output[0]['ep/val_acc'])
+        canc_accuracies.append(output[0]['ep/val_canc_acc'])
+    print(f"Losses: {losses}")
+    print(f"Accuracies: {accuracies}")
+    print(f"Canc Accuracies: {canc_accuracies}")
+
+
+def grid_search(src_folder, num_steps, accum_batch, **args):
+    # 1) Parse the grid search parameters
+    def tuner_type_parser(tuner_info):  # expose outside
+        if tuner_info["TYPE"] == "CHOICE":
+            return tune.choice(tuner_info["VALUE"])
+        if tuner_info["TYPE"] == "UNIFORM":
+            return tune.uniform(*tuner_info["VALUE"])
+        return None
+
+    config = {tinfo["HP"]: tuner_type_parser(tinfo) for tinfo in args["GRID"]}
+    # 2) Create the scheduler and reporter
+    scheduler = ASHAScheduler(
+        max_t=args["EPOCHS"],
+        grace_period=40,
+        reduction_factor=2)
+    reporter = CLIReporter(
+        parameter_columns=list(config.keys()),
+        metric_columns=["loss", "train_accuracy", "val_mean_accuracy", "train_canc_accuracy", "val_mean_canc_accuracy", "training_iteration"])
+
+    def train_fn(config):
+        targs = dict(args)
+        targs.update(config)  # use args but with grid searched params
+
+        # Create loader for just this trial
+        split = BACHSplitter(src_folder).generate_train_val_split(0.8)
+        train_loader, val_loader = create_loaders(
+            src_folder, split.train_ids, split.val_ids, **targs)
+        model, trainer = create_trainer(
+            train_loader, val_loader, num_steps, accum_batch, grid_search=True, **targs)
+        trainer.fit(model)
+
+    resources_per_trial = {"cpu": 1, "gpu": 1}
+    analysis = tune.run(train_fn,
+                        metric="loss",
+                        mode="min",
+                        config=config,
+                        scheduler=scheduler,
+                        progress_reporter=reporter,
+                        name="tune_gnn_asha",
+                        resources_per_trial=resources_per_trial,
+                        num_samples=args["TRIALS"])  # number of trials
+
+    print(f"Best Config found was: " +
+          str(analysis.get_best_config(metric="loss", mode="min")))
+
+
 def make_checkpoint_path(file):
     print(file)
     return os.path.join("experiments", "checkpoints", file)
+
+
+class GNNTrainer(Base_Trainer):
+    def __init__(self, args=None):
+        super(Base_Trainer, self).__init__()
+        if args == None:
+            args = json.load(
+                open(os.path.join("experiments", "args", "gnn.json")))
+        self.args = args
+
+    def train(self, src_folder="C:\\Users\\aless\\Documents\\data"):
+
+        print("Initializing Training")
+        args = self.args
+        print(f"The Args are: {args}")
+        print("Getting the Data")
+
+        train_ind, val_ind = [], []
+        graph_split = os.path.join(src_folder, "graph_ind.txt")
+        with open(graph_split, "r") as f:
+            l1 = f.readline().strip()
+            l2 = f.readline().strip()
+            train_ind = list(map(int, l1[1:-1].split(",")))
+            val_ind = list(map(int, l2[1:-1].split(",")))
+            # for clss in range(4):
+            #    random_ids = np.arange(clss*100, (clss+1)*100)
+            #    np.random.shuffle(random_ids)
+            #    train_ind += list(random_ids[:int(100*0.75)])
+            #    val_ind += list(random_ids[int(100*0.75):])
+
+        # train_ind = list(range(400))
+        print(f"The data source folder is {src_folder}")
+
+        train_loader, val_loader = create_loaders(
+            src_folder, train_ind, val_ind, **args)
+
+        accum_batch = max(1, b_size//args["BATCH_SIZE_TRAIN"])
+        num_steps = (len(train_loader)//accum_batch)*args["EPOCHS"]+1000
+
+        print(
+            f"Using {len(train_loader)} training examples and {len(val_loader)} validation example - With #{num_steps} steps")
+
+        ###########
+        # EXTRAS  #
+        ###########
+
+        ###########
+
+        if args["LR_TEST"]:
+            with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
+
+                model, trainer = create_trainer(train_loader, val_loader, num_steps,
+                                                accum_batch, grid_search=False, **args)
+                lr_finder = trainer.tuner.lr_find(
+                    model, num_training=500, max_lr=1000)
+                fig = lr_finder.plot(suggest=True)
+                log_plot(fig, "LR_Finder")
+                print(lr_finder.suggestion())
+        else:
+            print("Training Started")
+            if args["GRID_SEARCH"]:
+                # grid search
+                grid_search(src_folder, num_steps, accum_batch, **args)
+            else:
+                if (args["CROSS_VAL"]):
+                    cross_validate(src_folder, num_steps,
+                                   accum_batch, args["K_FOLDS"], **args)
+                else:
+                    model, trainer = create_trainer(
+                        train_loader, val_loader, num_steps, accum_batch, **args)
+
+                    trainer.fit(model)
+                    # print("Training Over\nEvaluating")
+                    # trainer.validate(model)
+                    ckpt_file = str(args['EXPERIMENT_NAME']) + \
+                        "_"+str(args['RUN_NAME'])+".ckpt"
+                    ckpt_path = make_checkpoint_path(ckpt_file)
+                    trainer.save_checkpoint(ckpt_path)
+
+    def run(self, checkpoint):
+        pass

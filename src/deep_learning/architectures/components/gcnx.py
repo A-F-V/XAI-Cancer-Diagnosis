@@ -21,7 +21,7 @@ def _create_transform(in_channels, out_channels, dropout=0.5):
 
 
 class GCNx(torch.nn.Module):
-    def __init__(self, input_width, hidden_width, output_width, conv_depth=4):
+    def __init__(self, input_width, hidden_width, output_width, conv_depth=4, input_dropout=0.1):
         super(GCNx, self).__init__()
         self.iw = input_width
         self.hw = hidden_width
@@ -30,16 +30,16 @@ class GCNx(torch.nn.Module):
         self.conv_depth = conv_depth
         self.conv = ModuleList([_create_convolution(self.hw, self.hw)
                                 for i in range(self.conv_depth)])
-        self.transform = ModuleList([_create_transform((self.iw if i == 0 else self.hw), self.hw, dropout=0.1 if i == 0 else 0)
+        self.transform = ModuleList([_create_transform((self.iw if i == 0 else self.hw), self.hw, dropout=input_dropout if i == 0 else 0)
                                     for i in range(self.conv_depth)])
         # self.pool = ModuleList([TopKPooling(self.hw, ratio=0.5)
         #                        for i in range(self.conv_depth//2)])
 
-        #self.normalize = BatchNorm1d(input_width, momentum=0.01)
+        # self.normalize = BatchNorm1d(input_width, momentum=0.01)
 
     def forward(self, x, edge_index, batch):
        # x = self.normalize(x)
-       
+
         # If batch in none, assume all nodes are in the same graph
         if batch is None:
             batch = torch.zeros(len(x), dtype=torch.int64).to(x.device)
@@ -47,9 +47,9 @@ class GCNx(torch.nn.Module):
         for i in range(self.conv_depth):
             x = self.transform[i](x)
             x = self.conv[i](x=x, edge_index=edge_index)
-            #x = self.transform[2*i+1](x)
-            #x = self.conv[2*i+1](x=x, edge_index=edge_index)
-            #x, edge_index, _, batch, _, _ = self.pool[i](x, edge_index, None, batch)
+            # x = self.transform[2*i+1](x)
+            # x = self.conv[2*i+1](x=x, edge_index=edge_index)
+            # x, edge_index, _, batch, _, _ = self.pool[i](x, edge_index, None, batch)
             r = torch.cat([gap(x, batch), gmp(x, batch)], dim=1)
             readouts.append(r)
         return readouts[-1]
