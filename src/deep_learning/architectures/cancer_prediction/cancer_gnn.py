@@ -33,7 +33,7 @@ class CancerGNN(pl.LightningModule):
         self.input_dropout = self.args["INPUT_DROPOUT"] if "INPUT_DROPOUT" in self.args else 0.1
         self.gnn = GCNx(input_width=312, hidden_width=self.width, output_width=4,
                         conv_depth=self.height, input_dropout=self.input_dropout)
-        self.predictor = Seq(Dropout(p=0.4),
+        self.predictor = Seq(Dropout(p=0.2),
                              Lin(self.width*2, self.width),
                              BatchNorm1d(self.width, momentum=0.01),
                              ReLU(),
@@ -52,10 +52,6 @@ class CancerGNN(pl.LightningModule):
         return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x), dtype=torch.int64).to(graph.x.device))
 
     def forward(self, x, edge_index, batch):
-        # TEMPORARY
-        if x.shape[1] == 315:
-            x = x[:, 3:]
-       # x = self.inn(x)
         r = self.gnn(x, edge_index,  batch)
         return self.predictor(r)
 

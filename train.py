@@ -6,18 +6,18 @@ training_args = {
     "RUN_NAME": "FtT",
     "EXPERIMENT_ID": 7,
     "EXPERIMENT_NAME": "FtT",
-    "EPOCHS": 1,
+    "EPOCHS": 600,
     "BATCH_SIZE_TRAIN": 4,
     "BATCH_SIZE_VAL": 4,
-    "MAX_LR": 0.001,
+    "MAX_LR": 0.002,
     "ONE_CYCLE": True,
     "START_LR": 0.000005,
-    "NUM_WORKERS": 3,
+    "NUM_WORKERS": 1,
     "START_CHECKPOINT": None,
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.2,
+    "INPUT_DROPOUT": 0.21,
     "GRID": [
         {
             "HP": "HEIGHT",
@@ -41,12 +41,13 @@ training_args = {
         }
     ],
     "GRID_SEARCH": False,
-    "CROSS_VAL": True,
+    "CROSS_VAL": False,
     "K_FOLDS": 5,
     "TRIALS": 15,
     "HEIGHT": 7,
     "WIDTH": 64,
-    "K_NN": 4
+    "K_NN": 4,
+    "SAVE_IDS": True,
 }
 
 src_folder = os.path.join(

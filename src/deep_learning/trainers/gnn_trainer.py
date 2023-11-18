@@ -27,7 +27,7 @@ from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Dista
 
 
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 16
+b_size = 32
 pre_encoded = True
 
 img_aug_train = Compose([
@@ -58,10 +58,10 @@ def create_loaders(src_folder, train_ids, val_ids, **args):
     assert len(set(train_ids).intersection(set(val_ids))) == 0
 
     print(f"Usig NUM WORKERS: {args['NUM_WORKERS']}")
-    train_loader = DataLoader(train_set, batch_size=args["BATCH_SIZE_TRAIN"],
-                              shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1)
-    val_loader = DataLoader(val_set, batch_size=args["BATCH_SIZE_VAL"],
-                            shuffle=False, num_workers=2, persistent_workers=True)
+    train_loader = DataLoader(train_set, batch_size=int(args["BATCH_SIZE_TRAIN"]),
+                              shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1, drop_last=True)
+    val_loader = DataLoader(val_set, batch_size=int(args["BATCH_SIZE_VAL"]),
+                            shuffle=False, num_workers=2, persistent_workers=True, drop_last=True)
     return train_loader, val_loader
 
 
@@ -124,7 +124,9 @@ def cross_validate(src_folder, num_steps, accum_batch, k: int, **args):
         # Flatten the list of lists
         train_ids = [item for sublist in k_folds[:i] + k_folds[i+1:]
                      for item in sublist]
+
         val_ids = k_folds[i]
+
         train_loader, val_loader = create_loaders(
             src_folder, train_ids, val_ids, **args)
         model, trainer = create_trainer(
@@ -132,7 +134,7 @@ def cross_validate(src_folder, num_steps, accum_batch, k: int, **args):
         trainer.fit(model)
 
         # Calculate the metrics
-        output: _EVALUATE_OUTPUT = trainer.validate(model)
+        output = trainer.validate(model)
         losses.append(output[0]['ep/val_loss'])
         accuracies.append(output[0]['ep/val_acc'])
         canc_accuracies.append(output[0]['ep/val_canc_acc'])
@@ -207,20 +209,12 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        train_ind, val_ind = [], []
-        graph_split = os.path.join(src_folder, "graph_ind.txt")
-        with open(graph_split, "r") as f:
-            l1 = f.readline().strip()
-            l2 = f.readline().strip()
-            train_ind = list(map(int, l1[1:-1].split(",")))
-            val_ind = list(map(int, l2[1:-1].split(",")))
-            # for clss in range(4):
-            #    random_ids = np.arange(clss*100, (clss+1)*100)
-            #    np.random.shuffle(random_ids)
-            #    train_ind += list(random_ids[:int(100*0.75)])
-            #    val_ind += list(random_ids[int(100*0.75):])
+        train_ind, val_ind = BACHSplitter(
+            src_folder).generate_train_val_split(0.8)
+        if (args["SAVE_IDS"]):
+            BACHSplitter(src_folder).save_split(os.path.join(
+                src_folder, 'graph_ind.txt'), train_ind, val_ind)
 
-        # train_ind = list(range(400))
         print(f"The data source folder is {src_folder}")
 
         train_loader, val_loader = create_loaders(
