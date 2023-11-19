@@ -100,9 +100,10 @@ class BACH(Dataset):
             self.instance_segmentation_dir, "VIZUALISED"), False)
 
     @staticmethod
-    def get_train_val_ids(src_folder):
+    def get_train_val_ids(src_folder, graph_ind_path=None):
         train_ind, val_ind = [], []
-        graph_split = os.path.join(src_folder, "graph_ind.txt")
+        graph_split = os.path.join(
+            src_folder, "graph_ind.txt" if graph_ind_path is None else graph_ind_path)
         with open(graph_split, "r") as f:
             l1 = f.readline().strip()
             l2 = f.readline().strip()

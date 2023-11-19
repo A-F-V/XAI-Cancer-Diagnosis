@@ -3,21 +3,21 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT",
-    "EXPERIMENT_ID": 7,
+    "RUN_NAME": "FtT_19_11_dropout",
+    "EXPERIMENT_ID": 10,
     "EXPERIMENT_NAME": "FtT",
-    "EPOCHS": 600,
+    "EPOCHS": 400,
     "BATCH_SIZE_TRAIN": 4,
     "BATCH_SIZE_VAL": 4,
-    "MAX_LR": 0.002,
+    "MAX_LR": 1e-4,  # 0.0001
     "ONE_CYCLE": True,
-    "START_LR": 0.000005,
+    "START_LR": 1e-5,  # 0.000005
     "NUM_WORKERS": 1,
     "START_CHECKPOINT": None,
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.21,
+    "INPUT_DROPOUT": 0.2,
     "GRID": [
         {
             "HP": "HEIGHT",

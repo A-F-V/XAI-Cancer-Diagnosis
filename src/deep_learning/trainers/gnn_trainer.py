@@ -46,7 +46,7 @@ img_aug_val = Compose([])
 
 
 def create_loaders(src_folder, train_ids, val_ids, **args):
-    graph_aug_train = Compose([RandomTranslate(20), KNNGraph(k=args["K_NN"])])
+    graph_aug_train = Compose([RandomTranslate(50), KNNGraph(k=args["K_NN"])])
     graph_aug_val = Compose([KNNGraph(k=args["K_NN"])])
 
     train_set = BACH(src_folder, ids=train_ids,
@@ -211,9 +211,6 @@ class GNNTrainer(Base_Trainer):
 
         train_ind, val_ind = BACHSplitter(
             src_folder).generate_train_val_split(0.8)
-        if (args["SAVE_IDS"]):
-            BACHSplitter(src_folder).save_split(os.path.join(
-                src_folder, 'graph_ind.txt'), train_ind, val_ind)
 
         print(f"The data source folder is {src_folder}")
 
@@ -231,6 +228,7 @@ class GNNTrainer(Base_Trainer):
         ###########
 
         ###########
+        run_name = str(args["RUN_NAME"])
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
@@ -259,9 +257,13 @@ class GNNTrainer(Base_Trainer):
                     # print("Training Over\nEvaluating")
                     # trainer.validate(model)
                     ckpt_file = str(args['EXPERIMENT_NAME']) + \
-                        "_"+str(args['RUN_NAME'])+".ckpt"
+                        "_"+run_name+".ckpt"
                     ckpt_path = make_checkpoint_path(ckpt_file)
                     trainer.save_checkpoint(ckpt_path)
+
+                    if (args["SAVE_IDS"]):
+                        BACHSplitter(src_folder).save_split(os.path.join(
+                            src_folder, f'graph_ind_{run_name}.txt'), train_ind, val_ind)
 
     def run(self, checkpoint):
         pass

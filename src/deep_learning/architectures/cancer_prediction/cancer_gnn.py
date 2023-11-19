@@ -51,6 +51,9 @@ class CancerGNN(pl.LightningModule):
     def predict(self, graph):
         return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x), dtype=torch.int64).to(graph.x.device))
 
+    def predict_proba(self, graph):
+        return softmax(self.predict(graph), dim=1)
+
     def forward(self, x, edge_index, batch):
         r = self.gnn(x, edge_index,  batch)
         return self.predictor(r)
