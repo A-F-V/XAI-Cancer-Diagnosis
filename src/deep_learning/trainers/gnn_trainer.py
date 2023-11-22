@@ -265,5 +265,7 @@ class GNNTrainer(Base_Trainer):
                         BACHSplitter(src_folder).save_split(os.path.join(
                             src_folder, f'graph_ind_{run_name}.txt'), train_ind, val_ind)
 
+                    return model, train_loader, val_loader
+
     def run(self, checkpoint):
         pass

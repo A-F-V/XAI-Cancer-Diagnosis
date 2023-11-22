@@ -3,10 +3,10 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT_19_11_dropout",
+    "RUN_NAME": "FtT_19_11_4",
     "EXPERIMENT_ID": 10,
     "EXPERIMENT_NAME": "FtT",
-    "EPOCHS": 400,
+    "EPOCHS": 600,
     "BATCH_SIZE_TRAIN": 4,
     "BATCH_SIZE_VAL": 4,
     "MAX_LR": 1e-4,  # 0.0001
@@ -17,7 +17,7 @@ training_args = {
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.2,
+    "INPUT_DROPOUT": 0.3,
     "GRID": [
         {
             "HP": "HEIGHT",
@@ -45,8 +45,8 @@ training_args = {
     "K_FOLDS": 5,
     "TRIALS": 15,
     "HEIGHT": 7,
-    "WIDTH": 64,
-    "K_NN": 4,
+    "WIDTH": 100,
+    "K_NN": 5,
     "SAVE_IDS": True,
 }
 

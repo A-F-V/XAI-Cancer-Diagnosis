@@ -175,6 +175,8 @@ class BACH(Dataset):
         for gn in tqdm(self.graph_file_names, desc="Generating Encoded Graphs"):
             crop_graph = torch.load(os.path.join(self.graph_dir, gn))
             cell_graph = crop_graph_to_cell_graph(crop_graph, model)
+            # Load the original image as well
+            # TODO: save the image path in the graph
             torch.save(cell_graph, os.path.join(self.encoded_graph_dir, gn))
 
     def generate_node_distribution(self):
