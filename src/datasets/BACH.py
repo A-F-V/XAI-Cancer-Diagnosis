@@ -171,12 +171,29 @@ class BACH(Dataset):
             for thread in threads:
                 thread.join()
 
+    def abbrev_to_img_path(self, abbrev):
+        # Map the first letter to the cancer type
+        if abbrev[0] == "n":
+            cancer_type = "Normal"
+        elif abbrev[0] == "b":
+            cancer_type = "Benign"
+        elif abbrev[0:2] == "is":
+            cancer_type = "InSitu"
+        else:
+            cancer_type = "Invasive"
+        # Get the image number
+        file_name = abbrev[:-3]
+        # Get the image path
+        return os.path.join(self.src_folder, cancer_type, f"{file_name}.tif")
+
     def generate_encoded_graphs(self, model):
         for gn in tqdm(self.graph_file_names, desc="Generating Encoded Graphs"):
             crop_graph = torch.load(os.path.join(self.graph_dir, gn))
             cell_graph = crop_graph_to_cell_graph(crop_graph, model)
-            # Load the original image as well
             # TODO: save the image path in the graph
+            id = _path_to_id(gn)
+            cell_graph.graph_id = id
+            cell_graph.original_image_path = self.abbrev_to_img_path(gn)
             torch.save(cell_graph, os.path.join(self.encoded_graph_dir, gn))
 
     def generate_node_distribution(self):
