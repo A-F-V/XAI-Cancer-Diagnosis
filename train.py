@@ -3,7 +3,7 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT_19_11_4",
+    "RUN_NAME": "FtT_27_11",
     "EXPERIMENT_ID": 10,
     "EXPERIMENT_NAME": "FtT",
     "EPOCHS": 600,
@@ -11,13 +11,13 @@ training_args = {
     "BATCH_SIZE_VAL": 4,
     "MAX_LR": 1e-4,  # 0.0001
     "ONE_CYCLE": True,
-    "START_LR": 1e-5,  # 0.000005
+    "START_LR": 5e-6,  # 0.000005
     "NUM_WORKERS": 1,
     "START_CHECKPOINT": None,
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.3,
+    "INPUT_DROPOUT": 0.1,
     "GRID": [
         {
             "HP": "HEIGHT",
@@ -41,12 +41,12 @@ training_args = {
         }
     ],
     "GRID_SEARCH": False,
-    "CROSS_VAL": False,
+    "CROSS_VAL": True,
     "K_FOLDS": 5,
     "TRIALS": 15,
     "HEIGHT": 7,
-    "WIDTH": 100,
-    "K_NN": 5,
+    "WIDTH": 32,
+    "K_NN": 6,
     "SAVE_IDS": True,
 }
 
