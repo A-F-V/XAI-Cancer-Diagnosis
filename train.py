@@ -3,10 +3,10 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT_27_11",
+    "RUN_NAME": "FtT_29_11",
     "EXPERIMENT_ID": 10,
     "EXPERIMENT_NAME": "FtT",
-    "EPOCHS": 600,
+    "EPOCHS": 2000,
     "BATCH_SIZE_TRAIN": 4,
     "BATCH_SIZE_VAL": 4,
     "MAX_LR": 1e-4,  # 0.0001
@@ -41,12 +41,12 @@ training_args = {
         }
     ],
     "GRID_SEARCH": False,
-    "CROSS_VAL": True,
-    "K_FOLDS": 5,
+    "CROSS_VAL": False,
+    "K_FOLDS": 4,
     "TRIALS": 15,
     "HEIGHT": 7,
-    "WIDTH": 32,
-    "K_NN": 6,
+    "WIDTH": 64,
+    "K_NN": 5,
     "SAVE_IDS": True,
 }
 
