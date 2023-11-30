@@ -3,7 +3,7 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT_30_11_2000",
+    "RUN_NAME": "FtT_30_11_wa",
     "EXPERIMENT_ID": 11,
     "EXPERIMENT_NAME": "FtT_Explainable",
     "EPOCHS": 2000,
@@ -17,7 +17,7 @@ training_args = {
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.05,
+    "INPUT_DROPOUT": 0.2,
     "L1_WEIGHT": 0.001,
     "GRID": [
         {
@@ -26,9 +26,9 @@ training_args = {
             "VALUE": [4, 7, 9]
         },
         {
-            "HP": "WIDTH",
+            "HP": "L1_WEIGHT",
             "TYPE": "CHOICE",
-            "VALUE": [8, 16, 32, 64]
+            "VALUE": [0, 0.0001, 0.001, 0.01, 0.1]
         },
         {
             "HP": "K_NN",
@@ -39,6 +39,16 @@ training_args = {
             "HP": "INPUT_DROPOUT",
             "TYPE": "UNIFORM",
             "VALUE": [0, 0.3]
+        },
+        {
+            "HP": "CONCEPT_WIDTH",
+            "TYPE": "CHOICE",
+            "VALUE": [32, 64]
+        },
+        {
+            "HP": "WIDTH",
+            "TYPE": "UNIFORM",
+            "VALUE": [16, 32, 64]
         }
     ],
     "GRID_SEARCH": False,

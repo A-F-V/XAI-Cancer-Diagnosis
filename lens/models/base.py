@@ -12,6 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 from lens.utils.base import ClassifierNotTrainedError, IncompatibleClassifierError
 from lens.utils.loss import MutualInformationLoss, MixedMultiLabelLoss
 from lens.utils.metrics import Metric, TopkAccuracy, Accuracy
+from src.deep_learning.metrics.wasserstein_distance import WassersteinLoss
 
 
 class BaseXModel(ABC):
@@ -71,12 +72,14 @@ class BaseClassifier(torch.nn.Module):
         super(BaseClassifier, self).__init__()
         if loss is not None:
             assert isinstance(loss, torch.nn.CrossEntropyLoss) or \
-                   isinstance(loss, torch.nn.BCEWithLogitsLoss) or \
-                   isinstance(loss, MixedMultiLabelLoss) or \
-                   isinstance(loss, MutualInformationLoss), \
-                   "Only CrossEntropyLoss, BCEWithLogitsLoss, MixedMultiLabelLoss or MutualInformationLoss available."
+                isinstance(loss, torch.nn.BCEWithLogitsLoss) or \
+                isinstance(loss, MixedMultiLabelLoss) or \
+                isinstance(loss, MutualInformationLoss) or \
+                isinstance(loss, WassersteinLoss), \
+                "Only CrossEntropyLoss, BCEWithLogitsLoss, MixedMultiLabelLoss, WassersteinLoss or MutualInformationLoss available."
         self.loss = loss
-        self.activation = torch.nn.Softmax(dim=1) if isinstance(loss, torch.nn.CrossEntropyLoss) else torch.nn.Sigmoid()
+        self.activation = torch.nn.Softmax(dim=1) if isinstance(
+            loss, torch.nn.CrossEntropyLoss) or isinstance(loss, WassersteinLoss) else torch.nn.Sigmoid()
         self.name = name
         self.register_buffer("trained", torch.tensor(False))
         self.need_pruning = False
@@ -190,7 +193,8 @@ class BaseClassifier(torch.nn.Module):
             train_outputs, train_labels = [], []
             for i, data in enumerate(train_loader):
                 # Load batch (dataset, labels) on the correct device
-                batch_data, batch_labels = data[0].to(device), data[1].to(device)
+                batch_data, batch_labels = data[0].to(
+                    device), data[1].to(device)
                 optimizer.zero_grad()
 
                 # Network outputs on the current batch of dataset
@@ -198,21 +202,26 @@ class BaseClassifier(torch.nn.Module):
                 batch_outputs = self.activation(logit_outputs)
 
                 # Compute losses and update gradients
-                tot_loss = self.get_loss(logit_outputs, batch_labels, epoch, epochs)
+                tot_loss = self.get_loss(
+                    logit_outputs, batch_labels, epoch, epochs)
                 tot_loss.backward()
                 optimizer.step()
 
                 # Data moved to cpu again
                 batch_outputs, batch_labels = batch_outputs.detach().cpu(), batch_labels.detach().cpu()
                 tot_loss = tot_loss.detach().cpu()
-                train_outputs.append(batch_outputs), train_labels.append(batch_labels), tot_losses_i.append(tot_loss)
+                train_outputs.append(batch_outputs), train_labels.append(
+                    batch_labels), tot_losses_i.append(tot_loss)
 
-            train_outputs, train_labels = torch.cat(train_outputs), torch.cat(train_labels)
+            train_outputs, train_labels = torch.cat(
+                train_outputs), torch.cat(train_labels)
             tot_losses_i = torch.stack(tot_losses_i).mean().item()
 
             # Compute accuracy, f1 and constraint_loss on the whole train, validation dataset
-            train_acc = self.evaluate(train_set, batch_size, metric, num_workers, device, train_outputs, train_labels)
-            val_acc = self.evaluate(val_set, batch_size, metric, num_workers, device)
+            train_acc = self.evaluate(
+                train_set, batch_size, metric, num_workers, device, train_outputs, train_labels)
+            val_acc = self.evaluate(
+                val_set, batch_size, metric, num_workers, device)
 
             # Save epoch results
             train_accs.append(train_acc)
@@ -277,7 +286,8 @@ class BaseClassifier(torch.nn.Module):
         """
         with torch.no_grad():
             if outputs is None or labels is None:
-                outputs, labels = self.predict(dataset, batch_size, num_workers, device)
+                outputs, labels = self.predict(
+                    dataset, batch_size, num_workers, device)
             metric_val = metric(outputs.cpu(), labels.cpu())
         return metric_val
 
@@ -296,7 +306,8 @@ class BaseClassifier(torch.nn.Module):
         outputs, labels = [], []
         if batch_size is None:
             batch_size = len(dataset)
-        loader = DataLoader(dataset, batch_size, num_workers=num_workers, pin_memory=device != torch.device("cpu"))
+        loader = DataLoader(dataset, batch_size, num_workers=num_workers,
+                            pin_memory=device != torch.device("cpu"))
         for i, data in enumerate(loader):
             batch_data, batch_labels, = data[0].to(device), data[1].to(device)
             batch_outputs = self.forward(batch_data)
@@ -360,9 +371,11 @@ class BaseClassifier(torch.nn.Module):
                 self.prune()
                 incompat_keys = self.load_state_dict(state_dict, strict=False)
                 if len(incompat_keys.missing_keys) > 0 or len(incompat_keys.unexpected_keys) > 0:
-                    raise IncompatibleClassifierError(incompat_keys.missing_keys, incompat_keys.unexpected_keys)
+                    raise IncompatibleClassifierError(
+                        incompat_keys.missing_keys, incompat_keys.unexpected_keys)
             else:
-                raise IncompatibleClassifierError(incompat_keys.missing_keys, incompat_keys.unexpected_keys)
+                raise IncompatibleClassifierError(
+                    incompat_keys.missing_keys, incompat_keys.unexpected_keys)
         self.to(device)
         assert self.get_device().type == device.type, f"Error in loading model to the correct device, " \
                                                       f"{self.get_device().type} != {device}"

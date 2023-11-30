@@ -43,7 +43,7 @@ class ExplainableCancerGNN(pl.LightningModule):
         self.pool = global_mean_pool
 
         self.lens = XMuNN(4, self.concept_width, [
-                          self.concept_width//2, self.concept_width//4], loss=WassersteinLoss(), l1_weight=self.l1_weight)
+                          self.concept_width//2, self.concept_width//4], loss=torch.nn.CrossEntropyLoss(), l1_weight=self.l1_weight)
         # self.grader = Seq(Dropout(p=0.3),
         #                  Lin(self.width*2, self.width),
         #                  BatchNorm1d(self.width, momentum=0.01),
@@ -87,10 +87,14 @@ class ExplainableCancerGNN(pl.LightningModule):
         node_concepts = result["node_concepts"]
         graph_concepts = result["graph_concepts"]
 
-        loss = self.lens.get_loss(y_hat, y)
+        # y should also be a one-hot encoding
+        y_one = one_hot(y, num_classes=4).float()
+        len_loss = self.lens.get_loss(y_hat, y_one)
         ce_loss = cross_entropy(y_hat, y)
-        l1_loss = loss - ce_loss
+        wa_loss = WassersteinLoss()(y_hat, y_one)
+        l1_loss = len_loss - ce_loss
 
+        loss = len_loss + wa_loss
         pred_cat = y_hat.argmax(dim=1)
 
         acc = (pred_cat == y).float().mean()
@@ -98,6 +102,7 @@ class ExplainableCancerGNN(pl.LightningModule):
         self.log(f"{step_type}_loss", loss)
         self.log(f"{step_type}_acc", acc)
         self.log(f"{step_type}_ce_loss", ce_loss)
+        self.log(f"{step_type}_wa_loss", wa_loss)
         self.log(f"{step_type}_l1_loss", l1_loss)
 
         # print(self.steepness.data)
