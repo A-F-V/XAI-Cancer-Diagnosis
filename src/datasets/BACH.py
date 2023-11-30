@@ -77,7 +77,7 @@ assert (_path_to_id(id_to_path(0)) == 0)
 
 
 class BACH(Dataset):
-    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None, pre_encoded=True):
+    def __init__(self, src_folder, ids=None, dmin=100, window_size=64, downsample=1, min_nodes=10, img_augmentation=None, graph_augmentation=None, pre_encoded=True, preload=False):
         super(BACH, self).__init__()
         self.src_folder = src_folder
         self.ids = ids if ids is not None else list(range(1, 401))
@@ -98,6 +98,12 @@ class BACH(Dataset):
         create_dir_if_not_exist(self.encoded_graph_dir, False)
         create_dir_if_not_exist(os.path.join(
             self.instance_segmentation_dir, "VIZUALISED"), False)
+
+        self.preload = preload
+        if self.preload:
+            inds = list(range(len(self.ids)))
+            self.loaded_graphs = {i: self.load_graph(i) for i in inds}
+            print("Preloaded all graphs")
 
     @staticmethod
     def get_train_val_ids(src_folder, graph_ind_path=None):
@@ -214,15 +220,13 @@ class BACH(Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def __getitem__(self, ind):
+    def load_graph(self, ind):
         graph_id = (self.ids[ind])
         path = os.path.join(
             self.graph_dir if not self.pre_encoded else self.encoded_graph_dir, id_to_path(graph_id))
 
         graph = torch.load(path)
         graph.graph_id = graph_id
-        if self.graph_augmentation is not None:
-            graph = self.graph_augmentation(graph)
         if not self.pre_encoded:
 
             if self.img_augmentation is not None:
@@ -241,6 +245,17 @@ class BACH(Dataset):
             # assert graph.x.shape[1] == 315
         graph.y = categorise(graph.y)
         assert graph.y == graph_id//100
+        return graph
+
+    def __getitem__(self, ind):
+        if self.preload:
+            graph = self.loaded_graphs[ind]
+        else:
+            graph = self.load_graph(ind)
+
+        # Perform the graph augmentation
+        if self.graph_augmentation is not None:
+            graph = self.graph_augmentation(graph)
         return graph
 
     def get_graph_seg_pair(self, id):

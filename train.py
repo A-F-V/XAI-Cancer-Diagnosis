@@ -3,21 +3,22 @@ import os
 
 training_args = {
     "DEVICE": "cuda",
-    "RUN_NAME": "FtT_29_11",
-    "EXPERIMENT_ID": 10,
-    "EXPERIMENT_NAME": "FtT",
+    "RUN_NAME": "FtT_30_11_2000",
+    "EXPERIMENT_ID": 11,
+    "EXPERIMENT_NAME": "FtT_Explainable",
     "EPOCHS": 2000,
-    "BATCH_SIZE_TRAIN": 4,
-    "BATCH_SIZE_VAL": 4,
+    "BATCH_SIZE_TRAIN": 64,
+    "BATCH_SIZE_VAL": 64,
     "MAX_LR": 1e-4,  # 0.0001
     "ONE_CYCLE": True,
-    "START_LR": 5e-6,  # 0.000005
-    "NUM_WORKERS": 1,
+    "START_LR": 1e-3,  # 0.000005
+    "NUM_WORKERS": 4,
     "START_CHECKPOINT": None,
     "EARLY_STOP": False,
     "LR_TEST": False,
     "IMG_SIZE": 64,
-    "INPUT_DROPOUT": 0.1,
+    "INPUT_DROPOUT": 0.05,
+    "L1_WEIGHT": 0.001,
     "GRID": [
         {
             "HP": "HEIGHT",
@@ -44,8 +45,10 @@ training_args = {
     "CROSS_VAL": False,
     "K_FOLDS": 4,
     "TRIALS": 15,
-    "HEIGHT": 7,
-    "WIDTH": 64,
+    "HEIGHT": 6,
+    "WIDTH": 32,
+    "CONCEPT_WIDTH": 64,
+    "EXPLAINABLE": True,
     "K_NN": 5,
     "SAVE_IDS": True,
 }

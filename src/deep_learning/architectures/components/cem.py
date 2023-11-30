@@ -3,13 +3,13 @@ import torch
 
 
 class ConceptEncoderModule(torch.nn.Module):
-    def __init__(self, width, e=0.00001):
+    def __init__(self, width, e=1e-10):
         super(ConceptEncoderModule, self).__init__()
         self.width = width
         self.sm = torch.nn.Softmax(dim=1)
         self.epsilon = e
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x):
         (num_nodes, num_features) = x.shape
         assert num_features == self.width
 
@@ -18,7 +18,11 @@ class ConceptEncoderModule(torch.nn.Module):
         assert q_i_hat.shape == (num_nodes, num_features)
 
         # Normalize over max of each feature
-        q_i = q_i_hat / (torch.max(q_i_hat, dim=1).values + self.epsilon)
+        node_maxs = torch.max(q_i_hat, dim=1).values
+        norm_factor = 1/(node_maxs + self.epsilon)
+        norm_factor = norm_factor.reshape(num_nodes, 1)
+        assert norm_factor.shape == (num_nodes, 1)
+        q_i = norm_factor * q_i_hat
         assert q_i.shape == (num_nodes, num_features)
 
         return q_i

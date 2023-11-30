@@ -24,10 +24,10 @@ from src.deep_learning.architectures.cancer_prediction.cancer_gnn import CancerG
 import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
-
-
+from src.deep_learning.architectures.cancer_prediction.explainable_cancer_gnn import ExplainableCancerGNN
+from src.deep_learning.architectures.components.graph_augmentation import NodePerturbation, EdgePerturbation
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 32
+b_size = 64
 pre_encoded = True
 
 img_aug_train = Compose([
@@ -46,13 +46,14 @@ img_aug_val = Compose([])
 
 
 def create_loaders(src_folder, train_ids, val_ids, **args):
-    graph_aug_train = Compose([RandomTranslate(50), KNNGraph(k=args["K_NN"])])
+    graph_aug_train = Compose([RandomTranslate(30), KNNGraph(
+        k=args["K_NN"]), NodePerturbation(0.1, 1), EdgePerturbation(0.1, 0.1)])
     graph_aug_val = Compose([KNNGraph(k=args["K_NN"])])
 
     train_set = BACH(src_folder, ids=train_ids,
-                     graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded)
+                     graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded, preload=True)
     val_set = BACH(src_folder, ids=val_ids, graph_augmentation=graph_aug_val,
-                   img_augmentation=img_aug_val, pre_encoded=pre_encoded)
+                   img_augmentation=img_aug_val, pre_encoded=pre_encoded, preload=True)
 
     # ensure that the intersection between train ids and val ids is 0
     assert len(set(train_ids).intersection(set(val_ids))) == 0
@@ -66,11 +67,13 @@ def create_loaders(src_folder, train_ids, val_ids, **args):
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
+    ModelType = ExplainableCancerGNN if args["EXPLAINABLE"] else CancerGNN
+
     if args['START_CHECKPOINT'] is not None:
-        model = CancerGNN.load_from_checkpoint(os.path.join(
+        model = ModelType.load_from_checkpoint(os.path.join(
             "experiments", "checkpoints", args['START_CHECKPOINT']), num_steps=num_steps, val_loader=val_loader, train_loader=train_loader, **args)
     else:
-        model = CancerGNN(num_steps=num_steps,
+        model = ModelType(num_steps=num_steps,
                           val_loader=val_loader, train_loader=train_loader, pre_encoded=pre_encoded, **args)
     mlf_logger = MLFlowLogger(
         experiment_name=args["EXPERIMENT_NAME"], run_name=args["RUN_NAME"])
@@ -156,7 +159,7 @@ def grid_search(src_folder, num_steps, accum_batch, **args):
     # 2) Create the scheduler and reporter
     scheduler = ASHAScheduler(
         max_t=args["EPOCHS"],
-        grace_period=40,
+        grace_period=args["EPOCHS"]//3,
         reduction_factor=2)
     reporter = CLIReporter(
         parameter_columns=list(config.keys()),
@@ -236,7 +239,7 @@ class GNNTrainer(Base_Trainer):
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
                 lr_finder = trainer.tuner.lr_find(
-                    model, num_training=500, max_lr=1000)
+                    model, num_training=args["EPOCHS"], max_lr=1000)
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())

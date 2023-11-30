@@ -10,7 +10,6 @@ from sklearn.preprocessing import LabelBinarizer
 from torch.utils.data import Dataset
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import transforms
-from data import CUB200
 from lens.utils.base import NotAvailableError
 
 
@@ -67,18 +66,23 @@ class ConceptDataset(ImageFolder, MyDataset, ABC):
 
         if predictions:
             if multi_label:
-                self.attributes = np.load(os.path.join(root, dataset_name + "_multi_label_predictions.npy"))
+                self.attributes = np.load(os.path.join(
+                    root, dataset_name + "_multi_label_predictions.npy"))
             else:
-                self.attributes = np.load(os.path.join(root, dataset_name + "_predictions.npy"))
+                self.attributes = np.load(os.path.join(
+                    root, dataset_name + "_predictions.npy"))
         else:
             self.attributes = np.load(os.path.join(root, "attributes.npy"))
             # filtering empty columns (useful for cub)
-            self.attributes = self.attributes[:, np.sum(self.attributes, axis=0) > 0]
+            self.attributes = self.attributes[:, np.sum(
+                self.attributes, axis=0) > 0]
             if multi_label:
                 multi_labels_targets = LabelBinarizer().fit_transform(self.targets)
                 if np.unique(np.asarray(self.targets)).shape[0] == 2:
-                    multi_labels_targets = np.hstack((1 - multi_labels_targets, multi_labels_targets))
-                self.attributes = np.concatenate((multi_labels_targets, self.attributes), axis=1)
+                    multi_labels_targets = np.hstack(
+                        (1 - multi_labels_targets, multi_labels_targets))
+                self.attributes = np.concatenate(
+                    (multi_labels_targets, self.attributes), axis=1)
 
         self.targets = np.asarray(self.targets)
         if binary:
@@ -89,10 +93,11 @@ class ConceptDataset(ImageFolder, MyDataset, ABC):
                 self.targets = targets
 
         with open(os.path.join(root, "attributes_names.txt"), "r") as f:
-            self.attribute_names : list = json.load(f)
+            self.attribute_names: list = json.load(f)
             if multi_label:
                 self.attribute_names = self.classes + self.attribute_names
-            self.attribute_names = np.asarray(clean_names(self.attribute_names))
+            self.attribute_names = np.asarray(
+                clean_names(self.attribute_names))
 
         self.attributes = self.attributes.astype(np.float32)
         self.n_attributes = self.attributes.shape[1]
@@ -177,7 +182,8 @@ class ImageToConceptDataset(ConceptDataset):
         return sample, attribute
 
     def save_as_csv(self, folder=None):
-        raise NotAvailableError("Cannot save dataset as csv when working with images")
+        raise NotAvailableError(
+            "Cannot save dataset as csv when working with images")
 
 
 class ImageToConceptAndTaskDataset(ConceptDataset):
@@ -185,6 +191,7 @@ class ImageToConceptAndTaskDataset(ConceptDataset):
      Extension of ConceptDataset to use for multi-label classification (Task + Concepts).
 
     """
+
     def __init__(self, root: str, transform: transforms, **kwargs):
         super().__init__(root, transform, predictions=False, multi_label=True, **kwargs)
 
@@ -194,7 +201,8 @@ class ImageToConceptAndTaskDataset(ConceptDataset):
         return sample, attribute
 
     def save_as_csv(self, folder=None):
-        raise NotAvailableError("Cannot save dataset as csv when working with images")
+        raise NotAvailableError(
+            "Cannot save dataset as csv when working with images")
 
 
 class ImageToTaskDataset(ConceptDataset):
@@ -210,13 +218,15 @@ class ImageToTaskDataset(ConceptDataset):
         return ImageFolder.__getitem__(self, idx)
 
     def save_as_csv(self, folder=None):
-        raise NotAvailableError("Cannot save dataset as csv when working with images")
+        raise NotAvailableError(
+            "Cannot save dataset as csv when working with images")
 
 
 class SingleLabelDataset(Dataset):
     """
     SingleLabelDataset is a very simple dataset that receives x and y as np.array already transformed.
     """
+
     def __init__(self, x: np.array, y: np.array):
         """
         Parameters
