@@ -298,6 +298,14 @@ class BACHSplitter():
         train_ids, val_ids = ids[:split], ids[split:]
         return train_ids, val_ids
 
+    def load_splits(self, split_path: str):
+        with open(split_path, "r") as f:
+            l1 = f.readline().strip()
+            l2 = f.readline().strip()
+            train_ids = list(map(int, l1[1:-1].split(",")))
+            val_ids = list(map(int, l2[1:-1].split(",")))
+        return train_ids, val_ids
+
     def save_split(self, save_path: str, train_ids, val_ids):
         with open(save_path, "w") as f:
             f.write(str(train_ids))

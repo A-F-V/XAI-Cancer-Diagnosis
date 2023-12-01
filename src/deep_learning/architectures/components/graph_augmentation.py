@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import Data
-from torch_geometric.utils import dropout_adj
+from torch_geometric.utils import dropout_adj, dropout_node
 
 
 class NodePerturbation:
@@ -38,4 +38,18 @@ class EdgePerturbation:
         new_edges = torch.randint(0, num_nodes, (2, num_add), dtype=torch.long)
         data.edge_index = torch.cat([data.edge_index, new_edges], dim=1)
 
+        return data
+
+
+class NodeDropout:
+    def __init__(self, p=0.01) -> None:
+        self.p = p
+
+    def __call__(self, data: Data):
+        num_nodes = data.x.size(0)
+        edge_index, edge_mask, node_mask = dropout_node(
+            data.edge_index, num_nodes=num_nodes, p=self.p)
+
+        data.x = data.x[node_mask]
+        data.edge_index = edge_index
         return data

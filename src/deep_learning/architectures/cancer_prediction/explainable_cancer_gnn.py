@@ -38,12 +38,17 @@ class ExplainableCancerGNN(pl.LightningModule):
                            conv_depth=self.height, input_dropout=self.input_dropout)
         self.cem = Seq(BatchNorm1d(self.width, momentum=0.01), ReLU(), Lin(
             self.width, self.concept_width), ConceptEncoderModule(self.concept_width))
-
+        self.predictor = Seq(
+            Lin(self.concept_width, self.concept_width),
+            BatchNorm1d(self.concept_width, momentum=0.01),
+            ReLU(),
+            Dropout(p=0),
+            Lin(self.concept_width, 4))
         # Graph Mean pooling
         self.pool = global_mean_pool
 
-        self.lens = XMuNN(4, self.concept_width, [
-                          self.concept_width//2, self.concept_width//4], loss=torch.nn.CrossEntropyLoss(), l1_weight=self.l1_weight)
+        # self.lens = XMuNN(4, self.concept_width, [
+        #                  self.concept_width//2], loss=torch.nn.CrossEntropyLoss(), l1_weight=self.l1_weight)
         # self.grader = Seq(Dropout(p=0.3),
         #                  Lin(self.width*2, self.width),
         #                  BatchNorm1d(self.width, momentum=0.01),
@@ -51,6 +56,10 @@ class ExplainableCancerGNN(pl.LightningModule):
         #                  Dropout(p=0.0),
         #                  Lin(self.width, 1),
         #                  ReLU())
+
+        # Outputs
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
 
     def predict(self, graph):
         return self.forward(graph.x, graph.edge_index, torch.zeros(len(graph.x), dtype=torch.int64).to(graph.x.device))
@@ -62,7 +71,8 @@ class ExplainableCancerGNN(pl.LightningModule):
         x = self.gnn(x, edge_index, batch)
         x = self.cem(x)
         r = self.pool(x, batch)
-        y_hat = self.lens(r)
+        # y_hat = self.lens(r)
+        y_hat = self.predictor(r)
         result = {"node_concepts": x, "graph_concepts": r, "pred": y_hat}
         return result
 
@@ -89,12 +99,12 @@ class ExplainableCancerGNN(pl.LightningModule):
 
         # y should also be a one-hot encoding
         y_one = one_hot(y, num_classes=4).float()
-        len_loss = self.lens.get_loss(y_hat, y_one)
+        # len_loss = self.lens.get_loss(y_hat, y_one)
         ce_loss = cross_entropy(y_hat, y)
         wa_loss = WassersteinLoss()(y_hat, y_one)
-        l1_loss = len_loss - ce_loss
+        # l1_loss = len_loss - ce_loss
 
-        loss = len_loss + wa_loss
+        loss = ce_loss  # + wa_loss
         pred_cat = y_hat.argmax(dim=1)
 
         acc = (pred_cat == y).float().mean()
@@ -103,28 +113,38 @@ class ExplainableCancerGNN(pl.LightningModule):
         self.log(f"{step_type}_acc", acc)
         self.log(f"{step_type}_ce_loss", ce_loss)
         self.log(f"{step_type}_wa_loss", wa_loss)
-        self.log(f"{step_type}_l1_loss", l1_loss)
+        # self.log(f"{step_type}_l1_loss", l1_loss)
 
         # print(self.steepness.data)
         return {"loss": loss, "acc": acc}
 
     def training_step(self, batch, batch_idx):
-        return self.forward_step(batch, batch_idx, step_type="train")
+        # save output
+        output = self.forward_step(batch, batch_idx, step_type="train")
+        self.training_step_outputs.append(output)
+        return output
 
     def validation_step(self, batch, batch_idx):
-        return self.forward_step(batch, batch_idx, step_type="val")
+        # save output
+        output = self.forward_step(batch, batch_idx, step_type="val")
+        self.validation_step_outputs.append(output)
+        return output
 
-    def epoch_end_step(self, outputs, step_type="train"):
+    def on_epoch_end_step(self, outputs, step_type="train"):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()
         avg_acc = torch.stack([x["acc"] for x in outputs]).mean()
         self.log(f"ep/{step_type}_loss", avg_loss)
         self.log(f"ep/{step_type}_acc", avg_acc)
 
-    def train_epoch_end(self, outputs):
-        self.epoch_end_step(outputs, step_type="train")
+    def on_train_epoch_end(self):
+        outputs = self.training_step_outputs
+        self.on_epoch_end_step(outputs, step_type="train")
+        self.training_step_outputs.clear()
 
-    def validation_epoch_end(self, outputs):
-        self.epoch_end_step(outputs, step_type="val")
+    def on_validation_epoch_end(self):
+        outputs = self.validation_step_outputs
+        self.on_epoch_end_step(outputs, step_type="val")
+        self.validation_step_outputs.clear()
 
     def train_dataloader(self):
         return self.train_loader

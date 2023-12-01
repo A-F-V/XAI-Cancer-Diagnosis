@@ -23,11 +23,11 @@ from torchvision.transforms import RandomApply, RandomChoice
 from src.deep_learning.architectures.cancer_prediction.cancer_gnn import CancerGNN
 import json
 import torch
-from torch_geometric.transforms import Compose, KNNGraph, RandomTranslate, Distance, RadiusGraph
+from torch_geometric.transforms import Compose, KNNGraph, RandomJitter, Distance, RadiusGraph
 from src.deep_learning.architectures.cancer_prediction.explainable_cancer_gnn import ExplainableCancerGNN
-from src.deep_learning.architectures.components.graph_augmentation import NodePerturbation, EdgePerturbation
+from src.deep_learning.architectures.components.graph_augmentation import NodePerturbation, NodeDropout
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 64
+b_size = 32
 pre_encoded = True
 
 img_aug_train = Compose([
@@ -46,8 +46,10 @@ img_aug_val = Compose([])
 
 
 def create_loaders(src_folder, train_ids, val_ids, **args):
-    graph_aug_train = Compose([RandomTranslate(30), KNNGraph(
-        k=args["K_NN"]), NodePerturbation(0.1, 1), EdgePerturbation(0.1, 0.1)])
+    graph_aug_train = Compose([RandomJitter(30),
+                               NodeDropout(0.9),
+                               KNNGraph(k=args["K_NN"]),
+                               NodePerturbation(0.15, 0.5)])
     graph_aug_val = Compose([KNNGraph(k=args["K_NN"])])
 
     train_set = BACH(src_folder, ids=train_ids,
@@ -108,7 +110,7 @@ def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search
         trainer_callbacks.append(trc)
         trainer_callbacks.append(trct)
 
-    trainer = pl.Trainer(log_every_n_steps=1, gpus=1,
+    trainer = pl.Trainer(log_every_n_steps=1,
                          max_epochs=args["EPOCHS"], logger=mlf_logger, callbacks=trainer_callbacks,
                          enable_checkpointing=not grid_search, default_root_dir=os.path.join("experiments", "checkpoints"),
                          profiler="simple",
@@ -170,9 +172,10 @@ def grid_search(src_folder, num_steps, accum_batch, **args):
         targs.update(config)  # use args but with grid searched params
 
         # Create loader for just this trial
-        split = BACHSplitter(src_folder).generate_train_val_split(0.8)
+        train_ids, val_ids = BACHSplitter(
+            src_folder).generate_train_val_split(0.8)
         train_loader, val_loader = create_loaders(
-            src_folder, split.train_ids, split.val_ids, **targs)
+            src_folder, train_ids, val_ids, **targs)
         model, trainer = create_trainer(
             train_loader, val_loader, num_steps, accum_batch, grid_search=True, **targs)
         trainer.fit(model)
@@ -212,8 +215,15 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
-        train_ind, val_ind = BACHSplitter(
-            src_folder).generate_train_val_split(0.8)
+        run_name = str(args["RUN_NAME"])
+        split_path = os.path.join(src_folder, f'graph_ind_{run_name}.txt')
+        # Load saved inds
+        if args["START_CHECKPOINT"]:
+            train_ind, val_ind = BACHSplitter(
+                src_folder).load_splits(split_path)
+        else:
+            train_ind, val_ind = BACHSplitter(
+                src_folder).generate_train_val_split(0.8)
 
         print(f"The data source folder is {src_folder}")
 
@@ -231,7 +241,6 @@ class GNNTrainer(Base_Trainer):
         ###########
 
         ###########
-        run_name = str(args["RUN_NAME"])
 
         if args["LR_TEST"]:
             with mlflow.start_run(experiment_id=args["EXPERIMENT_ID"], run_name=args["RUN_NAME"]) as run:
@@ -265,8 +274,8 @@ class GNNTrainer(Base_Trainer):
                     trainer.save_checkpoint(ckpt_path)
 
                     if (args["SAVE_IDS"]):
-                        BACHSplitter(src_folder).save_split(os.path.join(
-                            src_folder, f'graph_ind_{run_name}.txt'), train_ind, val_ind)
+                        BACHSplitter(src_folder).save_split(
+                            split_path, train_ind, val_ind)
 
                     return model, train_loader, val_loader
 
