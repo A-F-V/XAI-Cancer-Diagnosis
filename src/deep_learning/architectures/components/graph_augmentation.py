@@ -1,6 +1,6 @@
 import torch
 from torch_geometric.data import Data
-from torch_geometric.utils import dropout_adj, dropout_node
+from torch_geometric.utils import dropout_edge, dropout_node, subgraph
 
 
 class NodePerturbation:
@@ -29,14 +29,17 @@ class EdgePerturbation:
 
     def __call__(self, data: Data):
         # Dropping edges
-        edge_index, _ = dropout_adj(data.edge_index, p=self.drop_rate)
-        data.edge_index = edge_index
+        if (self.drop_rate != 0):
+            edge_index, _ = dropout_edge(data.edge_index, p=self.drop_rate)
+            data.edge_index = edge_index
 
         # Adding edges
-        num_nodes = data.x.size(0)
-        num_add = int(data.edge_index.size(1) * self.add_rate)
-        new_edges = torch.randint(0, num_nodes, (2, num_add), dtype=torch.long)
-        data.edge_index = torch.cat([data.edge_index, new_edges], dim=1)
+        if (self.add_rate != 0):
+            num_nodes = data.x.size(0)
+            num_add = int(data.edge_index.size(1) * self.add_rate)
+            new_edges = torch.randint(
+                0, num_nodes, (2, num_add), dtype=torch.long)
+            data.edge_index = torch.cat([data.edge_index, new_edges], dim=1)
 
         return data
 
@@ -47,9 +50,11 @@ class NodeDropout:
 
     def __call__(self, data: Data):
         num_nodes = data.x.size(0)
-        edge_index, edge_mask, node_mask = dropout_node(
+        _, _, node_mask = dropout_node(
             data.edge_index, num_nodes=num_nodes, p=self.p)
-
+        # Now we get subgraph with only the nodes that were not dropped
+        edge_index, _ = subgraph(node_mask, data.edge_index, None, None)
         data.x = data.x[node_mask]
+        data.pos = data.pos[node_mask]
         data.edge_index = edge_index
         return data

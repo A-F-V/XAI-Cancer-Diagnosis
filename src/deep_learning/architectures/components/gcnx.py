@@ -17,11 +17,11 @@ def _create_convolution(in_channels, out_channels):
 
 def _create_transform(in_channels, out_channels, dropout=0.5):
     return Seq(  # Dropout(0.1), Lin(in_channels, in_channels), BatchNorm1d(in_channels, momentum=0.01), ReLU(),
-        BatchNorm1d(in_channels, momentum=0.01), ReLU(), Dropout(dropout), Lin(in_channels, out_channels))
+        BatchNorm1d(in_channels, momentum=0.01), LeakyReLU(), Dropout(dropout), Lin(in_channels, out_channels))
 
 
 class GCNx(torch.nn.Module):
-    def __init__(self, input_width, hidden_width, output_width, conv_depth=4, input_dropout=0.1):
+    def __init__(self, input_width, hidden_width, output_width, conv_depth=4, input_dropout=0.1, mid_dropout=0.1):
         super(GCNx, self).__init__()
         self.iw = input_width
         self.hw = hidden_width
@@ -30,7 +30,7 @@ class GCNx(torch.nn.Module):
         self.conv_depth = conv_depth
         self.conv = ModuleList([_create_convolution(self.hw, self.hw)
                                 for i in range(self.conv_depth)])
-        self.transform = ModuleList([_create_transform((self.iw if i == 0 else self.hw), self.hw, dropout=input_dropout if i == 0 else 0)
+        self.transform = ModuleList([_create_transform((self.iw if i == 0 else self.hw), self.hw, dropout=input_dropout if i == 0 else mid_dropout)
                                     for i in range(self.conv_depth)])
         # self.pool = ModuleList([TopKPooling(self.hw, ratio=0.5)
         #                        for i in range(self.conv_depth//2)])

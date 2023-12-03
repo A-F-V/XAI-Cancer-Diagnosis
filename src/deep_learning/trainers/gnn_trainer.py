@@ -18,6 +18,7 @@ from pytorch_lightning.loggers.mlflow import MLFlowLogger
 from pytorch_lightning.callbacks import LearningRateMonitor, LambdaCallback
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from src.utilities.mlflow_utilities import log_plot
+from pytorch_lightning.tuner.tuning import Tuner
 import numpy as np
 from torchvision.transforms import RandomApply, RandomChoice
 from src.deep_learning.architectures.cancer_prediction.cancer_gnn import CancerGNN
@@ -25,9 +26,8 @@ import json
 import torch
 from torch_geometric.transforms import Compose, KNNGraph, RandomJitter, Distance, RadiusGraph
 from src.deep_learning.architectures.cancer_prediction.explainable_cancer_gnn import ExplainableCancerGNN
-from src.deep_learning.architectures.components.graph_augmentation import NodePerturbation, NodeDropout
+from src.deep_learning.architectures.components.graph_augmentation import NodePerturbation, NodeDropout, EdgePerturbation
 # p_mass=lambda x:far_mass((100/x)**0.5, 50, 0.001))
-b_size = 32
 pre_encoded = True
 
 img_aug_train = Compose([
@@ -46,16 +46,23 @@ img_aug_val = Compose([])
 
 
 def create_loaders(src_folder, train_ids, val_ids, **args):
-    graph_aug_train = Compose([RandomJitter(30),
-                               NodeDropout(0.9),
-                               KNNGraph(k=args["K_NN"]),
-                               NodePerturbation(0.15, 0.5)])
-    graph_aug_val = Compose([KNNGraph(k=args["K_NN"])])
+    preload = args["PRELOAD"] if "PRELOAD" in args else False
+    n_dropout = args["NODE_DROPOUT"] if "NODE_DROPOUT" in args else 0.075
+    e_dropout = args["EDGE_DROPOUT"] if "EDGE_DROPOUT" in args else 0.02
+    node_perturb = args["NODE_PERTURB"] if "NODE_PERTURB" in args else 1.5
+
+    graph_aug_train = Compose([RandomJitter(40),
+                               NodeDropout(n_dropout),
+                               KNNGraph(k=args["K_NN"], force_undirected=True),
+                               NodePerturbation(1, node_perturb),
+                               EdgePerturbation(e_dropout, 0)])
+    # EdgePerturbation(0.02, 0)])
+    graph_aug_val = Compose([KNNGraph(k=args["K_NN"], force_undirected=True)])
 
     train_set = BACH(src_folder, ids=train_ids,
-                     graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded, preload=True)
+                     graph_augmentation=graph_aug_train, img_augmentation=img_aug_train, pre_encoded=pre_encoded, preload=preload)
     val_set = BACH(src_folder, ids=val_ids, graph_augmentation=graph_aug_val,
-                   img_augmentation=img_aug_val, pre_encoded=pre_encoded, preload=True)
+                   img_augmentation=img_aug_val, pre_encoded=pre_encoded, preload=preload)
 
     # ensure that the intersection between train ids and val ids is 0
     assert len(set(train_ids).intersection(set(val_ids))) == 0
@@ -64,12 +71,12 @@ def create_loaders(src_folder, train_ids, val_ids, **args):
     train_loader = DataLoader(train_set, batch_size=int(args["BATCH_SIZE_TRAIN"]),
                               shuffle=True, num_workers=args["NUM_WORKERS"], persistent_workers=True and args["NUM_WORKERS"] >= 1, drop_last=True)
     val_loader = DataLoader(val_set, batch_size=int(args["BATCH_SIZE_VAL"]),
-                            shuffle=False, num_workers=2, persistent_workers=True, drop_last=True)
+                            shuffle=True, num_workers=2, persistent_workers=True, drop_last=True)
     return train_loader, val_loader
 
 
 def create_trainer(train_loader, val_loader, num_steps, accum_batch, grid_search=False, **args):
-    ModelType = ExplainableCancerGNN if args["EXPLAINABLE"] else CancerGNN
+    ModelType = ExplainableCancerGNN
 
     if args['START_CHECKPOINT'] is not None:
         model = ModelType.load_from_checkpoint(os.path.join(
@@ -215,6 +222,8 @@ class GNNTrainer(Base_Trainer):
         print(f"The Args are: {args}")
         print("Getting the Data")
 
+        b_size = args["BATCH_SIZE"] if "BATCH_SIZE" in args else 32
+
         run_name = str(args["RUN_NAME"])
         split_path = os.path.join(src_folder, f'graph_ind_{run_name}.txt')
         # Load saved inds
@@ -247,8 +256,9 @@ class GNNTrainer(Base_Trainer):
 
                 model, trainer = create_trainer(train_loader, val_loader, num_steps,
                                                 accum_batch, grid_search=False, **args)
-                lr_finder = trainer.tuner.lr_find(
-                    model, num_training=args["EPOCHS"], max_lr=1000)
+                lr_finder = Tuner(trainer).lr_find(
+                    model, train_loader, val_loader, num_training=args["EPOCHS"], max_lr=1000)
+
                 fig = lr_finder.plot(suggest=True)
                 log_plot(fig, "LR_Finder")
                 print(lr_finder.suggestion())

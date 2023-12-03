@@ -36,7 +36,7 @@ class CancerGNN(pl.LightningModule):
         self.predictor = Seq(Dropout(p=0.2),
                              Lin(self.width*2, self.width),
                              BatchNorm1d(self.width, momentum=0.01),
-                             ReLU(),
+                             LeakyReLU(),
                              Dropout(p=0),
                              Lin(self.width, 4))
         # self.grader = Seq(Dropout(p=0.3),
